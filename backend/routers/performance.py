@@ -401,3 +401,53 @@ def view_student_performance(
     return db.query(StudentPerformance).filter(
         StudentPerformance.student_id == student_id
     ).all()
+
+# =====================================================
+# SUBMIT TO ADMIN (Faculty)
+# =====================================================
+@router.patch("/{performance_id}/submit")
+def submit_to_admin(
+    performance_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user["role"] != FACULTY:
+        raise HTTPException(403, "Faculty only")
+    
+    perf = db.query(StudentPerformance).filter(
+        StudentPerformance.id == performance_id,
+        StudentPerformance.faculty_id == current_user["user_id"]
+    ).first()
+    
+    if not perf: raise HTTPException(404, "Performance record not found or not owned by you")
+    
+    perf.submitted_to_admin = True
+    db.commit()
+    db.add(AuditLog(user_id=current_user["user_id"], action="submit_performance_to_admin", entity_type="performance", entity_id=performance_id))
+    db.commit()
+    return {"message": "Report submitted to admin successfully"}
+
+# =====================================================
+# VIEW SUBMITTED REPORTS (Admin)
+# =====================================================
+@router.get("/submitted")
+def list_submitted_reports(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user["role"] != ADMIN:
+        raise HTTPException(403, "Admin only")
+        
+    reports = db.query(StudentPerformance).filter(StudentPerformance.submitted_to_admin == True).all()
+    data = []
+    for r in reports:
+        data.append({
+            "id": r.id,
+            "student_name": r.student.name,
+            "faculty_name": r.faculty.name,
+            "project_title": r.project.title,
+            "final_score": r.final_score,
+            "grade": r.grade,
+            "created_at": r.created_at
+        })
+    return data
