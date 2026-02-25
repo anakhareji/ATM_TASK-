@@ -1,0 +1,16 @@
+from sqlalchemy import Column, Integer, String, DateTime
+from datetime import datetime
+from database import Base   # ✅ MUST BE PRESENT
+
+
+class CampusEvent(Base):
+    __tablename__ = "campus_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    title = Column(String(200), nullable=False)
+    description = Column(String(2000), nullable=False)
+
+    event_date = Column(DateTime, nullable=False)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
