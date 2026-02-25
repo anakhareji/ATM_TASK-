@@ -57,10 +57,75 @@ def create_event(
     return {"id": event.id, "title": event.title, "description": event.description, "event_date": event.event_date, "created_at": event.created_at}
 
 
-# Public: View All Events
+# Student: Request to Host Event
+@router.post("/request", status_code=status.HTTP_201_CREATED)
+def request_event(
+    data: EventCreate,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Only students can request to host events")
+
+    event = CampusEvent(
+        title=data.title, 
+        description=data.description, 
+        event_date=data.event_date,
+        status="pending",
+        host_student_id=current_user["user_id"]
+    )
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+    
+    db.add(AuditLog(
+        user_id=current_user["user_id"],
+        action="request_event",
+        entity_type="event",
+        entity_id=event.id
+    ))
+    db.commit()
+    return {"message": "Event request submitted for admin approval", "id": event.id}
+
+# Admin: Approve/Reject Event
+@router.patch("/{event_id}/approve")
+def approve_event(
+    event_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user["role"] != ADMIN:
+        raise HTTPException(status_code=403, detail="Admin only")
+    event = db.query(CampusEvent).filter(CampusEvent.id == event_id).first()
+    if not event: raise HTTPException(404, "Event not found")
+    
+    event.status = "approved"
+    db.commit()
+    db.add(AuditLog(user_id=current_user["user_id"], action="approve_event", entity_type="event", entity_id=event_id))
+    db.commit()
+    return {"message": "Event approved"}
+
+@router.patch("/{event_id}/reject")
+def reject_event(
+    event_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user["role"] != ADMIN:
+        raise HTTPException(status_code=403, detail="Admin only")
+    event = db.query(CampusEvent).filter(CampusEvent.id == event_id).first()
+    if not event: raise HTTPException(404, "Event not found")
+    
+    event.status = "rejected"
+    db.commit()
+    db.add(AuditLog(user_id=current_user["user_id"], action="reject_event", entity_type="event", entity_id=event_id))
+    db.commit()
+    return {"message": "Event rejected"}
+
+# Modified Public View: Only show approved events
 @router.get("")
 def get_all_events(db: Session = Depends(get_db)):
-    return db.query(CampusEvent).all()
+    return db.query(CampusEvent).filter(CampusEvent.status == "approved").all()
 
 # ADMIN: Update Event
 @router.put("/{event_id}")
