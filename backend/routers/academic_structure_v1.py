@@ -94,7 +94,7 @@ def list_departments(
     else:
         base_q = base_q.filter(DepartmentV1.is_active == True, DepartmentV1.is_archived == False)
     total = base_q.count()
-    items = base_q.offset((page - 1) * page_size).limit(page_size).all()
+    items = base_q.order_by(DepartmentV1.name.asc()).offset((page - 1) * page_size).limit(page_size).all()
     return {"items": items, "page": page, "page_size": page_size, "total": total}
 
 @router.post("/departments", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission("create_department"))])
