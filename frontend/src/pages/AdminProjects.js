@@ -51,8 +51,8 @@ const AdminProjects = () => {
 
     const fetchDepartments = async () => {
         try {
-            const res = await API.get('/academic/departments');
-            setDepartments(res.data || []);
+            const res = await API.get('/v1/academic-structure/departments?page=1&page_size=100');
+            setDepartments(res.data?.items || []);
         } catch { }
     };
 

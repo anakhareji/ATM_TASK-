@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
+import models.academic
+import models.academic_saas
 from models.user import User
 from models.project import Project
 from models.project_faculty import ProjectFaculty
@@ -11,8 +13,11 @@ from datetime import datetime, timedelta
 import random
 
 def seed_live_data():
+    # Make sure all tables exist before seeding
+    Base.metadata.create_all(bind=engine)
+    
     db = SessionLocal()
-    print("🌱 Seeding Live Data for Faculty Module...")
+    print("Seeding Live Data for Faculty Module...")
 
     # 1. Ensure Users Exist
     faculty = db.query(User).filter(User.email == "faculty@atm.com").first()
@@ -35,9 +40,9 @@ def seed_live_data():
     
     # 2. Create Projects
     projects_data = [
-        {"title": "AI-Based Attendance System", "desc": "Using computer vision to track attendance.", "dept": "CS", "sem": "S6"},
-        {"title": "Blockchain Voting App", "desc": "Secure voting using Ethereum smart contracts.", "dept": "IT", "sem": "S8"},
-        {"title": "Smart Traffic Control", "desc": "IoT based traffic management system.", "dept": "EC", "sem": "S7"}
+        {"title": "AI-Based Attendance System", "desc": "Using computer vision to track attendance.", "dept_id": 1, "sem": "6"},
+        {"title": "Blockchain Voting App", "desc": "Secure voting using Ethereum smart contracts.", "dept_id": 2, "sem": "8"},
+        {"title": "Smart Traffic Control", "desc": "IoT based traffic management system.", "dept_id": 3, "sem": "7"}
     ]
 
     created_projects = []
@@ -47,13 +52,13 @@ def seed_live_data():
             proj = Project(
                 title=p_data["title"],
                 description=p_data["desc"],
-                department=p_data["dept"],
+                department_id=p_data["dept_id"],
                 semester=p_data["sem"],
                 created_by=1 # Assuming admin ID 1
             )
             db.add(proj)
             db.commit()
-            print(f"✅ Created Project: {proj.title}")
+            print(f"Created Project: {proj.title}")
         created_projects.append(proj)
 
     # 3. Assign Projects to Faculty
@@ -67,7 +72,7 @@ def seed_live_data():
             assign = ProjectFaculty(project_id=proj.id, faculty_id=faculty.id)
             db.add(assign)
             db.commit()
-            print(f"🔗 Assigned '{proj.title}' to {faculty.name}")
+            print(f"Assigned '{proj.title}' to {faculty.name}")
 
     # 4. Create Project Groups
     group1 = db.query(ProjectGroup).filter(ProjectGroup.name == "Team Alpha").first()
@@ -77,10 +82,10 @@ def seed_live_data():
         db.commit()
         
         # Add members
-        db.add(GroupMember(group_id=group1.id, student_id=student1.id, role="Leader"))
-        db.add(GroupMember(group_id=group1.id, student_id=student2.id, role="Member"))
+        db.add(GroupMember(group_id=group1.id, student_id=student1.id, is_leader=1))
+        db.add(GroupMember(group_id=group1.id, student_id=student2.id, is_leader=0))
         db.commit()
-        print(f"👥 Created Group 'Team Alpha' for '{created_projects[0].title}'")
+        print(f"Created Group 'Team Alpha' for '{created_projects[0].title}'")
 
     # 5. Create Tasks
     tasks_data = [
@@ -107,14 +112,14 @@ def seed_live_data():
             )
             db.add(new_task)
             db.commit()
-            print(f"📝 Created Task: {new_task.title}")
+            print(f"Created Task: {new_task.title}")
 
     # 6. Seed Performance Data (for Charts)
     # Clear old performance data to avoid duplicates if re-running heavily
     # db.query(StudentPerformance).delete() 
     
     if db.query(StudentPerformance).count() == 0:
-        print("📊 Seeding Performance Data...")
+        print("Seeding Performance Data...")
         performance_records = [
             {"student": student1, "score": 85, "grade": "A", "sem": "S6"},
             {"student": student2, "score": 92, "grade": "A+", "sem": "S6"},
@@ -134,9 +139,9 @@ def seed_live_data():
             )
             db.add(perf)
         db.commit()
-        print("✅ Performance data seeded.")
+        print("Performance data seeded.")
 
-    print("🚀 Live Data Seeding Complete!")
+    print("Live Data Seeding Complete!")
     db.close()
 
 if __name__ == "__main__":

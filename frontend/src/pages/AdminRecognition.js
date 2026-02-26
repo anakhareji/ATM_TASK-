@@ -25,7 +25,7 @@ const AdminRecognition = () => {
 
   const loadStats = async () => {
     try {
-      const res = await API.get('/v1/admin/certifications/stats');
+      const res = await API.get('/recognition/stats');
       setStats(res.data);
       const w = await API.get('/admin/settings');
       setWeights(prev => ({
@@ -34,7 +34,7 @@ const AdminRecognition = () => {
         weight_group_contribution: parseFloat(w.data.weight_group_contribution ?? prev.weight_group_contribution),
         weight_event_participation: parseFloat(w.data.weight_event_participation ?? prev.weight_event_participation),
       }));
-      const r = await API.get('/v1/admin/certifications/recent');
+      const r = await API.get('/recognition/recent');
       setRecent(r.data || []);
     } catch {
       toast.error('Failed to load recognition stats');
@@ -47,7 +47,7 @@ const AdminRecognition = () => {
     if (!studentId) return toast.error('Enter student ID');
     setReport(null);
     try {
-      const res = await API.get(`/v1/admin/student-performance/${studentId}`, { params: yearId ? { academic_year_id: yearId } : {} });
+      const res = await API.get(`/recognition/student-performance/${studentId}`, { params: yearId ? { academic_year_id: yearId } : {} });
       setReport(res.data);
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to fetch performance');
@@ -58,7 +58,7 @@ const AdminRecognition = () => {
     if (!report) return;
     setIssuing(true);
     try {
-      await API.post('/v1/admin/certifications/issue', { student_id: report.student_id, academic_year_id: yearId || null, badge_type: badgeType });
+      await API.post('/recognition/issue', { student_id: report.student_id, academic_year_id: yearId || null, badge_type: badgeType });
       toast.success('Badge issued');
       setConfirmOpen(false);
       loadStats();
@@ -216,8 +216,8 @@ const AdminRecognition = () => {
               </div>
               <div className="mt-6 flex items-center justify-end gap-3">
                 <button onClick={() => setConfirmOpen(true)} className="px-6 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black">Approve Badge</button>
-                <button onClick={async () => { await API.post('/v1/admin/certifications/reject', { certification_id: report.certification_id || 0 }); toast.success('Marked as rejected'); }} className="px-6 py-2.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white text-sm font-black">Reject</button>
-                <button onClick={async () => { await API.post('/v1/admin/certifications/request-revaluation', { student_id: report.student_id }); toast.success('Re-evaluation requested'); }} className="px-6 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-black">Request Re-evaluation</button>
+                <button onClick={async () => { await API.post('/recognition/reject', { certification_id: report.certification_id || 0 }); toast.success('Marked as rejected'); }} className="px-6 py-2.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white text-sm font-black">Reject</button>
+                <button onClick={async () => { await API.post('/recognition/request-revaluation', { student_id: report.student_id }); toast.success('Re-evaluation requested'); }} className="px-6 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-white text-sm font-black">Request Re-evaluation</button>
               </div>
             </div>
           </motion.div>
@@ -270,7 +270,7 @@ const AdminRecognition = () => {
                         <button
                           onClick={async () => {
                             try {
-                              const res = await API.get(`/v1/admin/certifications/${row.id}/export`, { responseType: 'blob' });
+                              const res = await API.get(`/recognition/${row.id}/export`, { responseType: 'blob' });
                               const blob = new Blob([res.data], { type: 'application/pdf' });
                               const url = URL.createObjectURL(blob);
                               const a = document.createElement('a');

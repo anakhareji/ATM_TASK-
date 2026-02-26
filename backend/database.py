@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import urllib
 
-SERVER = "DESKTOP-LJJB1MB\\SQLEXPRESS"
+SERVER = r"LAPTOP-GSUNUI31\SQLEXPRESS"
 DATABASE = "ATM_DB"
 
 params = urllib.parse.quote_plus(
@@ -10,6 +10,7 @@ params = urllib.parse.quote_plus(
     f"SERVER={SERVER};"
     f"DATABASE={DATABASE};"
     "Trusted_Connection=yes;"
+    "Connect Timeout=30;"
 )
 
 DATABASE_URL = f"mssql+pyodbc:///?odbc_connect={params}"
