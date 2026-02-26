@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Layers, Plus, Trash2, Edit2, Search, BookOpen, Users as UsersIcon,
     CheckCircle, XCircle, AlertTriangle, Briefcase, GraduationCap,
-    ChevronRight, RefreshCw, Building2, BookMarked, TrendingUp, MoreHorizontal
+    RefreshCw, Building2, BookMarked, TrendingUp, MoreHorizontal, AlertCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AdminGlassLayout from '../components/layout/AdminGlassLayout';
@@ -129,6 +129,13 @@ const AcademicStructure = () => {
     const courseV1Default = { open: false, program_id: '', name: '', batch: '', credits: 0, code: '' };
     const [courseV1Modal, setCourseV1Modal] = useState(courseV1Default);
 
+    // List of departments for dropdowns (legacy)
+    const [legacyDepts, setLegacyDepts] = useState([]);
+
+    // Faculty assignment modal
+    const facultyDefault = { open: false, id: null, name: '', department_id: '', course_id: '' };
+    const [facultyModal, setFacultyModal] = useState(facultyDefault);
+
     // Delete confirmation
     const [deleteModal, setDeleteModal] = useState({ open: false, type: '', id: null, name: '' });
 
@@ -151,6 +158,7 @@ const AcademicStructure = () => {
             const get = (i) => results[i].status === 'fulfilled' ? results[i].value.data : null;
             const d = get(0), c = get(1), w = get(2), y = get(3), p = get(4), s = get(5), c1 = get(6), dv1 = get(7), a = get(8), ov = get(9);
             setDepartments(Array.isArray(d) ? d : []);
+            setLegacyDepts(Array.isArray(d) ? d : []);
             setCourses(Array.isArray(c) ? c : []);
             setWorkload(Array.isArray(w) ? w : []);
             setYears(Array.isArray(y) ? y : []);
@@ -170,7 +178,7 @@ const AcademicStructure = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [selectedYear]);
 
     useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -321,6 +329,26 @@ const AcademicStructure = () => {
         } catch { toast.error('Status update failed'); }
     };
 
+    const saveFacultyAssignment = async () => {
+        if (!facultyModal.department_id) return toast.error('Department is required');
+        setSaveLoading(true);
+        try {
+            await API.put(`/academic/faculty/${facultyModal.id}/assign`, null, {
+                params: {
+                    department_id: facultyModal.department_id,
+                    course_id: facultyModal.course_id || undefined
+                }
+            });
+            toast.success('Faculty assignment updated!');
+            setFacultyModal(facultyDefault);
+            fetchAll();
+        } catch (err) {
+            toast.error(err.response?.data?.detail || 'Assignment failed');
+        } finally {
+            setSaveLoading(false);
+        }
+    };
+
     /* ── Delete ── */
     const confirmDelete = async () => {
         setSaveLoading(true);
@@ -458,7 +486,7 @@ const AcademicStructure = () => {
                 )}
 
                 {/* ── Stats Row ── */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard icon={Building2} label="Total Departments" value={stats.total_departments} color="text-indigo-600" bg="bg-indigo-50" />
                     <StatCard icon={BookMarked} label="Active Courses" value={stats.active_courses} color="text-emerald-600" bg="bg-emerald-50" />
                     <StatCard icon={UsersIcon} label="Enrolled Students" value={stats.enrollment_count} color="text-teal-600" bg="bg-teal-50" />
@@ -484,7 +512,7 @@ const AcademicStructure = () => {
                             className="px-4 py-2.5 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-gray-600 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 min-w-[180px] shadow-sm appearance-none"
                         >
                             <option value="">All Departments</option>
-                            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            {departmentsV1.filter(d => !d.is_archived).map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>
                     )}
                 </div>
@@ -520,7 +548,7 @@ const AcademicStructure = () => {
                                 try {
                                     const res = await API.get('/v1/academic-structure/departments', { params: { page: 1, page_size: 100, academic_year_id: selectedYear?.id || undefined, archived: e.target.checked } });
                                     setDepartmentsV1(Array.isArray(res.data?.items) ? res.data.items : []);
-                                } catch {}
+                                } catch { }
                             }}
                         />
                         Show Archived
@@ -555,76 +583,77 @@ const AcademicStructure = () => {
                                             const ugCourseCount = coursesV1.filter(c => c.program_id === ug?.id).length;
                                             const pgCourseCount = coursesV1.filter(c => c.program_id === pg?.id).length;
                                             return (
-                                            <motion.div key={dept.id} variants={fade}>
-                                                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-indigo-100 transition-all duration-300 group overflow-hidden">
-                                                    {/* Color top stripe */}
-                                                    <div className="h-1.5 bg-gradient-to-r from-indigo-500 to-purple-500" />
-                                                    <div className="p-6">
-                                                        <div className="flex items-start justify-between mb-5">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                                                                    <Building2 size={20} />
+                                                <motion.div key={dept.id} variants={fade}>
+                                                    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-indigo-100 transition-all duration-300 group overflow-hidden">
+                                                        {/* Color top stripe */}
+                                                        <div className="h-1.5 bg-gradient-to-r from-indigo-500 to-purple-500" />
+                                                        <div className="p-6">
+                                                            <div className="flex items-start justify-between mb-5">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+                                                                        <Building2 size={20} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <h3 className="text-base font-black text-gray-800 leading-tight">{dept.name}</h3>
+                                                                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">{dept.code}</span>
+                                                                    </div>
                                                                 </div>
-                                                                <div>
-                                                                    <h3 className="text-base font-black text-gray-800 leading-tight">{dept.name}</h3>
-                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">{dept.code}</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <StatusBadge status={dept.is_active ? 'active' : 'inactive'} />
+                                                                    <button
+                                                                        onClick={() => { setSelectedDept(dept); setDetailsOpen(true); }}
+                                                                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                                                                        title="View details"
+                                                                    >
+                                                                        <MoreHorizontal size={16} />
+                                                                    </button>
                                                                 </div>
                                                             </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <StatusBadge status={dept.is_active ? 'active' : 'inactive'} />
-                                                                <button
-                                                                    onClick={() => { setSelectedDept(dept); setDetailsOpen(true); }}
-                                                                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors"
-                                                                    title="View details"
-                                                                >
-                                                                    <MoreHorizontal size={16} />
-                                                                </button>
-                                                            </div>
-                                                        </div>
 
-                                                        <p className="text-xs text-gray-400 leading-relaxed line-clamp-2 min-h-[32px] mb-5">
-                                                            {dept.description || 'No description provided for this department.'}
-                                                        </p>
-                                                        <div className="space-y-2 mb-5">
-                                                            {ug && (
-                                                                <div className="flex items-center justify-between">
-                                                                    <p className="text-xs font-bold text-gray-600">UG: {ug.name}</p>
-                                                                    <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100">{ugCourseCount} {ugCourseCount === 1 ? 'course' : 'courses'}</span>
-                                                                </div>
-                                                            )}
-                                                            {pg && (
-                                                                <div className="flex items-center justify-between">
-                                                                    <p className="text-xs font-bold text-gray-600">PG: {pg.name}</p>
-                                                                    <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100">{pgCourseCount} {pgCourseCount === 1 ? 'course' : 'courses'}</span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-
-                                                        <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                                                            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
-                                                                <BookOpen size={13} className="text-indigo-400" />
-                                                                {(ugCourseCount + pgCourseCount)} {(ugCourseCount + pgCourseCount) === 1 ? 'course' : 'courses'}
+                                                            <p className="text-xs text-gray-400 leading-relaxed line-clamp-2 min-h-[32px] mb-5">
+                                                                {dept.description || 'No description provided for this department.'}
+                                                            </p>
+                                                            <div className="space-y-2 mb-5">
+                                                                {ug && (
+                                                                    <div className="flex items-center justify-between">
+                                                                        <p className="text-xs font-bold text-gray-600">UG: {ug.name}</p>
+                                                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100">{ugCourseCount} {ugCourseCount === 1 ? 'course' : 'courses'}</span>
+                                                                    </div>
+                                                                )}
+                                                                {pg && (
+                                                                    <div className="flex items-center justify-between">
+                                                                        <p className="text-xs font-bold text-gray-600">PG: {pg.name}</p>
+                                                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-purple-50 text-purple-600 border border-purple-100">{pgCourseCount} {pgCourseCount === 1 ? 'course' : 'courses'}</span>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <button
-                                                                    onClick={() => toggleDeptStatus({ ...dept, status: dept.is_active ? 'active' : 'inactive' })}
-                                                                    className={`p-1.5 rounded-lg text-xs transition-colors ${dept.is_active ? 'text-amber-500 hover:bg-amber-50' : 'text-emerald-500 hover:bg-emerald-50'}`}
-                                                                    title={dept.is_active ? 'Archive' : 'Activate'}
-                                                                >
-                                                                    {dept.is_active ? <XCircle size={16} /> : <CheckCircle size={16} />}
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => setDeleteModal({ open: true, type: 'dept', id: dept.id, name: dept.name })}
-                                                                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
-                                                                >
-                                                                    <Trash2 size={16} />
-                                                                </button>
+
+                                                            <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+                                                                <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
+                                                                    <BookOpen size={13} className="text-indigo-400" />
+                                                                    {(ugCourseCount + pgCourseCount)} {(ugCourseCount + pgCourseCount) === 1 ? 'course' : 'courses'}
+                                                                </div>
+                                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <button
+                                                                        onClick={() => toggleDeptStatus({ ...dept, status: dept.is_active ? 'active' : 'inactive' })}
+                                                                        className={`p-1.5 rounded-lg text-xs transition-colors ${dept.is_active ? 'text-amber-500 hover:bg-amber-50' : 'text-emerald-500 hover:bg-emerald-50'}`}
+                                                                        title={dept.is_active ? 'Archive' : 'Activate'}
+                                                                    >
+                                                                        {dept.is_active ? <XCircle size={16} /> : <CheckCircle size={16} />}
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setDeleteModal({ open: true, type: 'dept', id: dept.id, name: dept.name })}
+                                                                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
+                                                                    >
+                                                                        <Trash2 size={16} />
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </motion.div>
-                                        )})}
+                                                </motion.div>
+                                            )
+                                        })}
                                     </div>
                                 )}
                             </motion.div>
@@ -729,7 +758,10 @@ const AcademicStructure = () => {
                                             const barColor = pct > 80 ? 'bg-red-500' : pct > 50 ? 'bg-amber-500' : 'bg-emerald-500';
                                             return (
                                                 <motion.div key={f.id} variants={fade}>
-                                                    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 hover:shadow-md hover:border-gray-200 transition-all">
+                                                    <div
+                                                        onClick={() => setFacultyModal({ open: true, id: f.id, name: f.name, department_id: f.department_id || '', course_id: f.course_id || '' })}
+                                                        className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative"
+                                                    >
                                                         <div className="flex items-center gap-3 mb-4">
                                                             <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-100 flex items-center justify-center font-black text-indigo-600 text-sm border border-indigo-100">
                                                                 {f.name?.[0]?.toUpperCase()}
@@ -887,10 +919,10 @@ const AcademicStructure = () => {
                                                         <div>
                                                             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Courses</p>
                                                             <div className="space-y-2">
-                                                                {courses.filter(c => c.department_id === selectedDept.id).map(c => (
+                                                                {coursesV1.filter(c => c.program_id === pr.id).map(c => (
                                                                     <div key={c.id} className="flex items-center justify-between bg-white rounded-xl border border-gray-100 p-2.5">
                                                                         <p className="text-sm font-bold text-gray-700">{c.name || c.title}</p>
-                                                                        <StatusBadge status={c.status} />
+                                                                        <StatusBadge status={c.is_active ? 'active' : 'inactive'} />
                                                                     </div>
                                                                 ))}
                                                                 <button
@@ -1019,7 +1051,7 @@ const AcademicStructure = () => {
                                     onChange={e => setCourseModal(m => ({ ...m, department_id: e.target.value }))}
                                 >
                                     <option value="">— Select Department —</option>
-                                    {departments.filter(d => d.status === 'active').map(d => (
+                                    {departmentsV1.filter(d => d.is_active && !d.is_archived).map(d => (
                                         <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
                                     ))}
                                 </select>
@@ -1092,7 +1124,7 @@ const AcademicStructure = () => {
                                     onChange={e => setProgramModal(m => ({ ...m, department_id: e.target.value }))}
                                 >
                                     <option value="">— Select Department —</option>
-                                    {departments.filter(d => d.status === 'active').map(d => (
+                                    {departmentsV1.filter(d => d.is_active && !d.is_archived).map(d => (
                                         <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
                                     ))}
                                 </select>
@@ -1212,6 +1244,58 @@ const AcademicStructure = () => {
                                         value={courseV1Modal.code}
                                         onChange={e => setCourseV1Modal(m => ({ ...m, code: e.target.value.toUpperCase() }))}
                                     />
+                                </div>
+                            </div>
+                        </div>
+                    </Modal>
+                )}
+            </AnimatePresence>
+
+            {/* Faculty Assignment Modal */}
+            <AnimatePresence>
+                {facultyModal.open && (
+                    <Modal
+                        open
+                        title={`Assign Faculty: ${facultyModal.name}`}
+                        onClose={() => setFacultyModal(facultyDefault)}
+                        onSave={saveFacultyAssignment}
+                        saveLabel="Update Assignment"
+                        loading={saveLoading}
+                    >
+                        <div className="space-y-4">
+                            <div>
+                                <label className={labelCls}>Select Department *</label>
+                                <select
+                                    className={fieldCls}
+                                    value={facultyModal.department_id}
+                                    onChange={e => setFacultyModal(m => ({ ...m, department_id: e.target.value, course_id: '' }))}
+                                >
+                                    <option value="">— Select Department —</option>
+                                    {legacyDepts.map(d => (
+                                        <option key={d.id} value={d.id}>{d.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className={labelCls}>Select Course (Optional)</label>
+                                <select
+                                    className={fieldCls}
+                                    value={facultyModal.course_id || ''}
+                                    onChange={e => setFacultyModal(m => ({ ...m, course_id: e.target.value }))}
+                                    disabled={!facultyModal.department_id}
+                                >
+                                    <option value="">— No Specific Course —</option>
+                                    {courses.filter(c => c.department_id === parseInt(facultyModal.department_id)).map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
+                                <div className="flex gap-3">
+                                    <AlertCircle size={18} className="text-indigo-500 shrink-0 mt-0.5" />
+                                    <p className="text-[11px] font-bold text-indigo-700 leading-relaxed">
+                                        Assigning a faculty to a department allows them to manage projects and tasks within that department's scope.
+                                    </p>
                                 </div>
                             </div>
                         </div>

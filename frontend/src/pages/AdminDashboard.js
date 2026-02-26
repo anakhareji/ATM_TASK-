@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import AdminGlassLayout from '../components/layout/AdminGlassLayout';
 import AnimatedPage from '../components/layout/AnimatedPage';
@@ -13,7 +13,7 @@ import {
     CheckCircle, ArrowUpRight, ArrowDownRight, Zap
 } from 'lucide-react';
 import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid,
+    XAxis, YAxis, CartesianGrid,
     Tooltip as RechartsTooltip, ResponsiveContainer,
     AreaChart, Area
 } from 'recharts';
@@ -26,16 +26,16 @@ const AdminDashboard = () => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchStats = async () => {
+    const fetchStats = useCallback(async () => {
         try {
             const res = await API.get('/admin/dashboard-stats');
             setStats(res.data);
-        } catch (err) {
-            console.error(err);
+        } catch (error) {
+            console.error(error);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -44,13 +44,13 @@ const AdminDashboard = () => {
 
         const interval = setInterval(fetchStats, 60000);
         return () => clearInterval(interval);
-    }, []);
+    }, [fetchStats]);
 
     const kpi = stats?.kpi || {};
-    const insights = React.useMemo(() => {
+    const insights = useMemo(() => {
         const alerts = [];
-        if (kpi.pending_approvals > 5) alerts.push({ type: 'critical', priority: 1, msg: `${kpi.pending_approvals} Enrollment requests pending approval.` });
-        else if (kpi.pending_approvals > 0) alerts.push({ type: 'info', priority: 3, msg: `${kpi.pending_approvals} Pending student protocols.` });
+        if (kpi.pending_approvals > 5) alerts.push({ type: 'critical', priority: 1, msg: `${kpi.pending_approvals} Identity protocols (Faculty/Student) pending activation.` });
+        else if (kpi.pending_approvals > 0) alerts.push({ type: 'info', priority: 3, msg: `${kpi.pending_approvals} Pending admission & faculty integration requests.` });
 
         const subRate = parseFloat(kpi.submission_rate || 0);
         if (subRate < 30) alerts.push({ type: 'warning', priority: 2, msg: `Critical: Global submission rate is low (${kpi.submission_rate}).` });

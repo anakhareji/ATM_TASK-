@@ -5,7 +5,7 @@ from database import SessionLocal
 from models.project import Project
 from models.project_faculty import ProjectFaculty
 from models.user import User
-from models.academic import Department, Course
+from models.academic_saas import DepartmentV1 as Department, CourseV1 as Course
 from schemas.project import ProjectCreateRequest, AssignProjectRequest
 from utils.security import get_current_user, ADMIN, FACULTY
 from models.audit_log import AuditLog
