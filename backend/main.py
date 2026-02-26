@@ -84,6 +84,7 @@ app.include_router(faculty_router, prefix="/api/faculty")
 app.include_router(audit_router, prefix="/api/admin")
 app.include_router(academic_router, prefix="/api/academic")
 app.include_router(academic_structure_v1_router, prefix="/api/v1/academic-structure")
+app.include_router(academic_structure_v1_router, prefix="/api/v1/academic_structure")
 app.include_router(admin_v1_router, prefix="/api/v1/admin")
 
 # -------- Root --------

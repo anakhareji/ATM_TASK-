@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from database import SessionLocal
 from models.user import User
@@ -463,6 +464,8 @@ def list_all_projects(
             "description": p.description,
             "faculty_name": faculty.name if faculty else "Unknown",
             "task_count": task_count,
+            "status": p.status,
+            "academic_year": p.academic_year,
             "created_at": p.created_at,
             "department_id": p.department_id,
             "department_name": db.query(Department.name).filter(Department.id == p.department_id).scalar() if p.department_id else None
@@ -492,9 +495,16 @@ def create_project_admin(data: dict, db: Session = Depends(get_db), current_admi
         raise HTTPException(400, "Title is required")
     p = Project(
         title=title,
-        description=(data or {}).get("description"),
-        department_id=(data or {}).get("department_id"),
-        course_id=(data or {}).get("course_id"),
+        description=data.get("description"),
+        department_id=data.get("department_id"),
+        course_id=data.get("course_id"),
+        lead_faculty_id=data.get("lead_faculty_id"),
+        academic_year=data.get("academic_year"),
+        start_date=datetime.strptime(data.get("start_date"), "%Y-%m-%d").date() if data.get("start_date") else None,
+        end_date=datetime.strptime(data.get("end_date"), "%Y-%m-%d").date() if data.get("end_date") else None,
+        status=data.get("status", "Draft"),
+        visibility=data.get("visibility", "Department Only"),
+        allow_tasks=data.get("allow_tasks", False),
         created_by=current_admin["user_id"]
     )
     db.add(p)
@@ -503,6 +513,7 @@ def create_project_admin(data: dict, db: Session = Depends(get_db), current_admi
     
     lead_faculty_id = data.get("lead_faculty_id")
     if lead_faculty_id:
+        # Also maintain ProjectFaculty mapping for compatibility with older components
         pf = ProjectFaculty(
             project_id=p.id,
             faculty_id=lead_faculty_id,
