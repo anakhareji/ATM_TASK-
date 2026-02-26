@@ -215,6 +215,38 @@ def create_program(program: dict, org_id: int = Depends(get_org_id), db: Session
     db.commit()
     return new_program
 
+@router.put("/programs/{id}", dependencies=[Depends(require_permission("create_program"))])
+def update_program(id: int, program: dict, org_id: int = Depends(get_org_id), db: Session = Depends(get_db)):
+    ensure_unlocked(org_id, db, None)
+    prog = db.query(Program).filter(
+        Program.id == id,
+        Program.organization_id == org_id
+    ).first()
+    if not prog:
+        raise HTTPException(status_code=404, detail="Program not found")
+        
+    dept_id = program.get("department_id")
+    if dept_id:
+        dept = db.query(DepartmentV1).filter(
+            DepartmentV1.id == dept_id,
+            DepartmentV1.organization_id == org_id,
+            DepartmentV1.is_active == True
+        ).first()
+        if not dept:
+            raise HTTPException(status_code=404, detail="Department not found in organization")
+        prog.department_id = dept_id
+
+    if program.get("name"): prog.name = program.get("name")
+    if program.get("type"): prog.type = program.get("type")
+    if program.get("duration_years"): prog.duration_years = int(program.get("duration_years"))
+    if program.get("intake_capacity"): prog.intake_capacity = int(program.get("intake_capacity"))
+
+    db.commit()
+    db.refresh(prog)
+    db.add(AuditLog(user_id=None, action=f"Program updated: {prog.name}", entity_type="Program", entity_id=prog.id))
+    db.commit()
+    return prog
+
 @router.delete("/programs/{id}", dependencies=[Depends(require_permission("archive_program"))])
 def archive_program(id: int, org_id: int = Depends(get_org_id), db: Session = Depends(get_db)):
     ensure_unlocked(org_id, db)
