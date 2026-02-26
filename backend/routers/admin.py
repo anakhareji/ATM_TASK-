@@ -252,9 +252,12 @@ def get_admin_dashboard_stats(db: Session = Depends(get_db)):
     if total_tasks > 0:
         sub_rate = round((total_submissions / (total_tasks * (active_students or 1))) * 100, 1)
 
-    # Grade distribution
-    grades = db.query(StudentPerformance.grade, func.count(StudentPerformance.id)).group_by(StudentPerformance.grade).all()
-    grade_dist = {g[0]: g[1] for g in grades if g[0]}
+    # Grade distribution (with fallback for no data)
+    try:
+        grades = db.query(StudentPerformance.grade, func.count(StudentPerformance.id)).group_by(StudentPerformance.grade).all()
+        grade_dist = {g[0]: g[1] for g in grades if g[0]}
+    except Exception:
+        grade_dist = {}
 
     # Performance trend (last 6 months - simulated)
     perf_trend = [
@@ -497,6 +500,17 @@ def create_project_admin(data: dict, db: Session = Depends(get_db), current_admi
     db.add(p)
     db.commit()
     db.refresh(p)
+    
+    lead_faculty_id = data.get("lead_faculty_id")
+    if lead_faculty_id:
+        pf = ProjectFaculty(
+            project_id=p.id,
+            faculty_id=lead_faculty_id,
+            role="Lead",
+            assigned_by=current_admin["user_id"]
+        )
+        db.add(pf)
+
     db.add(AuditLog(user_id=current_admin["user_id"], action="create_project", entity_type="project", entity_id=p.id))
     db.commit()
     return {"id": p.id}

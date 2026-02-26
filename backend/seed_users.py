@@ -1,8 +1,18 @@
-from database import SessionLocal
+from database import SessionLocal, engine, Base
+import models.academic
+import models.academic_saas
+import models.user
+import models.project
+import models.task
+import models.events
+import models.group
 from models.user import User
 from utils.security import hash_password
 
 def seed_users():
+    # Make sure all tables exist before seeding
+    Base.metadata.create_all(bind=engine)
+    
     db = SessionLocal()
     
     users = [

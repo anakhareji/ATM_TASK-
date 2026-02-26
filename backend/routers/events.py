@@ -122,10 +122,12 @@ def reject_event(
     db.commit()
     return {"message": "Event rejected"}
 
-# Modified Public View: Only show approved events
+# Modified Public View: Only show approved events (Admin sees all)
 @router.get("")
-def get_all_events(db: Session = Depends(get_db)):
-    return db.query(CampusEvent).filter(CampusEvent.status == "approved").all()
+def get_all_events(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user["role"] == ADMIN:
+        return db.query(CampusEvent).order_by(CampusEvent.event_date.desc()).all()
+    return db.query(CampusEvent).filter(CampusEvent.status == "approved").order_by(CampusEvent.event_date.desc()).all()
 
 # ADMIN: Update Event
 @router.put("/{event_id}")

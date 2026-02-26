@@ -50,21 +50,16 @@ const AdminUsers = () => {
   const fetchAcademicData = async () => {
     try {
       const results = await Promise.allSettled([
-        API.get('/academic/departments'),
-        API.get('/academic/courses'),
+        API.get('/v1/academic-structure/departments?page=1&page_size=100'),
         API.get('/v1/academic-structure/programs'),
         API.get('/v1/academic-structure/courses')
       ]);
-      const deptRes = results[0], courseRes = results[1], progRes = results[2], v1CourseRes = results[3];
-      if (deptRes.status === 'fulfilled') setDepartments(deptRes.value.data || []);
-      if (courseRes.status === 'fulfilled') {
-        const legacyCourses = courseRes.value.data || [];
-        if (legacyCourses.length > 0) {
-          setCourses(legacyCourses);
-        } else {
-          const programs = progRes.status === 'fulfilled' ? (progRes.value.data || []) : [];
-          const v1courses = v1CourseRes.status === 'fulfilled' ? (v1CourseRes.value.data || []) : [];
-          if (programs.length && v1courses.length) {
+      const deptRes = results[0], progRes = results[1], v1CourseRes = results[2];
+      if (deptRes.status === 'fulfilled') setDepartments(deptRes.value.data?.items || []);
+      
+      const programs = progRes.status === 'fulfilled' ? (progRes.value.data || []) : [];
+      const v1courses = v1CourseRes.status === 'fulfilled' ? (v1CourseRes.value.data || []) : [];
+      if (programs.length && v1courses.length) {
             const programById = Object.fromEntries(programs.map(p => [p.id, p]));
             const synthesized = v1courses
               .map(c => {
@@ -78,48 +73,17 @@ const AdminUsers = () => {
                 } : null;
               })
               .filter(Boolean);
-            setCourses(synthesized);
-          } else if (programs.length) {
-            const synthesized = programs.map(p => ({
-              id: p.id,
-              department_id: p.department_id,
-              name: p.name,
-              status: 'active',
-              total_semesters: p.duration_years ? p.duration_years * 2 : undefined
-            }));
-            setCourses(synthesized);
-          } else {
-            setCourses([]);
-          }
-        }
+      } else if (programs.length) {
+        const synthesized = programs.map(p => ({
+          id: p.id,
+          department_id: p.department_id,
+          name: p.name,
+          status: 'active',
+          total_semesters: p.duration_years ? p.duration_years * 2 : undefined
+        }));
+        setCourses(synthesized);
       } else {
-        const programs = progRes.status === 'fulfilled' ? (progRes.value.data || []) : [];
-        const v1courses = v1CourseRes.status === 'fulfilled' ? (v1CourseRes.value.data || []) : [];
-        if (programs.length && v1courses.length) {
-          const programById = Object.fromEntries(programs.map(p => [p.id, p]));
-          const synthesized = v1courses
-            .map(c => {
-              const p = programById[c.program_id];
-              return p ? {
-                id: c.id,
-                department_id: p.department_id,
-                name: c.title || c.name,
-                status: 'active',
-                total_semesters: p.duration_years ? p.duration_years * 2 : undefined
-              } : null;
-            })
-            .filter(Boolean);
-          setCourses(synthesized);
-        } else if (programs.length) {
-          const synthesized = programs.map(p => ({
-            id: p.id,
-            department_id: p.department_id,
-            name: p.name,
-            status: 'active',
-            total_semesters: p.duration_years ? p.duration_years * 2 : undefined
-          }));
-          setCourses(synthesized);
-        }
+        setCourses([]);
       }
     } catch { }
   };
