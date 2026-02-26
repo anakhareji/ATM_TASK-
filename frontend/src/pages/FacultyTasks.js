@@ -455,7 +455,15 @@ const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, for
                             onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
                         >
                             <option value="">Select Student...</option>
-                            {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>)}
+                            {(() => {
+                                const selectedProj = projects.find(p => String(p.id || p.project_id) === String(formData.project_id));
+                                let filtered = students;
+                                if (selectedProj) {
+                                    if (selectedProj.department_id) filtered = filtered.filter(s => s.department_id === selectedProj.department_id || !s.department_id);
+                                    if (selectedProj.course_id) filtered = filtered.filter(s => s.course_id === selectedProj.course_id || !s.course_id);
+                                }
+                                return filtered.map(s => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>);
+                            })()}
                         </select>
                     ) : (
                         <select

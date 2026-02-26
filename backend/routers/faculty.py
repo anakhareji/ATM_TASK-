@@ -140,20 +140,45 @@ def get_my_students(
         User.created_by_faculty_id == current_user["user_id"]
     ).all()
 
-    # 2. Students in projects assigned to this faculty
-    # Join: ProjectFaculty -> Project -> ProjectGroup -> GroupMember -> User
-    assigned_students = db.query(User).join(
-        GroupMember, GroupMember.student_id == User.id
-    ).join(
-        ProjectGroup, ProjectGroup.id == GroupMember.group_id
-    ).join(
-        ProjectFaculty, ProjectFaculty.project_id == ProjectGroup.project_id
+    # 2. Students eligible for projects assigned to this faculty
+    # A student is eligible if their department, course, and semester matches a project the faculty leads or is assigned to.
+    
+    assigned_projects_query = db.query(Project).outerjoin(
+        ProjectFaculty, ProjectFaculty.project_id == Project.id
     ).filter(
-        ProjectFaculty.faculty_id == current_user["user_id"]
+        (ProjectFaculty.faculty_id == current_user["user_id"]) | 
+        (Project.lead_faculty_id == current_user["user_id"]) |
+        (Project.created_by == current_user["user_id"])
     ).all()
+    
+    assigned_projects = list(set(assigned_projects_query))
+    
+    assigned_students = []
+    
+    for proj in assigned_projects:
+        # Get students matching the project's academic structure
+        query = db.query(User).filter(User.role == "student", User.status == "active")
+        
+        if proj.department_id:
+            query = query.filter(User.department_id == proj.department_id)
+        if proj.course_id:
+            query = query.filter(User.course_id == proj.course_id)
+        if proj.semester:
+            # Assuming current_semester is an int in User but semester is string in Project
+            # Trying to extract semester number or just exact match if it aligns
+            sem_str = proj.semester.replace("SEM S", "").replace("SEM ", "").strip()
+            if sem_str.isdigit():
+                query = query.filter(User.current_semester == int(sem_str))
 
-    # Merge and deduplicate
-    all_students = list({s.id: s for s in created_students + assigned_students}.values())
+        proj_students = query.all()
+        assigned_students.extend(proj_students)
+
+    # Merge and deduplicate by user ID
+    all_students_dict = {s.id: s for s in created_students}
+    for s in assigned_students:
+        all_students_dict[s.id] = s
+        
+    all_students = list(all_students_dict.values())
 
     return [
         {
@@ -161,7 +186,10 @@ def get_my_students(
             "name": s.name,
             "email": s.email,
             "role": s.role,
-            "status": s.status
+            "status": s.status,
+            "department_id": s.department_id,
+            "course_id": s.course_id,
+            "semester": s.current_semester
         }
         for s in all_students
     ]

@@ -168,6 +168,82 @@ def create_performance_report(
         "performance_id": performance.id
     }
 
+# =====================================================
+# MY PERFORMANCE (STUDENT ONLY)
+# =====================================================
+@router.post("/seed")
+def seed_performance_data(db: Session = Depends(get_db)):
+    from models.user import User
+    from models.project import Project
+    from datetime import datetime, timedelta
+
+    student = db.query(User).filter(User.role == "student", User.email == "student@atm.com").first()
+    if not student:
+        return {"error": "Student not found"}
+        
+    project = db.query(Project).first()
+    project_id = project.id if project else 1
+
+    records = [
+        {"semester": "SEM S4", "score": 75.0, "system_score": 80.0, "final_score": 77.5, "grade": "B", "offset": 180},
+        {"semester": "SEM S5", "score": 82.0, "system_score": 86.0, "final_score": 84.0, "grade": "B+", "offset": 90},
+        {"semester": "SEM S6", "score": 88.0, "system_score": 92.0, "final_score": 90.0, "grade": "A", "offset": 5},
+    ]
+
+    added = 0
+    for rec in records:
+        existing = db.query(StudentPerformance).filter(
+            StudentPerformance.student_id == student.id,
+            StudentPerformance.semester == rec["semester"]
+        ).first()
+
+        if not existing:
+            perf = StudentPerformance(
+                student_id=student.id,
+                project_id=project_id,
+                faculty_id=2, 
+                semester=rec["semester"],
+                score=rec["score"],
+                system_score=rec["system_score"],
+                final_score=rec["final_score"],
+                grade=rec["grade"],
+                remarks=f"Good performance during {rec['semester']}",
+                created_at=datetime.utcnow() - timedelta(days=rec["offset"])
+            )
+            db.add(perf)
+            added += 1
+
+    db.commit()
+    return {"message": f"Added {added} records"}
+
+@router.get("/me")
+def get_my_performance_history(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Only students can view their performance history")
+
+    performances = db.query(StudentPerformance).filter(
+        StudentPerformance.student_id == current_user["user_id"]
+    ).order_by(StudentPerformance.created_at.desc()).all()
+
+    return [
+        {
+            "id": p.id,
+            "project_id": p.project_id,
+            "semester": p.semester,
+            "score": p.score,
+            "system_score": p.system_score,
+            "final_score": p.final_score,
+            "grade": p.grade,
+            "remarks": p.remarks,
+            "created_at": p.created_at
+        }
+        for p in performances
+    ]
+
+
 
 # =====================================================
 # LEADERBOARD (TOP 10)
