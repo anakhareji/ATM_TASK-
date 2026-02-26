@@ -1,5 +1,5 @@
 from database import SessionLocal
-from models.academic import Department, Course
+from models.academic_saas import DepartmentV1 as Department, CourseV1 as Course
 from models.project import Project
 
 def check_data():

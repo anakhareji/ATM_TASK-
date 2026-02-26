@@ -14,9 +14,9 @@ class User(Base):
 
     created_by_faculty_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     
-    # Academic Structure Fields
-    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
-    course_id = Column(Integer, ForeignKey("courses.id"), nullable=True)
+    # Academic Structure Fields (Pointing to V1 tables)
+    department_id = Column(Integer, ForeignKey("departments_v1.id"), nullable=True)
+    course_id = Column(Integer, ForeignKey("courses_v1.id"), nullable=True)
     current_semester = Column(Integer, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)

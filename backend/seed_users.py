@@ -1,5 +1,5 @@
 from database import SessionLocal, engine, Base
-import models.academic
+# import models.academic (Legacy removed)
 import models.academic_saas
 import models.user
 import models.project

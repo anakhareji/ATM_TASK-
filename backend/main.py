@@ -14,7 +14,7 @@ from models.group import ProjectGroup, GroupMember, ContributionLog
 from models.audit_log import AuditLog
 from models.notification import Notification
 from models.student_recommendation import StudentRecommendation
-from models.academic import Department, Course
+# from models.academic import Department, Course (Legacy removed)
 from models.academic_saas import (
     Organization, DepartmentV1, Program, CourseV1, AcademicYear, SemesterV1, Section,
     Role, Permission, RolePermission, StructureVersion, Batch

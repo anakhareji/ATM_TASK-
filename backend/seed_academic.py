@@ -1,6 +1,6 @@
 from database import SessionLocal
 from models.academic_saas import Organization, AcademicYear, DepartmentV1, CourseV1, Program
-from models.academic import Department
+# from models.academic import Department (Legacy removed)
 from datetime import datetime
 
 def seed_academic():
@@ -43,18 +43,6 @@ def seed_academic():
                 db.add(new_d)
                 print(f"Created DepartmentV1: {d['name']}")
                 
-            # Seed Department (Legacy structure)
-            existing_legacy = db.query(Department).filter(Department.code == d["code"]).first()
-            if not existing_legacy:
-                new_legacy = Department(
-                    name=d["name"],
-                    code=d["code"],
-                    description=d["description"],
-                    status="active"
-                )
-                db.add(new_legacy)
-                print(f"Created Legacy Department: {d['name']}")
-        
         db.commit()
         print("Academic seeding complete.")
     except Exception as e:
