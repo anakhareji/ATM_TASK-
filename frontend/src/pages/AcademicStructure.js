@@ -201,6 +201,13 @@ const AcademicStructure = () => {
             return matchSearch && matchFilter;
         }), [courses, search, deptFilter]);
 
+    const filteredPrograms = useMemo(() =>
+        programs.filter(p => {
+            const matchSearch = p.name?.toLowerCase().includes(search.toLowerCase());
+            const matchFilter = !deptFilter || p.department_id === parseInt(deptFilter);
+            return matchSearch && matchFilter;
+        }), [programs, search, deptFilter]);
+
     const filteredWorkload = useMemo(() =>
         workload.filter(w =>
             w.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -244,8 +251,13 @@ const AcademicStructure = () => {
                 duration_years: parseInt(programModal.duration_years),
                 intake_capacity: parseInt(programModal.intake_capacity)
             };
-            await API.post('/v1/academic-structure/programs', payload);
-            toast.success('Program created!');
+            if (programModal.id) {
+                await API.put(`/v1/academic-structure/programs/${programModal.id}`, payload);
+                toast.success('Program updated!');
+            } else {
+                await API.post('/v1/academic-structure/programs', payload);
+                toast.success('Program created!');
+            }
             setProgramModal(programDefault);
             fetchAll();
         } catch (err) {
@@ -356,6 +368,8 @@ const AcademicStructure = () => {
             if (deleteModal.type === 'dept') {
                 await API.delete(`/v1/academic-structure/departments/${deleteModal.id}`);
                 setStats(s => ({ ...s, total_departments: Math.max(0, (s.total_departments || 0) - 1) }));
+            } else if (deleteModal.type === 'program') {
+                await API.delete(`/v1/academic-structure/programs/${deleteModal.id}`);
             } else {
                 await API.delete(`/v1/academic-structure/courses/${deleteModal.id}`);
                 setStats(s => ({ ...s, active_courses: Math.max(0, (s.active_courses || 0) - 1) }));
@@ -373,7 +387,7 @@ const AcademicStructure = () => {
     /* ── Tab config ── */
     const TABS = [
         { id: 'departments', label: 'Departments', icon: Building2, count: departments.length },
-        { id: 'courses', label: 'Academic Streams', icon: BookMarked, count: courses.length },
+        { id: 'programs', label: 'Academic Streams', icon: BookMarked, count: programs.length },
         { id: 'workload', label: 'Faculty Allocation', icon: Briefcase, count: workload.length },
     ];
 
@@ -457,6 +471,8 @@ const AcademicStructure = () => {
                                     }
                                     if (activeTab === 'departments') {
                                         setDeptModal({ ...deptDefault, open: true });
+                                    } else if (activeTab === 'programs') {
+                                        setProgramModal({ ...programDefault, open: true });
                                     } else {
                                         setCourseModal({ ...courseDefault, open: true });
                                     }
@@ -465,7 +481,7 @@ const AcademicStructure = () => {
                                 className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black shadow-lg shadow-emerald-500/20 transition-all active:scale-95 disabled:opacity-50"
                             >
                                 <Plus size={18} />
-                                New {activeTab === 'departments' ? 'Department' : 'Course'}
+                                New {activeTab === 'departments' ? 'Department' : activeTab === 'programs' ? 'Stream' : 'Course'}
                             </button>
                         )}
                     </div>
@@ -505,7 +521,7 @@ const AcademicStructure = () => {
                             className="w-full pl-11 pr-5 py-2.5 bg-white border border-gray-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-400 transition-all shadow-sm"
                         />
                     </div>
-                    {activeTab === 'courses' && (
+                    {activeTab === 'programs' && (
                         <select
                             value={deptFilter}
                             onChange={e => setDeptFilter(e.target.value)}
@@ -659,10 +675,10 @@ const AcademicStructure = () => {
                             </motion.div>
                         )}
 
-                        {/* ══════════════════════ COURSES ══════════════════════ */}
-                        {activeTab === 'courses' && (
-                            <motion.div key="courses" variants={fade} initial="hidden" animate="visible" exit="exit">
-                                {filteredCourses.length === 0 ? (
+                        {/* ══════════════════════ PROGRAMS ══════════════════════ */}
+                        {activeTab === 'programs' && (
+                            <motion.div key="programs" variants={fade} initial="hidden" animate="visible" exit="exit">
+                                {programs.length === 0 ? (
                                     <div className="py-32 text-center border-2 border-dashed border-gray-100 rounded-[3rem]">
                                         <BookMarked size={48} className="mx-auto mb-3 text-gray-200" />
                                         <p className="text-gray-400 font-bold text-sm">No courses found</p>
@@ -673,61 +689,56 @@ const AcademicStructure = () => {
                                         <table className="w-full text-left">
                                             <thead className="bg-gray-50/80 border-b border-gray-100">
                                                 <tr>
-                                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Course</th>
+                                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Program Stream</th>
                                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Department</th>
                                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Structure</th>
-                                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Students</th>
+                                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Intake</th>
                                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Status</th>
                                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
-                                                {filteredCourses.map(course => (
-                                                    <tr key={course.id} className="group hover:bg-emerald-50/25 transition-colors">
+                                                {filteredPrograms.map(program => {
+                                                    const d = departmentsV1.find(d => d.id === program.department_id);
+                                                    return (
+                                                    <tr key={program.id} className="group hover:bg-emerald-50/25 transition-colors">
                                                         <td className="px-6 py-4">
                                                             <div className="flex items-center gap-3">
                                                                 <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
                                                                     <BookMarked size={17} />
                                                                 </div>
-                                                                <p className="font-black text-gray-800 text-sm">{course.name}</p>
+                                                                <p className="font-black text-gray-800 text-sm">{program.name}</p>
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <span className="text-xs font-bold px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100/50">
-                                                                {course.department_name}
+                                                                {d ? d.name : 'Unknown'}
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 text-center">
                                                             <p className="text-xs font-bold text-gray-600">
-                                                                {course.duration}yr · {course.total_semesters} sem
+                                                                {program.duration_years} Years
                                                             </p>
                                                         </td>
                                                         <td className="px-6 py-4 text-center">
                                                             <div className="flex items-center justify-center gap-1.5">
                                                                 <UsersIcon size={13} className="text-teal-500" />
-                                                                <span className="text-xs font-black text-teal-600">{course.student_count ?? 0}</span>
+                                                                <span className="text-xs font-black text-teal-600">{program.intake_capacity}</span>
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4 text-center">
-                                                            <StatusBadge status={course.status} />
+                                                            <StatusBadge status={program.is_active ? 'active' : 'inactive'} />
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
                                                             <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                 <button
-                                                                    onClick={() => toggleCourseStatus(course)}
-                                                                    className={`p-1.5 rounded-lg transition-colors ${course.status === 'active' ? 'text-amber-500 hover:bg-amber-50' : 'text-emerald-500 hover:bg-emerald-50'}`}
-                                                                    title={course.status === 'active' ? 'Archive' : 'Activate'}
-                                                                >
-                                                                    {course.status === 'active' ? <XCircle size={15} /> : <CheckCircle size={15} />}
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => setCourseModal({ open: true, id: course.id, name: course.name, department_id: course.department_id, duration: course.duration, total_semesters: course.total_semesters, status: course.status })}
+                                                                    onClick={() => setProgramModal({ open: true, id: program.id, name: program.name, department_id: program.department_id, duration_years: program.duration_years, intake_capacity: program.intake_capacity, type: program.type })}
                                                                     className="p-1.5 rounded-lg text-indigo-400 hover:bg-indigo-50 transition-colors"
                                                                 >
                                                                     <Edit2 size={15} />
                                                                 </button>
                                                                 <button
-                                                                    onClick={() => setDeleteModal({ open: true, type: 'course', id: course.id, name: course.name })}
+                                                                    onClick={() => setDeleteModal({ open: true, type: 'program', id: program.id, name: program.name })}
                                                                     className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
                                                                 >
                                                                     <Trash2 size={15} />
@@ -735,7 +746,7 @@ const AcademicStructure = () => {
                                                             </div>
                                                         </td>
                                                     </tr>
-                                                ))}
+                                                )})}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1025,6 +1036,80 @@ const AcademicStructure = () => {
                                     <option value="active">Active</option>
                                     <option value="inactive">Inactive</option>
                                 </select>
+                            </div>
+                        </div>
+                    </Modal>
+                )}
+            </AnimatePresence>
+
+            {/* Program Create/Edit */}
+            <AnimatePresence>
+                {programModal.open && (
+                    <Modal
+                        open
+                        title={programModal.id ? 'Edit Stream' : 'Create Stream'}
+                        onClose={() => setProgramModal(programDefault)}
+                        onSave={saveProgram}
+                        saveLabel={programModal.id ? 'Update' : 'Create'}
+                        loading={saveLoading}
+                    >
+                        <div className="space-y-4">
+                            <div>
+                                <label className={labelCls}>Parent Department *</label>
+                                <select
+                                    className={fieldCls}
+                                    value={programModal.department_id}
+                                    onChange={e => setProgramModal(m => ({ ...m, department_id: e.target.value }))}
+                                >
+                                    <option value="">— Select Department —</option>
+                                    {departmentsV1.filter(d => d.is_active && !d.is_archived).map(d => (
+                                        <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className={labelCls}>Stream Name *</label>
+                                <input
+                                    type="text"
+                                    className={fieldCls}
+                                    placeholder="e.g. Master of Computer Applications"
+                                    value={programModal.name}
+                                    onChange={e => setProgramModal(m => ({ ...m, name: e.target.value }))}
+                                />
+                            </div>
+                            <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label className={labelCls}>Type</label>
+                                    <select
+                                        className={fieldCls}
+                                        value={programModal.type}
+                                        onChange={e => setProgramModal(m => ({ ...m, type: e.target.value }))}
+                                    >
+                                        <option value="UG">UG</option>
+                                        <option value="PG">PG</option>
+                                        <option value="PHD">PHD</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Duration (Yrs)</label>
+                                    <input
+                                        type="number"
+                                        min="1" max="6"
+                                        className={fieldCls}
+                                        value={programModal.duration_years}
+                                        onChange={e => setProgramModal(m => ({ ...m, duration_years: e.target.value }))}
+                                    />
+                                </div>
+                                <div>
+                                    <label className={labelCls}>Intake</label>
+                                    <input
+                                        type="number"
+                                        min="1" max="1000"
+                                        className={fieldCls}
+                                        value={programModal.intake_capacity}
+                                        onChange={e => setProgramModal(m => ({ ...m, intake_capacity: e.target.value }))}
+                                    />
+                                </div>
                             </div>
                         </div>
                     </Modal>

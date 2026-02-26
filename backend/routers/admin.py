@@ -482,6 +482,8 @@ def list_all_projects(
     db: Session = Depends(get_db)
 ):
     query = db.query(Project)
+    if status:
+        query = query.filter(Project.status == status)
     if department_id:
         query = query.filter(Project.department_id == department_id)
     if q:
@@ -583,6 +585,7 @@ def update_project_admin(project_id: int, data: dict, db: Session = Depends(get_
 def publish_project_admin(project_id: int, db: Session = Depends(get_db), current_admin: dict = Depends(admin_required)):
     p = db.query(Project).filter(Project.id == project_id).first()
     if not p: raise HTTPException(404, "Project not found")
+    p.status = "Published"
     db.add(AuditLog(user_id=current_admin["user_id"], action="publish_project", entity_type="project", entity_id=p.id))
     db.commit()
     return {"status": "Published"}
@@ -591,6 +594,7 @@ def publish_project_admin(project_id: int, db: Session = Depends(get_db), curren
 def archive_project_admin(project_id: int, db: Session = Depends(get_db), current_admin: dict = Depends(admin_required)):
     p = db.query(Project).filter(Project.id == project_id).first()
     if not p: raise HTTPException(404, "Project not found")
+    p.status = "Archived"
     db.add(AuditLog(user_id=current_admin["user_id"], action="archive_project", entity_type="project", entity_id=p.id))
     db.commit()
     return {"status": "Archived"}
