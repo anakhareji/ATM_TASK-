@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import urllib
 
-SERVER = r"LAPTOP-GSUNUI31\SQLEXPRESS"
+SERVER = "DESKTOP-LJJB1MB\SQLEXPRESS"
 DATABASE = "ATM_DB"
 
 params = urllib.parse.quote_plus(
