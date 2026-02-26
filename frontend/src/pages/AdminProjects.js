@@ -17,6 +17,7 @@ const AdminProjects = () => {
     const [departments, setDepartments] = useState([]);
     const [createOpen, setCreateOpen] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [faculties, setFaculties] = useState([]);
     const [form, setForm] = useState({
         title: '',
         description: '',
@@ -56,9 +57,17 @@ const AdminProjects = () => {
         } catch { }
     };
 
+    const fetchFaculties = async () => {
+        try {
+            const res = await API.get('/admin/users?role=faculty&page_size=200');
+            setFaculties(res.data?.items || []);
+        } catch { }
+    };
+
     useEffect(() => {
         fetchProjects();
         fetchDepartments();
+        fetchFaculties();
     }, []);
 
     useEffect(() => {
@@ -234,13 +243,12 @@ const AdminProjects = () => {
                                                 </div>
                                             </div>
                                             <div className="flex items-center justify-between">
-                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                                    proj.status === 'Published'
-                                                        ? 'bg-emerald-50 text-emerald-600'
-                                                        : proj.status === 'Archived'
+                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${proj.status === 'Published'
+                                                    ? 'bg-emerald-50 text-emerald-600'
+                                                    : proj.status === 'Archived'
                                                         ? 'bg-gray-100 text-gray-500'
                                                         : 'bg-amber-50 text-amber-600'
-                                                }`}>
+                                                    }`}>
                                                     {proj.status || 'Draft'}
                                                 </span>
                                                 {proj.department_name && (
@@ -319,15 +327,30 @@ const AdminProjects = () => {
                                             ))}
                                         </select>
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-black text-gray-500 uppercase tracking-widest">Academic Year</label>
-                                        <input
-                                            type="text"
-                                            value={form.academic_year}
-                                            onChange={e => setForm({ ...form, academic_year: e.target.value })}
-                                            className="mt-1 w-full px-4 py-2.5 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-emerald-500/10"
-                                            placeholder="2025-2026"
-                                        />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-xs font-black text-gray-500 uppercase tracking-widest">Academic Year</label>
+                                            <input
+                                                type="text"
+                                                value={form.academic_year}
+                                                onChange={e => setForm({ ...form, academic_year: e.target.value })}
+                                                className="mt-1 w-full px-4 py-2.5 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-emerald-500/10"
+                                                placeholder="2025-2026"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-black text-gray-500 uppercase tracking-widest">Faculty</label>
+                                            <select
+                                                value={form.lead_faculty_id}
+                                                onChange={e => setForm({ ...form, lead_faculty_id: e.target.value })}
+                                                className="mt-1 w-full px-4 py-2.5 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-emerald-500/10"
+                                            >
+                                                <option value="">Select...</option>
+                                                {faculties.map(f => (
+                                                    <option key={f.id} value={f.id}>{f.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
