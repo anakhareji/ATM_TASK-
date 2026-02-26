@@ -137,11 +137,11 @@ const FacultyProjects = () => {
                                             <div className="flex gap-4 mb-8">
                                                 <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl text-xs font-bold text-gray-500">
                                                     <Users size={14} className="text-emerald-500" />
-                                                    Group Based
+                                                    {p.visibility || "Team Based"}
                                                 </div>
                                                 <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl text-xs font-bold text-gray-500">
                                                     <Calendar size={14} className="text-amber-500" />
-                                                    Jan - Jun 2026
+                                                    {p.academic_year || "Current Year"}
                                                 </div>
                                             </div>
                                         </div>

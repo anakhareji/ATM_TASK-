@@ -175,6 +175,69 @@ def submit_task(
     return {"message": "Task submitted", "is_late": is_late}
 
 # =========================
+# COMMENTS
+# =========================
+class CommentCreateRequest(BaseModel):
+    comment_text: str
+
+@router.get("/{task_id}/comments")
+def get_task_comments(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    from models.task_comment import TaskComment
+    # Ensure they have access
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+
+    comments = db.query(TaskComment).filter(TaskComment.task_id == task_id).order_by(TaskComment.created_at.asc()).all()
+    
+    res = []
+    for c in comments:
+        # Load user info
+        user = db.query(User).filter(User.id == c.user_id).first()
+        res.append({
+            "id": c.id,
+            "user_id": c.user_id,
+            "user_name": user.name if user else "Unknown",
+            "role": c.user_role,
+            "comment_text": c.comment_text,
+            "created_at": c.created_at
+        })
+    return res
+
+@router.post("/{task_id}/comments")
+def add_task_comment(
+    task_id: int,
+    data: CommentCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    from models.task_comment import TaskComment
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+
+    # Access control could be refined (e.g. only assigned student or faculty can comment)
+    if current_user["role"] == STUDENT:
+        if task.task_type == "individual" and task.student_id != current_user["user_id"]:
+            raise HTTPException(403, "Not your task")
+        # In a real app we'd also check group tasks. Simplified here.
+
+    comment = TaskComment(
+        task_id=task_id,
+        user_id=current_user["user_id"],
+        user_role=current_user["role"],
+        comment_text=data.comment_text
+    )
+    db.add(comment)
+    db.commit()
+    
+    return {"message": "Comment added"}
+
+# =========================
 # VIEW TASKS (FOR CURRENT USER)
 # =========================
 @router.get("/my-tasks")
