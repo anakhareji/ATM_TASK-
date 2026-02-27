@@ -193,13 +193,15 @@ def promote_student(id: int, db: Session = Depends(get_db)):
     return {"message": f"Promoted to semester {student.current_semester}"}
 
 @router.put("/faculty/{id}/assign")
-def assign_faculty(id: int, department_id: int, course_id: int = None, db: Session = Depends(get_db)):
+def assign_faculty(id: int, department_id: int, program_id: int = None, course_id: int = None, batch: str = None, db: Session = Depends(get_db)):
     faculty = db.query(User).filter(User.id == id, User.role == "faculty").first()
     if not faculty:
         raise HTTPException(status_code=404, detail="Faculty not found")
     
     faculty.department_id = department_id
+    faculty.program_id = program_id
     faculty.course_id = course_id
+    faculty.batch = batch
     db.commit()
     return {"message": "Faculty assigned successfully"}
 
@@ -210,6 +212,9 @@ def get_faculty_workload(db: Session = Depends(get_db)):
     for f in faculty_list:
         # Get department name
         dep = db.query(Department).get(f.department_id) if f.department_id else None
+        prog = db.query(Program).get(f.program_id) if f.program_id else None
+        course = db.query(Course).get(f.course_id) if f.course_id else None
+        
         if f.department_id:
             project_count = db.query(Project).filter(Project.department_id == f.department_id).count()
         else:
@@ -220,7 +225,11 @@ def get_faculty_workload(db: Session = Depends(get_db)):
             "email": f.email,
             "department": dep.name if dep else "Not Assigned",
             "department_id": f.department_id,
+            "program_id": f.program_id,
+            "program_name": prog.name if prog else None,
             "course_id": f.course_id,
+            "course_name": course.name if course else None,
+            "batch": f.batch,
             "project_count": project_count
         })
     return result

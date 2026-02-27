@@ -23,12 +23,19 @@ const AdminUsers = () => {
 
   // Academic Data
   const [departments, setDepartments] = useState([]);
+  const [programs, setPrograms] = useState([]);
   const [courses, setCourses] = useState([]);
 
   const [confirmDelete, setConfirmDelete] = useState({ open: false, userId: null });
   const [changeRoleModal, setChangeRoleModal] = useState({ open: false, userId: null, role: 'student' });
-  const [createUserModal, setCreateUserModal] = useState({ open: false, name: '', email: '', role: 'student', password: '' });
   const [assignModal, setAssignModal] = useState({ open: false, userId: null, name: '', role: '', deptId: '', courseId: '', semester: 1 });
+  const [userDetailsModal, setUserDetailsModal] = useState({ open: false, user: null });
+
+  const userModalDefault = {
+    open: false, id: null, name: '', email: '', role: 'student', password: '',
+    department_id: '', program_id: '', course_id: '', batch: '', current_semester: 1
+  };
+  const [userModal, setUserModal] = useState(userModalDefault);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -56,25 +63,28 @@ const AdminUsers = () => {
       ]);
       const deptRes = results[0], progRes = results[1], v1CourseRes = results[2];
       if (deptRes.status === 'fulfilled') setDepartments(deptRes.value.data?.items || []);
-      
-      const programs = progRes.status === 'fulfilled' ? (progRes.value.data || []) : [];
+
+      const progs = progRes.status === 'fulfilled' ? (progRes.value.data || []) : [];
+      setPrograms(progs);
+
       const v1courses = v1CourseRes.status === 'fulfilled' ? (v1CourseRes.value.data || []) : [];
-      if (programs.length && v1courses.length) {
-            const programById = Object.fromEntries(programs.map(p => [p.id, p]));
-            const synthesized = v1courses
-              .map(c => {
-                const p = programById[c.program_id];
-                return p ? {
-                  id: c.id,
-                  department_id: p.department_id,
-                  name: c.title || c.name,
-                  status: 'active',
-                  total_semesters: p.duration_years ? p.duration_years * 2 : undefined
-                } : null;
-              })
-              .filter(Boolean);
-      } else if (programs.length) {
-        const synthesized = programs.map(p => ({
+      if (progs.length && v1courses.length) {
+        const programById = Object.fromEntries(progs.map(p => [p.id, p]));
+        const synthesized = v1courses
+          .map(c => {
+            const p = programById[c.program_id];
+            return p ? {
+              id: c.id,
+              department_id: p.department_id,
+              name: c.title || c.name,
+              status: 'active',
+              total_semesters: p.duration_years ? p.duration_years * 2 : undefined
+            } : null;
+          })
+          .filter(Boolean);
+        setCourses(synthesized);
+      } else if (progs.length) {
+        const synthesized = progs.map(p => ({
           id: p.id,
           department_id: p.department_id,
           name: p.name,
@@ -95,17 +105,25 @@ const AdminUsers = () => {
     }
   }, [q, filterRole, page, pageSize]);
 
-  const handleCreateUser = async () => {
+  const handleSaveUser = async () => {
     try {
-      if (!createUserModal.name || !createUserModal.email || !createUserModal.password) {
+      if (!userModal.name || !userModal.email || (!userModal.id && !userModal.password)) {
         return toast.error("Incomplete identity profile");
       }
-      await API.post('/admin/users', { ...createUserModal, role: 'student' });
-      toast.success("User integrated successfully");
-      setCreateUserModal({ open: false, name: '', email: '', role: 'student', password: '' });
+
+      const payload = { ...userModal };
+      if (payload.id) {
+        delete payload.password; // Don't update password through this modal for now
+        await API.put(`/admin/users/${payload.id}`, payload);
+        toast.success("Identity updated");
+      } else {
+        await API.post('/admin/users', payload);
+        toast.success("User integrated successfully");
+      }
+      setUserModal(userModalDefault);
       fetchUsers();
     } catch (err) {
-      toast.error(getErrorMessage(err, "Integration failed"));
+      toast.error(getErrorMessage(err, "Operation failed"));
     }
   };
 
@@ -192,7 +210,7 @@ const AdminUsers = () => {
               <option value="faculty">Faculty</option>
               <option value="admin">Admin</option>
             </select>
-            <Button onClick={() => setCreateUserModal({ ...createUserModal, open: true })} className="bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 rounded-2xl px-6 font-black flex items-center gap-2">
+            <Button onClick={() => setUserModal({ ...userModalDefault, open: true })} className="bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 rounded-2xl px-6 font-black flex items-center gap-2">
               <UserPlus size={18} /> New User
             </Button>
           </div>
@@ -225,7 +243,11 @@ const AdminUsers = () => {
                     </tr>
                   ) : (
                     users.map((u, idx) => (
-                      <tr key={u.id} className="hover:bg-emerald-50/30 transition-colors group">
+                      <tr
+                        key={u.id}
+                        className="hover:bg-emerald-50/30 transition-colors group cursor-pointer"
+                        onClick={() => setUserDetailsModal({ open: true, user: u })}
+                      >
                         <td className="px-8 py-5">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-black text-sm group-hover:scale-110 transition-transform">
@@ -265,19 +287,19 @@ const AdminUsers = () => {
                         <td className="px-8 py-5 text-right">
                           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             {(u.role === 'student' || u.role === 'faculty') && (
-                              <Button size="sm" variant="ghost" onClick={() => setAssignModal({ open: true, userId: u.id, name: u.name, role: u.role, deptId: u.department_id || '', courseId: u.course_id || '', semester: u.current_semester || 1 })} className="p-2 hover:bg-white rounded-xl text-emerald-600">
+                              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setAssignModal({ open: true, userId: u.id, name: u.name, role: u.role, deptId: u.department_id || '', courseId: u.course_id || '', semester: u.current_semester || 1 }); }} className="p-2 hover:bg-white rounded-xl text-emerald-600">
                                 <GraduationCap size={18} />
                               </Button>
                             )}
                             {u.role === 'student' && u.course_id && (
-                              <Button size="sm" variant="ghost" onClick={() => handlePromote(u.id)} className="p-2 hover:bg-white rounded-xl text-teal-600">
+                              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handlePromote(u.id); }} className="p-2 hover:bg-white rounded-xl text-teal-600">
                                 <ArrowRight size={18} />
                               </Button>
                             )}
-                            <Button size="sm" variant="ghost" onClick={() => setChangeRoleModal({ open: true, userId: u.id, role: u.role })} className="p-2 hover:bg-white rounded-xl text-indigo-500">
+                            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setChangeRoleModal({ open: true, userId: u.id, role: u.role }); }} className="p-2 hover:bg-white rounded-xl text-indigo-500">
                               <Shield size={18} />
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => setConfirmDelete({ open: true, userId: u.id })} className="p-2 hover:bg-white rounded-xl text-red-500">
+                            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setConfirmDelete({ open: true, userId: u.id }); }} className="p-2 hover:bg-white rounded-xl text-red-500">
                               <Trash2 size={18} />
                             </Button>
                           </div>
@@ -328,6 +350,126 @@ const AdminUsers = () => {
         </Modal>
 
         <Modal
+          open={userModal.open}
+          title={userModal.id ? "Edit Academic Identity" : "New Identity Integration"}
+          onClose={() => setUserModal(userModalDefault)}
+          actions={<Button onClick={handleSaveUser} className="bg-emerald-600 hover:bg-emerald-500 px-8 font-black rounded-2xl">Finalize</Button>}
+        >
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto px-1 pr-2 custom-scrollbar">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Full Name</label>
+                <input
+                  type="text"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-gray-300 font-medium"
+                  placeholder="Legal Name"
+                  value={userModal.name}
+                  onChange={e => setUserModal({ ...userModal, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Email Address</label>
+                <input
+                  type="email"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-gray-300 font-medium"
+                  placeholder="Academic Email"
+                  value={userModal.email}
+                  onChange={e => setUserModal({ ...userModal, email: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">User Role</label>
+                <select
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl font-bold"
+                  value={userModal.role}
+                  onChange={e => setUserModal({ ...userModal, role: e.target.value })}
+                >
+                  <option value="student">Student</option>
+                  <option value="faculty">Faculty</option>
+                  <option value="admin">Administrator</option>
+                </select>
+              </div>
+              {!userModal.id && (
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Password</label>
+                  <input
+                    type="password"
+                    placeholder="Secure Password"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 outline-none"
+                    value={userModal.password}
+                    onChange={e => setUserModal({ ...userModal, password: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-gray-100 pt-4 mt-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-3">Academic Structure Assignment</p>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Department</label>
+                    <select
+                      className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-2xl font-bold text-gray-700"
+                      value={userModal.department_id || ''}
+                      onChange={e => setUserModal({ ...userModal, department_id: e.target.value ? parseInt(e.target.value) : '' })}
+                    >
+                      <option value="">None</option>
+                      {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Academic Stream</label>
+                    <select
+                      className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-2xl font-bold text-gray-700"
+                      value={userModal.program_id || ''}
+                      onChange={e => setUserModal({ ...userModal, program_id: e.target.value ? parseInt(e.target.value) : '' })}
+                      disabled={!userModal.department_id}
+                    >
+                      <option value="">None</option>
+                      {programs.filter(p => !userModal.department_id || p.department_id === userModal.department_id).map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Batch Selection (A-J)</label>
+                    <select
+                      className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-2xl font-bold text-gray-700"
+                      value={userModal.batch || ''}
+                      onChange={e => setUserModal({ ...userModal, batch: e.target.value })}
+                    >
+                      <option value="">None</option>
+                      {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map(b => (
+                        <option key={b} value={b}>Batch {b}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {userModal.role === 'student' && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Current Semester</label>
+                      <input
+                        type="number"
+                        className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-2xl font-bold text-gray-700"
+                        value={userModal.current_semester || 1}
+                        min="1" max="10"
+                        onChange={e => setUserModal({ ...userModal, current_semester: parseInt(e.target.value) })}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </Modal>
+
+        <Modal
           open={changeRoleModal.open}
           title="Perms Modification"
           onClose={() => setChangeRoleModal({ open: false, userId: null, role: 'student' })}
@@ -345,49 +487,7 @@ const AdminUsers = () => {
           </div>
         </Modal>
 
-        <Modal
-          open={createUserModal.open}
-          title="New Identity Integration"
-          onClose={() => setCreateUserModal({ ...createUserModal, open: false })}
-          actions={<Button onClick={handleCreateUser} className="bg-emerald-600 hover:bg-emerald-500 px-8 font-black rounded-2xl">Finalize</Button>}
-        >
-          <div className="space-y-4">
-            <input
-              type="text"
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-gray-300 font-medium"
-              placeholder="Full Legal Name"
-              value={createUserModal.name}
-              autoComplete="off"
-              onChange={e => setCreateUserModal({ ...createUserModal, name: e.target.value })}
-            />
-            <input
-              type="email"
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-gray-300 font-medium"
-              placeholder="Academic Email Address"
-              value={createUserModal.email}
-              autoComplete="off"
-              onChange={e => setCreateUserModal({ ...createUserModal, email: e.target.value })}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <input
-                type="text"
-                className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-2xl text-sm font-bold text-gray-700"
-                value="Student"
-                readOnly
-                autoComplete="off"
-              />
-              <input
-                type="password"
-                placeholder="Access Password"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all placeholder:text-gray-300 font-medium"
-                value={createUserModal.password}
-                name="new-password"
-                autoComplete="new-password"
-                onChange={e => setCreateUserModal({ ...createUserModal, password: e.target.value })}
-              />
-            </div>
-          </div>
-        </Modal>
+
 
         <Modal
           open={assignModal.open}
@@ -440,6 +540,91 @@ const AdminUsers = () => {
               * Assigning a department and stream is mandatory for project and task participation.
             </p>
           </div>
+        </Modal>
+
+        <Modal
+          open={userDetailsModal.open}
+          title="User Profile Detail"
+          onClose={() => setUserDetailsModal({ open: false, user: null })}
+          actions={
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  const u = userDetailsModal.user;
+                  setUserDetailsModal({ open: false, user: null });
+                  setUserModal({
+                    open: true,
+                    id: u.id,
+                    name: u.name,
+                    email: u.email,
+                    role: u.role,
+                    department_id: u.department_id || '',
+                    program_id: u.program_id || '',
+                    batch: u.batch || '',
+                    current_semester: u.current_semester || 1
+                  });
+                }}
+                className="bg-indigo-600 rounded-2xl px-6 font-black"
+              >
+                Full Profile Edit
+              </Button>
+              <Button
+                onClick={() => {
+                  const u = userDetailsModal.user;
+                  setUserDetailsModal({ open: false, user: null });
+                  if (u.role === 'student' || u.role === 'faculty') {
+                    setAssignModal({ open: true, userId: u.id, name: u.name, role: u.role, deptId: u.department_id || '', courseId: u.course_id || '', semester: u.current_semester || 1 });
+                  }
+                }}
+                className="bg-emerald-600 rounded-2xl px-6 font-black"
+              >
+                Quick Placement
+              </Button>
+            </div>
+          }
+        >
+          {userDetailsModal.user && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-6 p-6 bg-gray-50 rounded-3xl border border-gray-100 shadow-inner">
+                <div className="w-20 h-20 rounded-[2rem] bg-indigo-600 flex items-center justify-center text-white text-3xl font-black shadow-xl shadow-indigo-600/20">
+                  {userDetailsModal.user.name?.[0]?.toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-gray-800 leading-tight">{userDetailsModal.user.name}</h3>
+                  <p className="text-sm font-bold text-gray-400 mt-1">{userDetailsModal.user.email}</p>
+                  <div className="flex gap-2 mt-3">
+                    <Badge variant={userDetailsModal.user.role}>{userDetailsModal.user.role}</Badge>
+                    <Badge variant={userDetailsModal.user.status === 'active' ? 'active' : 'inactive'}>{userDetailsModal.user.status}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                <div className="p-4 bg-white border border-gray-100 rounded-2xl flex items-center justify-between shadow-sm">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Department</span>
+                  <span className="text-sm font-bold text-gray-700">{userDetailsModal.user.department_name || 'Not Linked'}</span>
+                </div>
+                <div className="p-4 bg-white border border-gray-100 rounded-2xl flex items-center justify-between shadow-sm">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Academic Stream</span>
+                  <span className="text-sm font-bold text-gray-700">{userDetailsModal.user.program_name || 'Not Linked'}</span>
+                </div>
+                <div className="p-4 bg-white border border-gray-100 rounded-2xl flex items-center justify-between shadow-sm">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Batch Selection</span>
+                  <span className="text-sm font-bold text-gray-700">{userDetailsModal.user.batch ? `Batch ${userDetailsModal.user.batch}` : 'Not Linked'}</span>
+                </div>
+                {userDetailsModal.user.role === 'student' && (
+                  <div className="p-4 bg-white border border-gray-100 rounded-2xl flex items-center justify-between shadow-sm">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Current Semester</span>
+                    <span className="text-sm font-bold text-gray-700">{userDetailsModal.user.current_semester || 'N/A'}</span>
+                  </div>
+                )}
+                <div className="p-4 bg-white border border-gray-100 rounded-2xl flex items-center justify-between shadow-sm">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Governance ID</span>
+                  <span className="text-xs font-mono text-gray-400">#{userDetailsModal.user.id}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </Modal>
       </div>
     </AdminGlassLayout>

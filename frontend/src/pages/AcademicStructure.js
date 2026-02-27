@@ -96,7 +96,6 @@ const AcademicStructure = () => {
     const [activeTab, setActiveTab] = useState('departments');
     const [loading, setLoading] = useState(true);
     const [saveLoading, setSaveLoading] = useState(false);
-    const [departments, setDepartments] = useState([]);
     const [courses, setCourses] = useState([]);
     const [workload, setWorkload] = useState([]);
     const [search, setSearch] = useState('');
@@ -114,7 +113,7 @@ const AcademicStructure = () => {
     const [expandedPrograms, setExpandedPrograms] = useState({});
 
     // Department modal
-    const deptDefault = { open: false, id: null, name: '', code: '', description: '', status: 'active' };
+    const deptDefault = { open: false, id: null, name: '', code: '', description: '', batch: '', status: 'active' };
     const [deptModal, setDeptModal] = useState(deptDefault);
 
     // Program modal
@@ -133,8 +132,11 @@ const AcademicStructure = () => {
     const [legacyDepts, setLegacyDepts] = useState([]);
 
     // Faculty assignment modal
-    const facultyDefault = { open: false, id: null, name: '', department_id: '', course_id: '' };
+    const facultyDefault = { open: false, id: null, name: '', department_id: '', program_id: '', course_id: '', batch: '' };
     const [facultyModal, setFacultyModal] = useState(facultyDefault);
+
+    // Faculty details modal
+    const [facultyDetailsModal, setFacultyDetailsModal] = useState({ open: false, data: null });
 
     // Delete confirmation
     const [deleteModal, setDeleteModal] = useState({ open: false, type: '', id: null, name: '' });
@@ -157,7 +159,6 @@ const AcademicStructure = () => {
             ]);
             const get = (i) => results[i].status === 'fulfilled' ? results[i].value.data : null;
             const d = get(0), c = get(1), w = get(2), y = get(3), p = get(4), s = get(5), c1 = get(6), dv1 = get(7), a = get(8), ov = get(9);
-            setDepartments(Array.isArray(d) ? d : []);
             setLegacyDepts(Array.isArray(d) ? d : []);
             setCourses(Array.isArray(c) ? c : []);
             setWorkload(Array.isArray(w) ? w : []);
@@ -167,7 +168,7 @@ const AcademicStructure = () => {
             setCoursesV1(Array.isArray(c1) ? c1 : []);
             setDepartmentsV1(Array.isArray(dv1?.items) ? dv1.items : []);
             setActivity(Array.isArray(a) ? a : []);
-            setStats(ov && typeof ov === 'object' ? ov : { total_departments: 0, active_courses: 0, faculty_count: 0, enrollment_count: 0 });
+            setStats(ov && typeof ov === 'object' ? ov : { total_departments: 0, total_programs: 0, active_courses: 0, faculty_count: 0, enrollment_count: 0 });
             if (!selectedYear && Array.isArray(y) && y.length) {
                 setSelectedYear(y[0]);
             }
@@ -193,13 +194,7 @@ const AcademicStructure = () => {
         );
     }, [departmentsV1, search, selectedYear]);
 
-    const filteredCourses = useMemo(() =>
-        courses.filter(c => {
-            const matchSearch = c.name?.toLowerCase().includes(search.toLowerCase()) ||
-                c.department_name?.toLowerCase().includes(search.toLowerCase());
-            const matchFilter = !deptFilter || c.department_id === parseInt(deptFilter);
-            return matchSearch && matchFilter;
-        }), [courses, search, deptFilter]);
+
 
     const filteredPrograms = useMemo(() =>
         programs.filter(p => {
@@ -215,7 +210,7 @@ const AcademicStructure = () => {
         ), [workload, search]);
 
     /* ── Stats ── */
-    const [stats, setStats] = useState({ total_departments: 0, active_courses: 0, faculty_count: 0, enrollment_count: 0 });
+    const [stats, setStats] = useState({ total_departments: 0, total_programs: 0, active_courses: 0, faculty_count: 0, enrollment_count: 0 });
 
     /* ── Department CRUD ── */
     const saveDept = async () => {
@@ -333,13 +328,7 @@ const AcademicStructure = () => {
         }
     };
 
-    const toggleCourseStatus = async (course) => {
-        try {
-            await API.put(`/academic/courses/${course.id}`, { ...course, status: course.status === 'active' ? 'archived' : 'active' });
-            toast.success(`Course ${course.status === 'active' ? 'archived' : 'activated'}`);
-            fetchAll();
-        } catch { toast.error('Status update failed'); }
-    };
+
 
     const saveFacultyAssignment = async () => {
         if (!facultyModal.department_id) return toast.error('Department is required');
@@ -348,7 +337,9 @@ const AcademicStructure = () => {
             await API.put(`/academic/faculty/${facultyModal.id}/assign`, null, {
                 params: {
                     department_id: facultyModal.department_id,
-                    course_id: facultyModal.course_id || undefined
+                    program_id: facultyModal.program_id || undefined,
+                    course_id: facultyModal.course_id || undefined,
+                    batch: facultyModal.batch || undefined
                 }
             });
             toast.success('Faculty assignment updated!');
@@ -386,7 +377,7 @@ const AcademicStructure = () => {
 
     /* ── Tab config ── */
     const TABS = [
-        { id: 'departments', label: 'Departments', icon: Building2, count: departments.length },
+        { id: 'departments', label: 'Departments', icon: Building2, count: departmentsV1.filter(d => !d.is_archived).length },
         { id: 'programs', label: 'Academic Streams', icon: BookMarked, count: programs.length },
         { id: 'workload', label: 'Faculty Allocation', icon: Briefcase, count: workload.length },
     ];
@@ -504,8 +495,8 @@ const AcademicStructure = () => {
                 {/* ── Stats Row ── */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard icon={Building2} label="Total Departments" value={stats.total_departments} color="text-indigo-600" bg="bg-indigo-50" />
-                    <StatCard icon={BookMarked} label="Active Courses" value={stats.active_courses} color="text-emerald-600" bg="bg-emerald-50" />
-                    <StatCard icon={UsersIcon} label="Enrolled Students" value={stats.enrollment_count} color="text-teal-600" bg="bg-teal-50" />
+                    <StatCard icon={Layers} label="Academic Streams" value={stats.total_programs} color="text-amber-600" bg="bg-amber-50" />
+                    <StatCard icon={BookMarked} label="Active Batches" value={stats.active_courses} color="text-emerald-600" bg="bg-emerald-50" />
                     <StatCard icon={Briefcase} label="Faculty Members" value={stats.faculty_count} color="text-purple-600" bg="bg-purple-50" />
                 </div>
 
@@ -701,52 +692,53 @@ const AcademicStructure = () => {
                                                 {filteredPrograms.map(program => {
                                                     const d = departmentsV1.find(d => d.id === program.department_id);
                                                     return (
-                                                    <tr key={program.id} className="group hover:bg-emerald-50/25 transition-colors">
-                                                        <td className="px-6 py-4">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-                                                                    <BookMarked size={17} />
+                                                        <tr key={program.id} className="group hover:bg-emerald-50/25 transition-colors">
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                                                                        <BookMarked size={17} />
+                                                                    </div>
+                                                                    <p className="font-black text-gray-800 text-sm">{program.name}</p>
                                                                 </div>
-                                                                <p className="font-black text-gray-800 text-sm">{program.name}</p>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <span className="text-xs font-bold px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100/50">
-                                                                {d ? d.name : 'Unknown'}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-center">
-                                                            <p className="text-xs font-bold text-gray-600">
-                                                                {program.duration_years} Years
-                                                            </p>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-center">
-                                                            <div className="flex items-center justify-center gap-1.5">
-                                                                <UsersIcon size={13} className="text-teal-500" />
-                                                                <span className="text-xs font-black text-teal-600">{program.intake_capacity}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-center">
-                                                            <StatusBadge status={program.is_active ? 'active' : 'inactive'} />
-                                                        </td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <button
-                                                                    onClick={() => setProgramModal({ open: true, id: program.id, name: program.name, department_id: program.department_id, duration_years: program.duration_years, intake_capacity: program.intake_capacity, type: program.type })}
-                                                                    className="p-1.5 rounded-lg text-indigo-400 hover:bg-indigo-50 transition-colors"
-                                                                >
-                                                                    <Edit2 size={15} />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => setDeleteModal({ open: true, type: 'program', id: program.id, name: program.name })}
-                                                                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
-                                                                >
-                                                                    <Trash2 size={15} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )})}
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <span className="text-xs font-bold px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100/50">
+                                                                    {d ? d.name : 'Unknown'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <p className="text-xs font-bold text-gray-600">
+                                                                    {program.duration_years} Years
+                                                                </p>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <div className="flex items-center justify-center gap-1.5">
+                                                                    <UsersIcon size={13} className="text-teal-500" />
+                                                                    <span className="text-xs font-black text-teal-600">{program.intake_capacity}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <StatusBadge status={program.is_active ? 'active' : 'inactive'} />
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right">
+                                                                <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <button
+                                                                        onClick={() => setProgramModal({ open: true, id: program.id, name: program.name, department_id: program.department_id, duration_years: program.duration_years, intake_capacity: program.intake_capacity, type: program.type })}
+                                                                        className="p-1.5 rounded-lg text-indigo-400 hover:bg-indigo-50 transition-colors"
+                                                                    >
+                                                                        <Edit2 size={15} />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setDeleteModal({ open: true, type: 'program', id: program.id, name: program.name })}
+                                                                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
+                                                                    >
+                                                                        <Trash2 size={15} />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                })}
                                             </tbody>
                                         </table>
                                     </div>
@@ -770,7 +762,7 @@ const AcademicStructure = () => {
                                             return (
                                                 <motion.div key={f.id} variants={fade}>
                                                     <div
-                                                        onClick={() => setFacultyModal({ open: true, id: f.id, name: f.name, department_id: f.department_id || '', course_id: f.course_id || '' })}
+                                                        onClick={() => setFacultyDetailsModal({ open: true, data: f })}
                                                         className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer group relative"
                                                     >
                                                         <div className="flex items-center gap-3 mb-4">
@@ -779,7 +771,9 @@ const AcademicStructure = () => {
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="font-black text-gray-800 text-sm truncate">{f.name}</p>
-                                                                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider truncate">{f.department}</p>
+                                                                <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider truncate">
+                                                                    {f.department} {f.batch ? `• Batch ${f.batch}` : ''}
+                                                                </p>
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center justify-between mb-2">
@@ -1025,6 +1019,19 @@ const AcademicStructure = () => {
                                     value={deptModal.description}
                                     onChange={e => setDeptModal(m => ({ ...m, description: e.target.value }))}
                                 />
+                            </div>
+                            <div>
+                                <label className={labelCls}>Batch Selection</label>
+                                <select
+                                    className={fieldCls}
+                                    value={deptModal.batch}
+                                    onChange={e => setDeptModal(m => ({ ...m, batch: e.target.value }))}
+                                >
+                                    <option value="">— Select Batch —</option>
+                                    {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map(b => (
+                                        <option key={b} value={b}>Batch {b}</option>
+                                    ))}
+                                </select>
                             </div>
                             <div>
                                 <label className={labelCls}>Status</label>
@@ -1300,7 +1307,7 @@ const AcademicStructure = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className={labelCls}>Batch</label>
+                                    <label className={labelCls}>Batch / Year Info</label>
                                     <input
                                         type="text"
                                         placeholder="e.g. 2024–2027"
@@ -1336,6 +1343,90 @@ const AcademicStructure = () => {
                 )}
             </AnimatePresence>
 
+            {/* Faculty Details Modal */}
+            <AnimatePresence>
+                {facultyDetailsModal.open && (
+                    <Modal
+                        open
+                        title="Faculty Profile"
+                        onClose={() => setFacultyDetailsModal({ open: false, data: null })}
+                        onSave={() => {
+                            const f = facultyDetailsModal.data;
+                            setFacultyDetailsModal({ open: false, data: null });
+                            setFacultyModal({ open: true, id: f.id, name: f.name, department_id: f.department_id || '', program_id: f.program_id || '', course_id: f.course_id || '', batch: f.batch || '' });
+                        }}
+                        saveLabel="Edit Assignment"
+                        saveColor="indigo"
+                    >
+                        {facultyDetailsModal.data && (
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-5 p-6 bg-gray-50/50 rounded-[2rem] border border-gray-100">
+                                    <div className="w-20 h-20 rounded-3xl bg-white shadow-xl flex items-center justify-center text-3xl font-black text-indigo-600 border border-gray-100">
+                                        {facultyDetailsModal.data.name?.[0].toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="text-xl font-black text-gray-800 truncate">{facultyDetailsModal.data.name}</h3>
+                                        <p className="text-sm font-bold text-gray-400 truncate">{facultyDetailsModal.data.email}</p>
+                                        <div className="mt-2 flex gap-2">
+                                            <StatusBadge status="active" />
+                                            <span className="px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest border border-indigo-100">FACULTY</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div className="p-5 bg-white border border-gray-100 rounded-3xl space-y-3 shadow-sm">
+                                        <div className="flex items-center justify-between py-1 px-1">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-indigo-50 text-indigo-500 rounded-xl border border-indigo-100">
+                                                    <Building2 size={16} />
+                                                </div>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Department</span>
+                                            </div>
+                                            <span className="text-sm font-black text-gray-800">{facultyDetailsModal.data.department || 'Not Assigned'}</span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between py-1 px-1">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-amber-50 text-amber-500 rounded-xl border border-amber-100">
+                                                    <BookMarked size={16} />
+                                                </div>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Academic Stream</span>
+                                            </div>
+                                            <span className="text-sm font-black text-gray-800">{facultyDetailsModal.data.program_name || 'No Specific Stream'}</span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between py-1 px-1">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-emerald-50 text-emerald-500 rounded-xl border border-emerald-100">
+                                                    <Layers size={16} />
+                                                </div>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Batch Selection</span>
+                                            </div>
+                                            <span className="text-sm font-black text-gray-800">{facultyDetailsModal.data.batch ? `Batch ${facultyDetailsModal.data.batch}` : 'No Specific Batch'}</span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between py-1 px-1">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-purple-50 text-purple-500 rounded-xl border border-purple-100">
+                                                    <TrendingUp size={16} />
+                                                </div>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Current Workload</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border ${facultyDetailsModal.data.project_count > 8 ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                                                    {facultyDetailsModal.data.project_count} / 10 Projects
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </Modal>
+                )}
+            </AnimatePresence>
+
             {/* Faculty Assignment Modal */}
             <AnimatePresence>
                 {facultyModal.open && (
@@ -1362,16 +1453,30 @@ const AcademicStructure = () => {
                                 </select>
                             </div>
                             <div>
-                                <label className={labelCls}>Select Course (Optional)</label>
+                                <label className={labelCls}>Select Academic Stream (Program)</label>
                                 <select
                                     className={fieldCls}
-                                    value={facultyModal.course_id || ''}
-                                    onChange={e => setFacultyModal(m => ({ ...m, course_id: e.target.value }))}
+                                    value={facultyModal.program_id || ''}
+                                    onChange={e => setFacultyModal(m => ({ ...m, program_id: e.target.value, course_id: '' }))}
                                     disabled={!facultyModal.department_id}
                                 >
-                                    <option value="">— No Specific Course —</option>
-                                    {courses.filter(c => c.department_id === parseInt(facultyModal.department_id)).map(c => (
-                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    <option value="">— No Specific Stream —</option>
+                                    {programs.filter(p => p.department_id === parseInt(facultyModal.department_id)).map(p => (
+                                        <option key={p.id} value={p.id}>{p.name} ({p.type})</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className={labelCls}>Select Batch Selection (A-J)</label>
+                                <select
+                                    className={fieldCls}
+                                    value={facultyModal.batch || ''}
+                                    onChange={e => setFacultyModal(m => ({ ...m, batch: e.target.value }))}
+                                    disabled={!facultyModal.department_id}
+                                >
+                                    <option value="">— No Specific Batch —</option>
+                                    {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'].map(b => (
+                                        <option key={b} value={b}>Batch {b}</option>
                                     ))}
                                 </select>
                             </div>

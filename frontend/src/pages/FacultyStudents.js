@@ -24,6 +24,7 @@ import { getErrorMessage } from "../utils/errorHelpers";
 const FacultyStudents = () => {
     // Data States
     const [students, setStudents] = useState([]);
+    const [departments, setDepartments] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // UI States
@@ -43,18 +44,22 @@ const FacultyStudents = () => {
     const [formData, setFormData] = useState(initialForm);
 
     // Initial Data Fetch
-    const fetchData = async (status = "all") => {
+    const fetchData = React.useCallback(async (status = "all") => {
         setLoading(true);
         try {
             const param = status === "all" ? "" : `?status=${status}`;
-            const res = await API.get(`/faculty/student-recommendations${param}`);
-            setStudents(res.data || []);
+            const [studentsRes, deptRes] = await Promise.all([
+                API.get(`/faculty/student-recommendations${param}`),
+                API.get('/admin/departments')
+            ]);
+            setStudents(studentsRes.data || []);
+            setDepartments(deptRes.data || []);
         } catch (err) {
-            toast.error("Network Synchronizer: Recommendation data retrieval failed.");
+            toast.error("Network Synchronizer: Data retrieval failed.");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchData(statusFilter);
@@ -263,13 +268,17 @@ const FacultyStudents = () => {
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-3">
                                         <label className="text-xs font-black uppercase tracking-widest text-gray-400">Department</label>
-                                        <input
+                                        <select
                                             required
-                                            placeholder="e.g. Computer Science"
                                             className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-teal-500 outline-none font-bold text-gray-800 text-sm"
                                             value={formData.department}
                                             onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                                        />
+                                        >
+                                            <option value="">Select Department...</option>
+                                            {departments.map(d => (
+                                                <option key={d.id} value={d.name}>{d.name}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div className="space-y-3">
                                         <label className="text-xs font-black uppercase tracking-widest text-gray-400">Current Semester</label>

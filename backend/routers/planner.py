@@ -123,17 +123,25 @@ def get_faculty_plans(
     plans = db.query(AcademicPlanner).filter(AcademicPlanner.created_by == current_user["user_id"]).all()
     
     res = []
+    from models.project import Project
+    from models.todo import Todo
     for p in plans:
         # Get todo stats
         todos = db.query(Todo).filter(Todo.planner_id == p.id).all()
         completed = len([t for t in todos if t.status == "completed"])
+        proj = db.query(Project).filter(Project.id == p.project_id).first()
+        std = db.query(User).filter(User.id == (todos[0].student_id if todos else None)).first()
+        
         res.append({
             "id": p.id,
             "title": p.title,
             "project_id": p.project_id,
+            "project_title": proj.title if proj else "Unknown Track",
             "start_date": p.start_date,
             "end_date": p.end_date,
             "total_todos": len(todos),
-            "completed_todos": completed
+            "completed_todos": completed,
+            "student_id": std.id if std else None,
+            "student_name": std.name if std else "Unknown Recipient"
         })
     return res

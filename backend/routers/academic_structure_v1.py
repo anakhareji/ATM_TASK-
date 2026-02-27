@@ -127,6 +127,7 @@ def create_department(dep: dict, org_id: int = Depends(get_org_id), db: Session 
         name=name,
         code=code,
         description=dep.get("description"),
+        batch=dep.get("batch"),
         is_active=True
     )
     db.add(new_dep)
@@ -432,16 +433,14 @@ def allocate_faculty(data: dict, org_id: int = Depends(get_org_id), db: Session 
 @router.get("/overview")
 def overview(org_id: int = Depends(get_org_id), db: Session = Depends(get_db)):
     depts = db.query(func.count(DepartmentV1.id)).filter(DepartmentV1.organization_id == org_id, DepartmentV1.is_active == True).scalar() or 0
+    programs = db.query(func.count(Program.id)).filter(Program.organization_id == org_id, Program.is_active == True).scalar() or 0
     courses = db.query(func.count(CourseV1.id)).filter(CourseV1.organization_id == org_id, CourseV1.is_active == True).scalar() or 0
     faculty = db.query(func.count(User.id)).filter(User.role == "faculty").scalar() or 0
-    try:
-        from models.academic_saas import StudentEnrollment
-        enrollments = db.query(func.count(StudentEnrollment.id)).filter(StudentEnrollment.organization_id == org_id).scalar() or 0
-    except Exception:
-        enrollments = 0
+    
     return {
         "total_departments": depts,
-        "active_courses": courses,
+        "total_programs": programs,
+        "active_courses": courses, # This represents batches/courses
         "faculty_count": faculty,
-        "enrollment_count": enrollments
+        "enrollment_count": 0
     }

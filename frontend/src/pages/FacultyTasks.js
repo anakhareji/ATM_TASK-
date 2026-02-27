@@ -332,13 +332,23 @@ const TaskCard = ({ task, onPublish, onDelete, onViewSubmissions }) => {
                                 <h3 className="text-xl font-black text-gray-800 tracking-tight group-hover:text-emerald-700 transition-colors uppercase">
                                     {task.title}
                                 </h3>
-                                <div className="flex items-center gap-3 mt-1">
+                                <div className="flex flex-wrap items-center gap-3 mt-1">
                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase ${task.status === 'draft' ? 'bg-gray-100 text-gray-500' : 'bg-emerald-100 text-emerald-600'}`}>
                                         {task.status}
                                     </span>
                                     <span className={`text-[10px] font-black uppercase tracking-widest ${task.priority === 'High' ? 'text-rose-500' : task.priority === 'Medium' ? 'text-amber-500' : 'text-emerald-500'}`}>
                                         {task.priority} Priority
                                     </span>
+                                    {task.student_name && (
+                                        <span className="text-[10px] font-black uppercase text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                            {task.student_name}
+                                        </span>
+                                    )}
+                                    {task.group_name && (
+                                        <span className="text-[10px] font-black uppercase text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                            {task.group_name}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -377,7 +387,9 @@ const TaskCard = ({ task, onPublish, onDelete, onViewSubmissions }) => {
                 </div>
 
                 <div className="px-8 py-5 bg-gray-50/50 border-t border-gray-100 flex justify-between items-center group-hover:bg-emerald-50/20">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Track ID: {task.project_id}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600/60">
+                        {task.project_title || `Track #${task.project_id}`}
+                    </p>
                     {task.status !== 'draft' && (
                         <button
                             onClick={onViewSubmissions}
