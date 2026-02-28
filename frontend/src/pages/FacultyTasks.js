@@ -153,24 +153,28 @@ const FacultyTasks = () => {
             if (formData.task_type === 'individual') {
                 payload.group_id = null; // Backend expects None for group_id in individual mode
                 
-                if (isEditing && selectedTask) {
-                    payload.student_id = parseInt(formData.selected_students[0]);
-                    await API.put(`/tasks/${selectedTask.id}`, payload);
-                    
-                    if (formData.selected_students.length > 1) {
-                         const extraStudents = formData.selected_students.slice(1);
-                         await Promise.all(extraStudents.map(async (sid) => {
-                             const newPayload = {...payload, student_id: parseInt(sid)};
-                             return API.post('/tasks', newPayload);
-                         }));
-                    }
-                    toast.success("Task updated successfully.", { id: loadToast });
+                if (isEditing && formData._identical_tasks) {
+                     const oldTasks = formData._identical_tasks.filter(t => t.student_id);
+                     const oldSids = oldTasks.map(t => String(t.student_id));
+                     const newSids = formData.selected_students || [];
+                     
+                     const tasksToDelete = oldTasks.filter(t => !newSids.includes(String(t.student_id)));
+                     const sidsToAdd = newSids.filter(sid => !oldSids.includes(sid));
+                     const tasksToUpdate = oldTasks.filter(t => newSids.includes(String(t.student_id)));
+
+                     // Use Promise.all fallback gracefully if delete is completely empty
+                     const deletePromises = tasksToDelete.map(t => API.delete(`/tasks/${t.id}`));
+                     const addPromises = sidsToAdd.map(sid => API.post('/tasks', { ...payload, student_id: parseInt(sid) }));
+                     const updatePromises = tasksToUpdate.map(t => API.put(`/tasks/${t.id}`, { ...payload, student_id: parseInt(t.student_id) }));
+
+                     await Promise.all([...deletePromises, ...addPromises, ...updatePromises]);
+                     
+                     toast.success("Assignment updated across all selected recipients.", { id: loadToast });
                 } else {
-                    await Promise.all(formData.selected_students.map(async (sid) => {
-                         const newPayload = { ...payload, student_id: parseInt(sid) };
-                         return API.post('/tasks', newPayload);
-                    }));
-                    toast.success("Tasks deployed as drafts. You must publish them to notify recipients.", { id: loadToast });
+                     await Promise.all((formData.selected_students || []).map(async (sid) => {
+                          return API.post('/tasks', { ...payload, student_id: parseInt(sid) });
+                     }));
+                     toast.success("Tasks deployed as drafts. You must publish them to notify recipients.", { id: loadToast });
                 }
             } else {
                 payload.group_id = parseInt(formData.group_id);
@@ -216,6 +220,12 @@ const FacultyTasks = () => {
             }
         } catch(e) {}
         
+        const identicalTasks = tasks.filter(t => 
+            t.title === task.title && 
+            t.project_id === task.project_id && 
+            t.task_type === task.task_type
+        );
+
         setFormData({
             title: task.title,
             description: task.description || '',
@@ -224,11 +234,12 @@ const FacultyTasks = () => {
             project_id: task.project_id || '',
             task_type: task.task_type || 'individual',
             student_id: '',
-            selected_students: task.student_id ? [String(task.student_id)] : [],
+            selected_students: task.task_type === 'individual' ? identicalTasks.map(t => String(t.student_id)).filter(id => id !== "null") : [],
             group_id: task.group_id || '',
             max_marks: task.max_marks || 100,
             file_url: task.file_url || '',
-            late_penalty: task.late_penalty || 0
+            late_penalty: task.late_penalty || 0,
+            _identical_tasks: identicalTasks
         });
         setShowCreateModal(true);
     };
@@ -592,8 +603,14 @@ const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, for
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        if (formData.student_id && !(formData.selected_students || []).includes(formData.student_id)) {
-                                            setFormData(prev => ({ ...prev, selected_students: [...(prev.selected_students || []), prev.student_id], student_id: '' }));
+                                        if (!formData.student_id) return;
+                                        const currentSelected = formData.selected_students || [];
+                                        if (!currentSelected.includes(String(formData.student_id))) {
+                                            setFormData({ 
+                                                ...formData, 
+                                                selected_students: [...currentSelected, String(formData.student_id)], 
+                                                student_id: '' 
+                                            });
                                         }
                                     }}
                                     className="px-5 bg-emerald-100 text-emerald-600 hover:bg-emerald-200 rounded-2xl transition-colors font-black flex items-center justify-center shadow-sm"
@@ -610,7 +627,17 @@ const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, for
                                         return (
                                             <div key={sid} className="flex justify-between items-center bg-white px-4 py-3 rounded-xl shadow-sm text-sm font-bold border border-gray-100 group">
                                                 <span className="text-gray-700">{stu ? `${stu.name} (${stu.email})` : `Student ID: ${sid}`}</span>
-                                                <button type="button" onClick={() => setFormData({...formData, selected_students: formData.selected_students.filter(id => id !== sid)})} className="text-gray-300 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors">
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => {
+                                                        const currentSelected = formData.selected_students || [];
+                                                        setFormData({
+                                                            ...formData,
+                                                            selected_students: currentSelected.filter(id => String(id) !== String(sid))
+                                                        });
+                                                    }} 
+                                                    className="text-gray-300 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                                                >
                                                     <X size={16} />
                                                 </button>
                                             </div>
