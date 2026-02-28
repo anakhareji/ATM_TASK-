@@ -47,8 +47,12 @@ const FacultyStudents = () => {
         setLoading(true);
         try {
             const param = status === "all" ? "" : `?status=${status}`;
-            const res = await API.get(`/faculty/student-recommendations${param}`);
-            setStudents(res.data || []);
+            const [studentsRes, deptRes] = await Promise.all([
+                API.get(`/faculty/student-recommendations${param}`),
+                API.get('/v1/academic-structure/departments?page_size=100')
+            ]);
+            setStudents(studentsRes.data || []);
+            setDepartments(deptRes.data?.items || []);
         } catch (err) {
             toast.error("Network Synchronizer: Recommendation data retrieval failed.");
         } finally {

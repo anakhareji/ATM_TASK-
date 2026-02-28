@@ -16,11 +16,12 @@ const StudentApproval = () => {
     const [recommendations, setRecommendations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [rejectModal, setRejectModal] = useState({ open: false, id: null, reason: '' });
+    const [activeTab, setActiveTab] = useState('pending');
 
     const fetchRecommendations = async () => {
         try {
             const res = await API.get('/admin/recommendations');
-            setRecommendations(res.data.filter(r => r.status === 'pending'));
+            setRecommendations(res.data);
         } catch (err) {
             toast.error("Failed to load enrollment queue");
         } finally {
@@ -39,8 +40,7 @@ const StudentApproval = () => {
                 icon: '🎓',
                 style: { borderRadius: '12px', background: '#dcfce7', color: '#166534' }
             });
-            // Update local state instead of reload
-            setRecommendations(prev => prev.filter(r => r.id !== id));
+            fetchRecommendations();
         } catch (err) {
             toast.error("Handshake protocol failed");
         }
@@ -53,20 +53,40 @@ const StudentApproval = () => {
         try {
             await API.post(`/admin/recommendations/${id}/reject`, { reason });
             toast.success("Application successfully refused");
-            setRecommendations(prev => prev.filter(r => r.id !== id));
             setRejectModal({ open: false, id: null, reason: '' });
+            fetchRecommendations();
         } catch (err) {
             toast.error("Rejection signal failed");
         }
     };
 
+    const displayedRecords = recommendations.filter(r => 
+        activeTab === 'pending' ? r.status === 'pending' : r.status !== 'pending'
+    );
+
     return (
         <AdminGlassLayout>
-            <div className="space-y-8">
-                <PageHeader
-                    title="Enrollment Protocol"
-                    subtitle="Finalize student integration through faculty endorsement records"
-                />
+            <div className="space-y-8 pb-10">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-gray-100 pb-6">
+                    <PageHeader
+                        title="Enrollment Protocol"
+                        subtitle="Finalize student integration through faculty endorsement records"
+                    />
+                    <div className="flex bg-gray-100/50 p-1.5 rounded-2xl shadow-inner border border-gray-200">
+                        <button
+                            onClick={() => setActiveTab('pending')}
+                            className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'pending' ? 'bg-white text-emerald-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700 hover:bg-white/40'}`}
+                        >
+                            Pending
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('history')}
+                            className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'history' ? 'bg-white text-indigo-600 shadow-md transform scale-105' : 'text-gray-500 hover:text-gray-700 hover:bg-white/40'}`}
+                        >
+                            History
+                        </button>
+                    </div>
+                </div>
 
                 {loading ? (
                     <div className="grid gap-6">
@@ -74,20 +94,20 @@ const StudentApproval = () => {
                             <div key={i} className="h-44 bg-white/4 shadow-sm border border-gray-100/50 rounded-[2rem] animate-pulse" />
                         ))}
                     </div>
-                ) : recommendations.length === 0 ? (
+                ) : displayedRecords.length === 0 ? (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                         <GlassCard className="text-center py-32 border-dashed border-2 border-gray-200">
                             <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
                                 <UserSearch size={32} className="text-gray-300" />
                             </div>
                             <h3 className="text-2xl font-black text-gray-800 mb-2">Queue Clear</h3>
-                            <p className="text-gray-400 max-w-xs mx-auto">All faculty recommendations have been fully synchronized and processed.</p>
+                            <p className="text-gray-400 max-w-xs mx-auto">No {activeTab} endorsement records found in the system registry.</p>
                         </GlassCard>
                     </motion.div>
                 ) : (
                     <div className="grid gap-6">
                         <AnimatePresence mode='popLayout'>
-                            {recommendations.map((rec) => (
+                            {displayedRecords.map((rec) => (
                                 <motion.div
                                     key={rec.id}
                                     layout
@@ -141,20 +161,28 @@ const StudentApproval = () => {
                                                         {rec.created_at ? formatDistanceToNow(new Date(rec.created_at), { addSuffix: true }) : 'Now'}
                                                     </p>
                                                 </div>
-                                                <div className="flex gap-3 w-full lg:w-auto mt-6">
-                                                    <Button
-                                                        variant="ghost"
-                                                        className="flex-1 lg:flex-none py-3 px-6 text-red-500 hover:bg-red-50 font-bold"
-                                                        onClick={() => setRejectModal({ open: true, id: rec.id, reason: '' })}
-                                                    >
-                                                        Refuse
-                                                    </Button>
-                                                    <Button
-                                                        className="flex-1 lg:flex-none py-3 px-8 bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 font-bold"
-                                                        onClick={() => handleApprove(rec.id)}
-                                                    >
-                                                        Finalize Integration
-                                                    </Button>
+                                                <div className="flex gap-3 w-full lg:w-auto mt-6 justify-end items-center">
+                                                    {activeTab === 'pending' ? (
+                                                        <>
+                                                            <Button
+                                                                variant="ghost"
+                                                                className="flex-1 lg:flex-none py-3 px-6 text-red-500 hover:bg-red-50 font-bold"
+                                                                onClick={() => setRejectModal({ open: true, id: rec.id, reason: '' })}
+                                                            >
+                                                                Refuse
+                                                            </Button>
+                                                            <Button
+                                                                className={`flex-1 lg:flex-none py-3 px-8 ${rec.type === 'faculty' ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/20' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'} shadow-lg font-bold`}
+                                                                onClick={() => handleApprove(rec.id)}
+                                                            >
+                                                                {rec.type === 'faculty' ? 'Approve Faculty' : 'Finalize Integration'}
+                                                            </Button>
+                                                        </>
+                                                    ) : (
+                                                        <div className={`px-6 py-2.5 rounded-xl border font-black uppercase tracking-widest text-[11px] flex items-center gap-2 ${rec.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                                            {rec.status === 'approved' ? 'Action: Approved' : 'Action: Rejected'}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
