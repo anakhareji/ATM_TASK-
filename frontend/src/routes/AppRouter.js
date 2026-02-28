@@ -8,7 +8,7 @@ import GradeChart from "../pages/GradeChart";
 import NewsEvents from "../pages/NewsEvents";
 import Notifications from "../pages/Notifications";
 import ProtectedRoute from "../utils/ProtectedRoute";
-import Layout from "../components/layout/Layout";
+import AppGlassLayout from "../components/layout/AppGlassLayout";
 import AdminSaaSRoutes from "./AdminSaaSRoutes";
 import Users from "../pages/Users";
 import News from "../pages/News";
@@ -34,17 +34,18 @@ import FacultyPlanner from "../pages/FacultyPlanner";
 import FacultyStudents from "../pages/FacultyStudents";
 
 const LayoutWrapper = () => {
-  const role = localStorage.getItem("userRole");
+  const role = (localStorage.getItem("userRole") || "").toLowerCase();
 
-  // Admin pages provide their own AdminGlassLayout, so we skip the default Layout wrapper
+  // Admin pages provide their own AdminGlassLayout as specified in their components
   if (role === "admin") {
     return <Outlet />;
   }
 
+  // Both Faculty and Student now use the Premium Glass Layout
   return (
-    <Layout>
+    <AppGlassLayout>
       <Outlet />
-    </Layout>
+    </AppGlassLayout>
   );
 };
 

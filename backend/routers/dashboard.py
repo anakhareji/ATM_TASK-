@@ -76,13 +76,13 @@ def student_dashboard(
         Task.student_id == student_id,
         Task.deadline >= now,
         Task.deadline <= week_ahead,
-        Task.status.in_(["assigned", "returned"])
+        Task.status.in_(["published", "in_progress", "returned"])
     ).all()
     upcoming_group = db.query(Task).filter(
         Task.group_id.in_(group_ids) if group_ids else False,
         Task.deadline >= now,
         Task.deadline <= week_ahead,
-        Task.status.in_(["assigned", "returned"])
+        Task.status.in_(["published", "in_progress", "returned"])
     ).all()
 
     def countdown(d: datetime):

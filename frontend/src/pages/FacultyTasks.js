@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import {
     Plus, Calendar, AlertCircle, Trash2, Edit3,
     User, Users, CheckCircle2,
-    FileText, Eye, X, Download, Send, Search, Filter, Info
+    FileText, Eye, X, Download, Send, Search, Filter, Info, Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -28,6 +28,7 @@ const FacultyTasks = () => {
     const [submitting, setSubmitting] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
 
     const [selectedTask, setSelectedTask] = useState(null);
     const [submissions, setSubmissions] = useState([]);
@@ -43,6 +44,7 @@ const FacultyTasks = () => {
         project_id: (searchParams.get('project_id') && searchParams.get('project_id') !== "undefined") ? searchParams.get('project_id') : '',
         task_type: 'individual',
         student_id: '',
+        selected_students: [],
         group_id: '',
         max_marks: 100,
         file_url: '',
@@ -113,8 +115,8 @@ const FacultyTasks = () => {
         if (!formData.deadline) errors.deadline = "Completion deadline is mandatory";
         if (formData.max_marks <= 0) errors.max_marks = "Max marks must be a positive integer";
 
-        if (formData.task_type === 'individual' && !formData.student_id) {
-            errors.student_id = "Individual recipient must be selected";
+        if (formData.task_type === 'individual' && (!formData.selected_students || formData.selected_students.length === 0)) {
+            errors.student_id = "At least one individual recipient must be added";
         }
         if (formData.task_type === 'group' && !formData.group_id) {
             errors.group_id = "Assigned squad must be selected";
@@ -132,17 +134,103 @@ const FacultyTasks = () => {
 
         setSubmitting(true);
         const loadToast = toast.loading("Deploying task draft...");
+        
         try {
-            await API.post('/tasks', formData);
-            toast.success("Task deployed as draft. You must publish it to notify recipients.", { id: loadToast });
+            // Construct a clean payload
+            const payload = {
+                title: formData.title,
+                description: formData.description,
+                priority: formData.priority,
+                deadline: formData.deadline,
+                project_id: parseInt(formData.project_id),
+                task_type: formData.task_type,
+                max_marks: parseInt(formData.max_marks || 100),
+                file_url: formData.file_url || null,
+                late_penalty: parseFloat(formData.late_penalty || 0)
+            };
+
+            // Add targeted recipient based on type
+            if (formData.task_type === 'individual') {
+                payload.group_id = null; // Backend expects None for group_id in individual mode
+                
+                if (isEditing && selectedTask) {
+                    payload.student_id = parseInt(formData.selected_students[0]);
+                    await API.put(`/tasks/${selectedTask.id}`, payload);
+                    
+                    if (formData.selected_students.length > 1) {
+                         const extraStudents = formData.selected_students.slice(1);
+                         await Promise.all(extraStudents.map(async (sid) => {
+                             const newPayload = {...payload, student_id: parseInt(sid)};
+                             return API.post('/tasks', newPayload);
+                         }));
+                    }
+                    toast.success("Task updated successfully.", { id: loadToast });
+                } else {
+                    await Promise.all(formData.selected_students.map(async (sid) => {
+                         const newPayload = { ...payload, student_id: parseInt(sid) };
+                         return API.post('/tasks', newPayload);
+                    }));
+                    toast.success("Tasks deployed as drafts. You must publish them to notify recipients.", { id: loadToast });
+                }
+            } else {
+                payload.group_id = parseInt(formData.group_id);
+                payload.student_id = null;
+                if (isEditing && selectedTask) {
+                    await API.put(`/tasks/${selectedTask.id}`, payload);
+                    toast.success("Task updated successfully.", { id: loadToast });
+                } else {
+                    await API.post('/tasks', payload);
+                    toast.success("Task deployed as draft. You must publish it to notify recipients.", { id: loadToast });
+                }
+            }
             setShowCreateModal(false);
             setFormData(initialForm);
+            setIsEditing(false);
+            setSelectedTask(null);
             fetchInitialData();
         } catch (err) {
             toast.error(getErrorMessage(err, "Task deployment failed."), { id: loadToast });
         } finally {
             setSubmitting(false);
         }
+    };
+    
+    // Handler: Edit Task Load
+    const handleEditClick = async (task) => {
+        setIsEditing(true);
+        setSelectedTask(task);
+        if (task.project_id) {
+            try {
+                const res = await API.get(`/groups/project/${task.project_id}`);
+                setGroups(res.data || []);
+            } catch (e) {
+                setGroups([]);
+            }
+        }
+        
+        let deadlineLocal = "";
+        try {
+            if (task.deadline) {
+                const d = new Date(task.deadline);
+                deadlineLocal = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            }
+        } catch(e) {}
+        
+        setFormData({
+            title: task.title,
+            description: task.description || '',
+            priority: task.priority || 'Medium',
+            deadline: deadlineLocal,
+            project_id: task.project_id || '',
+            task_type: task.task_type || 'individual',
+            student_id: '',
+            selected_students: task.student_id ? [String(task.student_id)] : [],
+            group_id: task.group_id || '',
+            max_marks: task.max_marks || 100,
+            file_url: task.file_url || '',
+            late_penalty: task.late_penalty || 0
+        });
+        setShowCreateModal(true);
     };
 
     // Handler: Publish
@@ -266,7 +354,12 @@ const FacultyTasks = () => {
                         <option value="published">Active (Published)</option>
                         <option value="submitted">Needs Review</option>
                     </select>
-                    <Button icon={<Plus size={20} />} onClick={() => setShowCreateModal(true)} className="bg-emerald-600 hover:bg-emerald-700 shadow-xl shadow-emerald-100 px-8">
+                    <Button icon={<Plus size={20} />} onClick={() => {
+                        setIsEditing(false);
+                        setSelectedTask(null);
+                        setFormData(initialForm);
+                        setShowCreateModal(true);
+                    }} className="bg-emerald-600 hover:bg-emerald-700 shadow-xl shadow-emerald-100 px-8">
                         Deploy Task
                     </Button>
                 </div>
@@ -287,6 +380,7 @@ const FacultyTasks = () => {
                                 key={task.id} task={task}
                                 onPublish={() => handlePublish(task.id)}
                                 onDelete={() => handleDelete(task.id)}
+                                onEdit={() => handleEditClick(task)}
                                 onViewSubmissions={() => handleViewSubmissions(task)}
                             />
                         ))}
@@ -298,10 +392,10 @@ const FacultyTasks = () => {
             <AnimatePresence>
                 {showCreateModal && (
                     <CreateTaskModal
-                        isOpen={showCreateModal} onClose={() => setShowCreateModal(false)}
+                        isOpen={showCreateModal} onClose={() => { setShowCreateModal(false); setIsEditing(false); setSelectedTask(null); }}
                         onSubmit={handleCreateTask} formData={formData} setFormData={setFormData}
                         formErrors={formErrors} projects={projects} students={students} groups={groups}
-                        onProjectChange={handleProjectChange} submitting={submitting}
+                        onProjectChange={handleProjectChange} submitting={submitting} isEditing={isEditing}
                     />
                 )}
 
@@ -317,7 +411,7 @@ const FacultyTasks = () => {
     );
 };
 
-const TaskCard = ({ task, onPublish, onDelete, onViewSubmissions }) => {
+const TaskCard = ({ task, onPublish, onDelete, onEdit, onViewSubmissions }) => {
     const isOverdue = new Date(task.deadline) < new Date();
     return (
         <motion.div layout variants={cardEntrance}>
@@ -353,6 +447,9 @@ const TaskCard = ({ task, onPublish, onDelete, onViewSubmissions }) => {
                             </div>
                         </div>
                         <div className="flex gap-2">
+                            <button onClick={onEdit} className="p-3 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-2xl transition-all">
+                                <Edit3 size={20} />
+                            </button>
                             {task.status === 'draft' && (
                                 <button onClick={onPublish} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all">
                                     <Send size={14} /> Global Publish
@@ -383,6 +480,18 @@ const TaskCard = ({ task, onPublish, onDelete, onViewSubmissions }) => {
                                 <p className="text-xs font-black">{task.max_marks} Points</p>
                             </div>
                         </div>
+                        {task.started_at && (
+                            <div className="col-span-2 p-4 bg-emerald-50/50 text-emerald-600 rounded-2xl flex items-center justify-between border border-emerald-100/50">
+                                <div className="flex items-center gap-3">
+                                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                                   <div>
+                                       <p className="text-[8px] uppercase font-black opacity-60 tracking-wider">Operational Intake Pulse</p>
+                                       <p className="text-xs font-bold italic">{new Date(task.started_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                                   </div>
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Active Phase</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -404,7 +513,7 @@ const TaskCard = ({ task, onPublish, onDelete, onViewSubmissions }) => {
     );
 };
 
-const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, formErrors, projects, students, groups, onProjectChange, submitting }) => (
+const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, formErrors, projects, students, groups, onProjectChange, submitting, isEditing }) => (
     <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -420,8 +529,8 @@ const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, for
         >
             <div className="flex justify-between items-center mb-10">
                 <div>
-                    <h2 className="text-3xl font-black text-gray-800 tracking-tight flex items-center gap-3"><Plus className="text-emerald-600" /> New Assignment</h2>
-                    <p className="text-gray-400 font-bold text-sm mt-1">Configure objective parameters and target recipients</p>
+                    <h2 className="text-3xl font-black text-gray-800 tracking-tight flex items-center gap-3"><Plus className="text-emerald-600" /> {isEditing ? 'Update Task' : 'New Assignment'}</h2>
+                    <p className="text-gray-400 font-bold text-sm mt-1">{isEditing ? 'Modify your mission parameters' : 'Configure objective parameters and target recipients'}</p>
                 </div>
                 <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-400"><X size={24} /></button>
             </div>
@@ -461,22 +570,55 @@ const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, for
                 <div className="space-y-3">
                     <label className="text-xs font-black uppercase tracking-widest text-gray-400">Assigned Recipient <span className="text-rose-500">*</span></label>
                     {formData.task_type === 'individual' ? (
-                        <select
-                            className={`w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none font-bold text-sm ${formErrors.student_id ? 'border-rose-300 ring-2 ring-rose-100' : 'border-gray-100 focus:ring-2 focus:ring-emerald-500'}`}
-                            value={formData.student_id}
-                            onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
-                        >
-                            <option value="">Select Student...</option>
-                            {(() => {
-                                const selectedProj = projects.find(p => String(p.id || p.project_id) === String(formData.project_id));
-                                let filtered = students;
-                                if (selectedProj) {
-                                    if (selectedProj.department_id) filtered = filtered.filter(s => String(s.department_id) === String(selectedProj.department_id));
-                                    if (selectedProj.course_id) filtered = filtered.filter(s => String(s.course_id) === String(selectedProj.course_id));
-                                }
-                                return filtered.map(s => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>);
-                            })()}
-                        </select>
+                        <div className="space-y-4">
+                            <div className="flex gap-2 relative">
+                                <select
+                                    className={`w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none font-bold text-sm ${formErrors.student_id ? 'border-rose-300 ring-2 ring-rose-100' : 'border-gray-100 focus:ring-2 focus:ring-emerald-500'}`}
+                                    value={formData.student_id}
+                                    onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
+                                >
+                                    <option value="">Select Student...</option>
+                                    {(() => {
+                                        const selectedProj = projects.find(p => String(p.id || p.project_id) === String(formData.project_id));
+                                        let filtered = students;
+                                        if (selectedProj) {
+                                            if (selectedProj.department_id) filtered = filtered.filter(s => String(s.department_id) === String(selectedProj.department_id));
+                                            if (selectedProj.course_id) filtered = filtered.filter(s => !s.course_id || String(s.course_id) === String(selectedProj.course_id));
+                                        }
+                                        filtered = filtered.filter(s => !(formData.selected_students || []).includes(String(s.id)));
+                                        return filtered.map(s => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>);
+                                    })()}
+                                </select>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (formData.student_id && !(formData.selected_students || []).includes(formData.student_id)) {
+                                            setFormData(prev => ({ ...prev, selected_students: [...(prev.selected_students || []), prev.student_id], student_id: '' }));
+                                        }
+                                    }}
+                                    className="px-5 bg-emerald-100 text-emerald-600 hover:bg-emerald-200 rounded-2xl transition-colors font-black flex items-center justify-center shadow-sm"
+                                >
+                                    <Plus size={20} />
+                                </button>
+                            </div>
+                            
+                            {(formData.selected_students && formData.selected_students.length > 0) && (
+                                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 max-h-40 overflow-y-auto custom-scrollbar flex flex-col gap-2 shadow-inner">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1 px-1">Selected Recipients ({formData.selected_students.length})</p>
+                                    {formData.selected_students.map(sid => {
+                                        const stu = students.find(s => String(s.id) === String(sid));
+                                        return (
+                                            <div key={sid} className="flex justify-between items-center bg-white px-4 py-3 rounded-xl shadow-sm text-sm font-bold border border-gray-100 group">
+                                                <span className="text-gray-700">{stu ? `${stu.name} (${stu.email})` : `Student ID: ${sid}`}</span>
+                                                <button type="button" onClick={() => setFormData({...formData, selected_students: formData.selected_students.filter(id => id !== sid)})} className="text-gray-300 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors">
+                                                    <X size={16} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     ) : (
                         <select
                             className={`w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none font-bold text-sm disabled:opacity-50 ${formErrors.group_id ? 'border-rose-300 ring-2 ring-rose-100' : 'border-gray-100 focus:ring-2 focus:ring-emerald-500'}`}
@@ -538,7 +680,7 @@ const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, for
                 <div className="flex gap-4 pt-6">
                     <Button type="button" variant="secondary" className="flex-1 py-5" onClick={onClose}>Abort Mission</Button>
                     <Button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700 py-5 shadow-xl shadow-emerald-100" disabled={submitting}>
-                        {submitting ? 'Initializing...' : 'Establish Draft'}
+                        {submitting ? 'Initializing...' : (isEditing ? 'Update' : 'Establish Draft')}
                     </Button>
                 </div>
             </form>
@@ -598,11 +740,31 @@ const SubmissionsModal = ({ isOpen, onClose, task, submissions, gradeData, setGr
                                     <p className="text-sm text-gray-600 font-medium leading-relaxed italic">" {sub.submission_text || "Zero payload detected."} "</p>
                                 </div>
 
-                                {sub.file_url && (
-                                    <a href={sub.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-3 px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all">
-                                        <Download size={16} /> Open Attachment
-                                    </a>
-                                )}
+                                <div className="flex flex-wrap items-center gap-6 mt-4 pt-4 border-t border-gray-100 mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1 bg-emerald-100 text-emerald-600 rounded-lg"><Clock size={12} /></div>
+                                        <div>
+                                            <p className="text-[7px] font-black uppercase text-gray-400 tracking-widest">Intake Pulse</p>
+                                            <p className="text-[10px] font-bold text-gray-600">
+                                                {sub.task_started_at ? new Date(sub.task_started_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1 bg-blue-100 text-blue-600 rounded-lg"><Send size={12} /></div>
+                                        <div>
+                                            <p className="text-[7px] font-black uppercase text-gray-400 tracking-widest">Transmission</p>
+                                            <p className="text-[10px] font-bold text-gray-600">
+                                                {new Date(sub.submitted_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {sub.file_url && (
+                                        <a href={sub.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-3 px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all ml-auto">
+                                            <Download size={16} /> Open Payload
+                                        </a>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="w-full xl:w-80 flex flex-col justify-center gap-4 border-t xl:border-t-0 xl:border-l border-gray-100 pt-6 xl:pt-0 xl:pl-10">
