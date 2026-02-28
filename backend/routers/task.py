@@ -304,9 +304,15 @@ def get_my_tasks(
             return res
 
         elif role == FACULTY:
+            # Join with Project and User to get titles and names
             tasks = db.query(Task).filter(Task.faculty_id == user_id).order_by(Task.created_at.desc()).all()
             res = []
             for t in tasks:
+                # Manually fetch to ensure simple serialization for now, or use joinedload
+                proj = db.query(Project).filter(Project.id == t.project_id).first()
+                std = db.query(User).filter(User.id == t.student_id).first() if t.student_id else None
+                grp = db.query(ProjectGroup).filter(ProjectGroup.id == t.group_id).first() if t.group_id else None
+                
                 t_data = {
                     "id": t.id,
                     "title": t.title,
@@ -316,10 +322,15 @@ def get_my_tasks(
                     "max_marks": t.max_marks,
                     "task_type": t.task_type,
                     "project_id": t.project_id,
+                    "project_title": proj.title if proj else "Unknown Track",
+                    "student_id": t.student_id,
+                    "student_name": std.name if std else None,
+                    "group_id": t.group_id,
+                    "group_name": grp.name if grp else None,
                     "status": t.status,
                     "file_url": t.file_url,
                     "created_at": t.created_at,
-                    "dynamic_status": t.status # No submissions check needed for faculty listing usually
+                    "dynamic_status": t.status
                 }
                 res.append(t_data)
             return res

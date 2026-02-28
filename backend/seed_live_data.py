@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
-import models.academic
+# import models.academic (Legacy removed)
 import models.academic_saas
 from models.user import User
 from models.project import Project

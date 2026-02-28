@@ -10,8 +10,8 @@ class Project(Base):
     title = Column(String(150), nullable=False)
     description = Column(String(500))
     
-    department_id = Column(Integer, ForeignKey("departments.id"))
-    course_id = Column(Integer, ForeignKey("courses.id"))
+    department_id = Column(Integer, ForeignKey("departments_v1.id"))
+    course_id = Column(Integer, ForeignKey("courses_v1.id"))
     semester = Column(String(50))  # kept as varchar to match existing DB schema
     lead_faculty_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     academic_year = Column(String(20), nullable=True)

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 from database import SessionLocal
 from models.user import User
@@ -11,8 +12,8 @@ from models.project import Project
 from models.project_faculty import ProjectFaculty
 from models.student_performance import StudentPerformance
 from models.task_submission import TaskSubmission
-from schemas.user_schemas import ChangeRoleRequest, UserCreateRequest
-from models.academic import Department, Course
+from schemas.user_schemas import ChangeRoleRequest, UserCreateRequest, UserUpdateRequest
+from models.academic_saas import DepartmentV1 as Department, CourseV1 as Course, Program as Program
 from utils.security import admin_required, hash_password
 from sqlalchemy import func, desc
 
@@ -125,9 +126,12 @@ def list_users(
             # Academic Structure
             "department_id": u.department_id,
             "course_id": u.course_id,
+            "program_id": u.program_id,
+            "batch": u.batch,
             "current_semester": u.current_semester,
             "department_name": db.query(Department.name).filter(Department.id == u.department_id).scalar() if u.department_id else None,
-            "course_name": db.query(Course.name).filter(Course.id == u.course_id).scalar() if u.course_id else None
+            "course_name": db.query(Course.name).filter(Course.id == u.course_id).scalar() if u.course_id else None,
+            "program_name": db.query(Program.name).filter(Program.id == u.program_id).scalar() if u.program_id else None
         }
         for u in items
     ]
@@ -194,9 +198,7 @@ def change_role(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    if data.role != "student":
-        raise HTTPException(status_code=403, detail="Admin cannot set role other than student")
-    user.role = "student"
+    user.role = data.role
     db.commit()
 
     db.add(AuditLog(
@@ -241,7 +243,9 @@ def get_admin_dashboard_stats(db: Session = Depends(get_db)):
     total_students = db.query(User).filter(User.role == "student").count()
     
     active_students = db.query(User).filter(User.role == "student", User.status == "active").count()
-    pending_approvals = db.query(StudentRecommendation).filter(StudentRecommendation.status == "pending").count()
+    pending_student_approvals = db.query(StudentRecommendation).filter(StudentRecommendation.status == "pending").count()
+    pending_faculty_approvals = db.query(User).filter(User.role == "faculty", User.status == "inactive").count()
+    pending_approvals = pending_student_approvals + pending_faculty_approvals
     
     total_projects = db.query(Project).count()
     total_tasks = db.query(Task).count()
@@ -339,6 +343,7 @@ def list_recommendations(db: Session = Depends(get_db)):
         faculty = db.query(User).filter(User.id == r.faculty_id).first()
         data.append({
             "id": r.id,
+            "type": "student",
             "name": r.name,
             "email": r.email,
             "department": r.department,
@@ -454,18 +459,34 @@ def update_settings(data: dict, db: Session = Depends(get_db)):
 def create_user(data: UserCreateRequest, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == data.email).first()
     if existing: raise HTTPException(400, "Email already exists")
-    if hasattr(data, "role") and data.role != "student":
-        raise HTTPException(status_code=403, detail="Admin can only create student accounts")
+    
     new_user = User(
         name=data.name,
         email=data.email,
         password=hash_password(data.password),
-        role="student",
-        status="active"
+        role=data.role,
+        status="active",
+        department_id=data.department_id,
+        program_id=data.program_id,
+        course_id=data.course_id,
+        batch=data.batch,
+        current_semester=data.current_semester
     )
     db.add(new_user)
     db.commit()
     return {"message": "User created successfully", "id": new_user.id}
+
+@router.put("/users/{user_id}")
+def update_user(user_id: int, data: UserUpdateRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user: raise HTTPException(404, "User not found")
+    
+    update_data = data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(user, key, value)
+        
+    db.commit()
+    return {"message": "User updated successfully"}
 
 # ======================
 # GLOBAL PROJECT MONITORING
@@ -502,6 +523,8 @@ def list_all_projects(
             "description": p.description,
             "faculty_name": faculty.name if faculty else "Unknown",
             "task_count": task_count,
+            "status": p.status,
+            "academic_year": p.academic_year,
             "created_at": p.created_at,
             "department_id": p.department_id,
             "department_name": db.query(Department.name).filter(Department.id == p.department_id).scalar() if p.department_id else None
@@ -531,9 +554,16 @@ def create_project_admin(data: dict, db: Session = Depends(get_db), current_admi
         raise HTTPException(400, "Title is required")
     p = Project(
         title=title,
-        description=(data or {}).get("description"),
-        department_id=(data or {}).get("department_id"),
-        course_id=(data or {}).get("course_id"),
+        description=data.get("description"),
+        department_id=data.get("department_id"),
+        course_id=data.get("course_id"),
+        lead_faculty_id=data.get("lead_faculty_id"),
+        academic_year=data.get("academic_year"),
+        start_date=datetime.strptime(data.get("start_date"), "%Y-%m-%d").date() if data.get("start_date") else None,
+        end_date=datetime.strptime(data.get("end_date"), "%Y-%m-%d").date() if data.get("end_date") else None,
+        status=data.get("status", "Draft"),
+        visibility=data.get("visibility", "Department Only"),
+        allow_tasks=data.get("allow_tasks", False),
         created_by=current_admin["user_id"]
     )
     db.add(p)
@@ -542,11 +572,10 @@ def create_project_admin(data: dict, db: Session = Depends(get_db), current_admi
     
     lead_faculty_id = data.get("lead_faculty_id")
     if lead_faculty_id:
+        # Also maintain ProjectFaculty mapping for compatibility with older components
         pf = ProjectFaculty(
             project_id=p.id,
-            faculty_id=lead_faculty_id,
-            role="Lead",
-            assigned_by=current_admin["user_id"]
+            faculty_id=lead_faculty_id
         )
         db.add(pf)
 

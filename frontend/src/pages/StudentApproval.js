@@ -4,8 +4,8 @@ import API from '../api/axios';
 import PageHeader from '../components/ui/PageHeader';
 import Button from '../components/ui/Button';
 import {
-    Check, X, UserSearch, Mail,
-    GraduationCap, AlertCircle, Clock
+    UserSearch, Mail,
+    GraduationCap, AlertCircle, Clock, Shield
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -120,20 +120,20 @@ const StudentApproval = () => {
                                         <div className="flex flex-col lg:row justify-between lg:flex-row gap-8">
                                             <div className="flex-1 flex gap-6">
                                                 <div className="relative">
-                                                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-emerald-500 p-0.5 mt-1">
-                                                        <div className="w-full h-full rounded-[14px] bg-white flex items-center justify-center text-indigo-600">
-                                                            <GraduationCap size={28} />
+                                                    <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${rec.type === 'faculty' ? 'from-amber-500 to-orange-500' : 'from-indigo-500 to-emerald-500'} p-0.5 mt-1`}>
+                                                        <div className={`w-full h-full rounded-[14px] bg-white flex items-center justify-center ${rec.type === 'faculty' ? 'text-amber-600' : 'text-indigo-600'}`}>
+                                                            {rec.type === 'faculty' ? <Shield size={28} /> : <GraduationCap size={28} />}
                                                         </div>
                                                     </div>
-                                                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-amber-400 border-4 border-white rounded-full flex items-center justify-center shadow-sm">
-                                                        <Clock size={10} className="text-white" />
+                                                    <div className={`absolute -bottom-1 -right-1 w-6 h-6 ${rec.type === 'faculty' ? 'bg-amber-500' : 'bg-amber-400'} border-4 border-white rounded-full flex items-center justify-center shadow-sm`}>
+                                                        {rec.type === 'faculty' ? <Shield size={10} className="text-white" /> : <Clock size={10} className="text-white" />}
                                                     </div>
                                                 </div>
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-3 mb-1">
                                                         <h3 className="text-xl font-black text-gray-800">{rec.name}</h3>
-                                                        <div className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] uppercase font-bold tracking-widest rounded-lg border border-indigo-100">
-                                                            Level: {rec.semester}
+                                                        <div className={`px-2 py-0.5 ${rec.type === 'faculty' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-indigo-50 text-indigo-700 border-indigo-100'} text-[10px] uppercase font-bold tracking-widest rounded-lg border`}>
+                                                            {rec.type === 'faculty' ? 'Faculty Role' : `Level: ${rec.semester}`}
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-wrap gap-x-5 gap-y-2 mb-4">
@@ -161,28 +161,20 @@ const StudentApproval = () => {
                                                         {rec.created_at ? formatDistanceToNow(new Date(rec.created_at), { addSuffix: true }) : 'Now'}
                                                     </p>
                                                 </div>
-                                                <div className="flex gap-3 w-full lg:w-auto mt-6 justify-end items-center">
-                                                    {activeTab === 'pending' ? (
-                                                        <>
-                                                            <Button
-                                                                variant="ghost"
-                                                                className="flex-1 lg:flex-none py-3 px-6 text-red-500 hover:bg-red-50 font-bold"
-                                                                onClick={() => setRejectModal({ open: true, id: rec.id, reason: '' })}
-                                                            >
-                                                                Refuse
-                                                            </Button>
-                                                            <Button
-                                                                className={`flex-1 lg:flex-none py-3 px-8 ${rec.type === 'faculty' ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/20' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'} shadow-lg font-bold`}
-                                                                onClick={() => handleApprove(rec.id)}
-                                                            >
-                                                                {rec.type === 'faculty' ? 'Approve Faculty' : 'Finalize Integration'}
-                                                            </Button>
-                                                        </>
-                                                    ) : (
-                                                        <div className={`px-6 py-2.5 rounded-xl border font-black uppercase tracking-widest text-[11px] flex items-center gap-2 ${rec.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                                                            {rec.status === 'approved' ? 'Action: Approved' : 'Action: Rejected'}
-                                                        </div>
-                                                    )}
+                                                <div className="flex gap-3 w-full lg:w-auto mt-6">
+                                                    <Button
+                                                        variant="ghost"
+                                                        className="flex-1 lg:flex-none py-3 px-6 text-red-500 hover:bg-red-50 font-bold"
+                                                        onClick={() => setRejectModal({ open: true, id: rec.id, reason: '' })}
+                                                    >
+                                                        Refuse
+                                                    </Button>
+                                                    <Button
+                                                        className={`flex-1 lg:flex-none py-3 px-8 ${rec.type === 'faculty' ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-500/20' : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'} shadow-lg font-bold`}
+                                                        onClick={() => handleApprove(rec.id)}
+                                                    >
+                                                        {rec.type === 'faculty' ? 'Approve Faculty' : 'Finalize Integration'}
+                                                    </Button>
                                                 </div>
                                             </div>
                                         </div>

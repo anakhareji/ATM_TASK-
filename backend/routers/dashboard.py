@@ -34,7 +34,7 @@ def student_dashboard(
     student_id = current_user["user_id"]
     student = db.query(User).get(student_id)
     
-    from models.academic import Department, Course
+    from models.academic_saas import DepartmentV1 as Department, CourseV1 as Course
     dept = db.query(Department).get(student.department_id) if student.department_id else None
     course = db.query(Course).get(student.course_id) if student.course_id else None
 

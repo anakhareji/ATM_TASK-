@@ -14,7 +14,7 @@ from models.group import ProjectGroup, GroupMember, ContributionLog
 from models.audit_log import AuditLog
 from models.notification import Notification
 from models.student_recommendation import StudentRecommendation
-from models.academic import Department, Course
+# from models.academic import Department, Course (Legacy removed)
 from models.academic_saas import (
     Organization, DepartmentV1, Program, CourseV1, AcademicYear, SemesterV1, Section,
     Role, Permission, RolePermission, StructureVersion, Batch
@@ -84,6 +84,7 @@ app.include_router(faculty_router, prefix="/api/faculty")
 app.include_router(audit_router, prefix="/api/admin")
 app.include_router(academic_router, prefix="/api/academic")
 app.include_router(academic_structure_v1_router, prefix="/api/v1/academic-structure")
+app.include_router(academic_structure_v1_router, prefix="/api/v1/academic_structure")
 app.include_router(admin_v1_router, prefix="/api/v1/admin")
 
 # -------- Root --------

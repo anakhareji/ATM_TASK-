@@ -12,7 +12,7 @@ print("\nTesting /api/admin/users query...")
 try:
     from database import SessionLocal
     from models.user import User
-    from models.academic import Department, Course
+    from models.academic_saas import DepartmentV1 as Department, CourseV1 as Course
     db = SessionLocal()
     users = db.query(User).limit(3).all()
     for u in users:
@@ -27,7 +27,7 @@ except Exception as e:
 print("\nTesting /api/academic/departments query...")
 try:
     from database import SessionLocal
-    from models.academic import Department, Course
+    from models.academic_saas import DepartmentV1 as Department, CourseV1 as Course
     db = SessionLocal()
     depts = db.query(Department).all()
     print(f"  Departments found: {len(depts)}")
