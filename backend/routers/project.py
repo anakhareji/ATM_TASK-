@@ -149,6 +149,9 @@ def view_assigned_projects_for_faculty(
         {
             "project_id": project.id,
             "title": project.title,
+            "description": project.description,
+            "visibility": project.visibility,
+            "academic_year": project.academic_year,
             "department_id": getattr(project, "department_id", None),
             "department_name": db.query(Department.name).filter(Department.id == project.department_id).scalar() if getattr(project, "department_id", None) else None,
             "course_id": getattr(project, "course_id", None),
