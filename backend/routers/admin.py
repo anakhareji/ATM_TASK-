@@ -369,6 +369,23 @@ def list_recommendations(db: Session = Depends(get_db)):
             "faculty_name": "System",
             "created_at": f.created_at
         })
+
+    # Add pending student self-registrations
+    pending_students = db.query(User).filter(User.role == "student", User.status == "inactive").all()
+    for s in pending_students:
+        data.append({
+            "id": f"selfregstudent_{s.id}",
+            "type": "student",
+            "name": s.name,
+            "email": s.email,
+            "department": "Self-Registered",
+            "semester": "Unknown",
+            "remarks": "Self-registered student account requiring assignment",
+            "status": "pending",
+            "faculty_name": "Student Themselves",
+            "created_at": s.created_at
+        })
+
     return data
 
 @router.post("/recommendations/{rec_id}/approve")
@@ -383,17 +400,35 @@ def approve_recommendation(rec_id: str, db: Session = Depends(get_db), current_a
         db.commit()
         return {"message": "Faculty approved and account activated"}
 
-    # Student workflow
+    if rec_id.startswith("selfregstudent_"):
+        user_id = int(rec_id.split("_")[1])
+        user = db.query(User).filter(User.id == user_id, User.role == "student").first()
+        if not user: raise HTTPException(404, "Student not found")
+        user.status = "active"
+        db.commit()
+        db.add(AuditLog(user_id=current_admin["user_id"], action="approve_self_reg", entity_type="user", entity_id=user_id))
+        db.commit()
+        return {"message": "Student account activated"}
+
+    # Student workflow (Recommendation approach)
     rec = db.query(StudentRecommendation).filter(StudentRecommendation.id == int(rec_id)).first()
     if not rec: raise HTTPException(404, "Not found")
     
+    # Look up department ID if a department string was specified
+    dept_id = None
+    if rec.department:
+        dept = db.query(Department).filter(Department.name == rec.department).first()
+        if dept: dept_id = dept.id
+
     # Create the user
     new_user = User(
         name=rec.name,
         email=rec.email,
         password=hash_password("Welcome@123"), # Default password
         role="student",
-        status="active"
+        status="active",
+        department_id=dept_id,
+        created_by_faculty_id=rec.faculty_id
     )
     db.add(new_user)
     rec.status = "approved"
@@ -419,6 +454,16 @@ def reject_recommendation(rec_id: str, data: dict = None, db: Session = Depends(
         db.add(AuditLog(user_id=current_admin["user_id"], action="reject_faculty", entity_type="user", entity_id=user_id))
         db.commit()
         return {"message": "Faculty application rejected"}
+
+    if rec_id.startswith("selfregstudent_"):
+        user_id = int(rec_id.split("_")[1])
+        user = db.query(User).filter(User.id == user_id, User.role == "student").first()
+        if not user: raise HTTPException(404, "Student not found")
+        user.status = "rejected"
+        db.commit()
+        db.add(AuditLog(user_id=current_admin["user_id"], action="reject_self_reg", entity_type="user", entity_id=user_id))
+        db.commit()
+        return {"message": "Student application rejected"}
 
     rec = db.query(StudentRecommendation).filter(StudentRecommendation.id == int(rec_id)).first()
     if not rec: raise HTTPException(404, "Not found")

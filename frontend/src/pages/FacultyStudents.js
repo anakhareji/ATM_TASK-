@@ -24,7 +24,7 @@ import { getErrorMessage } from "../utils/errorHelpers";
 const FacultyStudents = () => {
     // Data States
     const [students, setStudents] = useState([]);
-    const [departments, setDepartments] = useState([]);
+    const [departments, setDepartments] = useState([]); // Array to store fetched departmments
     const [loading, setLoading] = useState(true);
 
     // UI States

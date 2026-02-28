@@ -132,14 +132,25 @@ def get_my_students(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # Admins get to see all students, Faculty only their department's students
+    if current_user["role"] == "admin":
+        return [
+            {
+                "id": s.id,
+                "name": s.name,
+                "email": s.email,
+                "role": s.role,
+                "status": s.status,
+                "department_id": s.department_id,
+                "course_id": s.course_id,
+                "semester": s.current_semester
+            }
+            for s in db.query(User).filter(User.role == "student", User.status == "active").all()
+        ]
+
     if current_user["role"] != FACULTY:
         raise HTTPException(status_code=403, detail="Faculty access only")
     
-    # 1. Students created by this faculty
-    created_students = db.query(User).filter(
-        User.created_by_faculty_id == current_user["user_id"]
-    ).all()
-
     assigned_projects_query = db.query(Project).outerjoin(
         ProjectFaculty, ProjectFaculty.project_id == Project.id
     ).filter(
@@ -151,24 +162,18 @@ def get_my_students(
     dept_ids = {p.department_id for p in assigned_projects_query if p.department_id}
     
     faculty_user = db.query(User).filter(User.id == current_user["user_id"]).first()
-    if faculty_user and getattr(faculty_user, 'department_id', None):
+    if faculty_user and faculty_user.department_id:
         dept_ids.add(faculty_user.department_id)
         
-    query = db.query(User).filter(User.role == "student", User.status == "active")
-    
-    # Only show students in the faculty's departments or their projects' departments
-    if dept_ids:
-        query = query.filter(User.department_id.in_(dept_ids))
-        assigned_students = query.all()
-    else:
-        assigned_students = []
+    if not dept_ids:
+        return []
 
-    # Merge and deduplicate by user ID
-    all_students_dict = {s.id: s for s in created_students}
-    for s in assigned_students:
-        all_students_dict[s.id] = s
-        
-    all_students = list(all_students_dict.values())
+    # Return all active students in the faculty's identified departments
+    all_students = db.query(User).filter(
+        User.role == "student", 
+        User.status == "active",
+        User.department_id.in_(dept_ids)
+    ).all()
 
     return [
         {

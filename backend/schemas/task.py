@@ -17,6 +17,19 @@ class TaskCreateRequest(BaseModel):
     file_url: Optional[str] = None
     late_penalty: Optional[float] = 0.0
 
+class TaskUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    priority: Optional[str] = None
+    deadline: Optional[datetime] = None
+    project_id: Optional[int] = None
+    max_marks: Optional[int] = None
+    task_type: Optional[str] = None
+    student_id: Optional[int] = None
+    group_id: Optional[int] = None
+    file_url: Optional[str] = None
+    late_penalty: Optional[float] = None
+
 class TaskReviewRequest(BaseModel):
     marks: int
     remarks: Optional[str] = None

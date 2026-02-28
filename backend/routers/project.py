@@ -132,18 +132,21 @@ def view_assigned_projects_for_faculty(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    if current_user["role"] != FACULTY:
+    if current_user["role"] not in [FACULTY, ADMIN]:
         raise HTTPException(
             status_code=403,
-            detail="Only faculty can view assigned projects"
+            detail="Faculty or Admin only"
         )
 
-    projects = (
-        db.query(Project)
-        .join(ProjectFaculty, Project.id == ProjectFaculty.project_id)
-        .filter(ProjectFaculty.faculty_id == current_user["user_id"])
-        .all()
-    )
+    if current_user["role"] == ADMIN:
+        projects = db.query(Project).all()
+    else:
+        projects = (
+            db.query(Project)
+            .join(ProjectFaculty, Project.id == ProjectFaculty.project_id)
+            .filter(ProjectFaculty.faculty_id == current_user["user_id"])
+            .all()
+        )
 
     return [
         {

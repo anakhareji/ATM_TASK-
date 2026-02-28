@@ -20,6 +20,7 @@ from models.academic_saas import (
     Role, Permission, RolePermission, StructureVersion, Batch
 )
 from models.settings import SystemSettings
+from models.task_comment import TaskComment
 
 # -------- Import Routers --------
 from routers.auth import router as auth_router

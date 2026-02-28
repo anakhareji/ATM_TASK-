@@ -1,0 +1,40 @@
+Traceback (most recent call last):
+  File "C:\Users\Avin\Documents\Anakha\ATM_TASK-\backend\routers\todo.py", line 73, in view_todos
+    mark_overdue_todos(db, current_user["user_id"])
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Avin\Documents\Anakha\ATM_TASK-\backend\routers\todo.py", line 30, in mark_overdue_todos
+    db.query(Todo).filter(
+    ~~~~~~~~^^^^^^
+  File "C:\Users\Avin\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\orm\session.py", line 2941, in query
+    return self._query_cls(entities, self, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Avin\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\orm\query.py", line 276, in __init__
+    self._set_entities(entities)
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\Avin\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\orm\query.py", line 289, in _set_entities
+    coercions.expect(
+    ~~~~~~~~~~~~~~~~^
+        roles.ColumnsClauseRole,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        post_inspect=True,
+        ^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Avin\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\sql\coercions.py", line 389, in expect
+    insp._post_inspect
+  File "C:\Users\Avin\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 1338, in __get__
+    obj.__dict__[self.__name__] = result = self.fget(obj)
+                                           ~~~~~~~~~^^^^^
+  File "C:\Users\Avin\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\orm\mapper.py", line 2733, in _post_inspect
+    self._check_configure()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\Avin\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\orm\mapper.py", line 2410, in _check_configure
+    _configure_registries({self.registry}, cascade=True)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Avin\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\orm\mapper.py", line 4227, in _configure_registries
+    _do_configure_registries(registries, cascade)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Avin\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\sqlalchemy\orm\mapper.py", line 4264, in _do_configure_registries
+    raise e
+sqlalchemy.exc.InvalidRequestError: One or more mappers failed to initialize - can't proceed with initialization of other mappers. Triggering mapper: 'Mapper[TaskSubmission(task_submissions)]'. Original exception was: Foreign key associated with column 'task_submissions.task_id' could not find table 'tasks' with which to generate a foreign key to target column 'id'
