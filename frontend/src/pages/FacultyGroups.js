@@ -37,6 +37,8 @@ const FacultyGroups = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
     const [newGroupName, setNewGroupName] = useState('');
+    const [selectedStudents, setSelectedStudents] = useState([]);
+    const [leaderId, setLeaderId] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
 
     // Body Scroll Lock
@@ -122,16 +124,35 @@ const FacultyGroups = () => {
             return;
         }
 
+        if (selectedStudents.length === 0) {
+            toast.error("Squad is understaffed. Recruit members first.");
+            return;
+        }
+
+        if (!leaderId) {
+            toast.error("A squad requires a leader. Assign one to deploy.");
+            return;
+        }
+
+        const sidArray = selectedStudents.map(s => parseInt(s.id));
+
         setActionLoading(true);
         const loadToast = toast.loading("Initializing group metadata...");
         try {
-            await API.post('/groups', { project_id: projectId, name: newGroupName });
+            await API.post('/groups', { 
+                project_id: projectId, 
+                name: newGroupName,
+                student_ids: sidArray,
+                leader_id: parseInt(leaderId)
+            });
 
             // Toast success
             toast.success(`Group "${newGroupName}" established successfully.`, { id: loadToast });
 
             // Refetch and cleanup
             setNewGroupName('');
+            setSelectedStudents([]);
+            setLeaderId("");
             setShowCreateModal(false);
             fetchGroups();
         } catch (err) {
@@ -139,6 +160,18 @@ const FacultyGroups = () => {
         } finally {
             setActionLoading(false);
         }
+    };
+
+    const toggleStudentSelection = (student) => {
+        setSelectedStudents(prev => {
+            const isSelected = prev.some(s => s.id === student.id);
+            if (isSelected) {
+                // If it was the leader, reset it
+                if (String(student.id) === String(leaderId)) setLeaderId("");
+                return prev.filter(s => s.id !== student.id);
+            }
+            return [...prev, student];
+        });
     };
 
     const handleDeleteGroup = async (groupId) => {
@@ -156,7 +189,7 @@ const FacultyGroups = () => {
 
     // Filters
     const filteredGroups = useMemo(() => {
-        return groups.filter(g => g.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        return groups.filter(g => (g.name || "").toLowerCase().includes(searchQuery.toLowerCase()));
     }, [groups, searchQuery]);
 
     if (loadingInitial) return (
@@ -236,7 +269,13 @@ const FacultyGroups = () => {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {filteredGroups.map(group => (
+                        {filteredGroups.length === 0 ? (
+                            <div className="col-span-full py-20 bg-gray-50/50 rounded-[2rem] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center grayscale opacity-50">
+                                <Search size={40} className="text-gray-300 mb-4" />
+                                <h3 className="text-lg font-black text-gray-400 uppercase tracking-widest">No matching squadrons</h3>
+                                <p className="text-xs text-gray-300 font-bold mt-1">Refine your search parameters or recruit a new squad.</p>
+                            </div>
+                        ) : filteredGroups.map(group => (
                             <GroupCard
                                 key={group.id}
                                 group={group}
@@ -267,10 +306,10 @@ const FacultyGroups = () => {
                             className="bg-white rounded-[2.5rem] p-10 w-full max-w-md relative z-10 shadow-2xl overflow-hidden border border-white"
                         >
                             <div className="absolute top-0 left-0 w-full h-2 bg-indigo-600" />
-                            <h2 className="text-3xl font-black text-gray-800 mb-8">Deploy Squad</h2>
+                            <h2 className="text-3xl font-black text-gray-800 mb-6">Deploy Squad</h2>
                             <form onSubmit={handleCreateGroup} className="space-y-6">
                                 <div>
-                                    <label className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2 block">Group Name</label>
+                                    <label className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2 block font-sans">Group Name</label>
                                     <input
                                         autoFocus required
                                         className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-gray-800 transition-all placeholder:text-gray-300"
@@ -279,10 +318,60 @@ const FacultyGroups = () => {
                                         onChange={(e) => setNewGroupName(e.target.value)}
                                     />
                                 </div>
-                                <div className="flex gap-4 pt-4">
-                                    <Button type="button" variant="secondary" className="flex-1 py-4" onClick={() => setShowCreateModal(false)}>Abort</Button>
-                                    <Button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 py-4 shadow-lg shadow-indigo-100" disabled={actionLoading}>
-                                        {actionLoading ? 'Deploying...' : 'Confirm'}
+
+                                <div className="space-y-4">
+                                    <label className="text-xs font-black uppercase tracking-widest text-gray-400 block pb-1">Recruit Members <span className="text-indigo-600 font-bold ml-1">({selectedStudents.length})</span></label>
+                                    <div className="max-h-48 overflow-y-auto pr-2 space-y-2 custom-scrollbar border-y border-gray-100 py-3">
+                                        {students.length === 0 ? (
+                                            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest py-4 text-center italic">No Personnel Available</p>
+                                        ) : students.map(s => {
+                                            const isSelected = selectedStudents.some(sel => sel.id === s.id);
+                                            return (
+                                                <div 
+                                                    key={s.id} 
+                                                    onClick={() => toggleStudentSelection(s)}
+                                                    className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between ${
+                                                        isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-100 bg-white hover:border-gray-200'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${isSelected ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                                            {s.name.charAt(0)}
+                                                        </div>
+                                                        <span className={`text-[11px] font-black uppercase tracking-tight ${isSelected ? 'text-indigo-700' : 'text-gray-600'}`}>{s.name}</span>
+                                                    </div>
+                                                    {isSelected && <CheckCircle2 size={16} className="text-indigo-500" />}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {selectedStudents.length > 0 && (
+                                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                                        <label className="text-xs font-black uppercase tracking-widest text-indigo-600 mb-2 block">Commission Leader</label>
+                                        <select 
+                                            required
+                                            value={leaderId}
+                                            onChange={(e) => setLeaderId(e.target.value)}
+                                            className="w-full px-5 py-4 bg-indigo-50 border border-indigo-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-gray-800 text-sm italic transition-all shadow-sm"
+                                        >
+                                            <option value="">Choose your Leader...</option>
+                                            {selectedStudents.map(s => (
+                                                <option key={s.id} value={String(s.id)}>{s.name} (Select as Commander)</option>
+                                            ))}
+                                        </select>
+                                    </motion.div>
+                                )}
+
+                                <div className="flex gap-4 pt-4 sticky bottom-0 bg-white">
+                                    <Button type="button" variant="secondary" className="flex-1 py-4 font-black uppercase tracking-[0.2em] text-[10px]" onClick={() => {
+                                        setShowCreateModal(false);
+                                        setSelectedStudents([]);
+                                        setLeaderId("");
+                                    }}>Abort</Button>
+                                    <Button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 py-4 shadow-lg shadow-indigo-100 font-black uppercase tracking-[0.2em] text-[10px]" disabled={actionLoading}>
+                                        {actionLoading ? 'Deploying...' : 'Deploy Squad'}
                                     </Button>
                                 </div>
                             </form>
@@ -425,8 +514,8 @@ const GroupCard = ({ group, allStudents, onDelete, setGroups }) => {
                                                 {s?.name?.charAt(0) || '?'}
                                             </div>
                                             <div>
-                                                <p className="text-sm font-black tracking-tight">{s?.name || `ID: ${m.student_id}`}</p>
-                                                <p className={`text-[10px] font-bold ${m.is_leader ? 'text-white/60' : 'text-gray-400'}`}>{s?.email || 'Unauthorized'}</p>
+                                                <p className="text-sm font-black tracking-tight">{s?.name || `Ref ID: ${m.student_id}`}</p>
+                                                <p className={`text-[10px] font-bold ${m.is_leader ? 'text-white/60' : 'text-gray-400'}`}>{s?.email || 'Active Duty'}</p>
                                             </div>
                                         </div>
                                         <div className="flex gap-1">

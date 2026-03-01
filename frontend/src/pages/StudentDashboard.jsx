@@ -148,7 +148,7 @@ const StudentDashboard = () => {
                   </h3>
                   <p className="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest">Next 7 days operational timeline</p>
                </div>
-               <Button variant="secondary" onClick={() => window.location.href='/dashboard/my-tasks'} className="rounded-2xl text-[10px] font-black uppercase tracking-widest">Access All</Button>
+               <Button variant="secondary" onClick={() => window.location.href='/dashboard/tasks'} className="rounded-2xl text-[10px] font-black uppercase tracking-widest">Access All</Button>
             </div>
 
             <div className="space-y-4">
@@ -223,7 +223,7 @@ const StudentDashboard = () => {
                     </div>
                   </div>
                   
-                  <Button className="w-full mt-10 bg-white text-emerald-700 hover:bg-emerald-50 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl" onClick={() => window.location.href='/dashboard/my-tasks'}>
+                  <Button className="w-full mt-10 bg-white text-emerald-700 hover:bg-emerald-50 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl" onClick={() => window.location.href='/dashboard/tasks'}>
                       Review All Feedback
                   </Button>
                </div>

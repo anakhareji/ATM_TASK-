@@ -14,6 +14,7 @@ class TaskComment(Base):
     
     comment_text = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    # updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     task = relationship("Task", backref="comments")

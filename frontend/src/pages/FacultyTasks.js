@@ -1,20 +1,335 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import {
-    Plus, Calendar, AlertCircle, Trash2, Edit3,
-    User, Users, CheckCircle2,
-    FileText, Eye, X, Download, Send, Search, Filter, Info, Clock
+    Plus, AlertCircle, Trash2, Edit3, Calendar, Download,
+    User, Users,
+    FileText, Eye, X, Send, Search, Info, Clock,
+    MessageSquare, History, List, Bold, Italic, Link, Paperclip, AtSign, Smile, Layout, Code, PlusCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import API from '../api/axios';
 import GlassCard from '../components/ui/GlassCard';
 import Button from '../components/ui/Button';
 import { staggerContainer, cardEntrance } from '../utils/motionVariants';
 import { getErrorMessage } from '../utils/errorHelpers';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
+import DOMPurify from 'dompurify';
+
+const RichContent = ({ content, className = '' }) => {
+    return (
+        <div 
+            className={`prose prose-sm max-w-none text-gray-600 font-medium leading-relaxed quill-content ${className}`}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}
+        />
+    );
+};
+
+// Toolbar removed as requested
+
+const CommentEditor = ({ value, onChange, onSave, onCancel, placeholder, autoFocus = false }) => {
+    const toolbarId = useMemo(() => `toolbar-faculty-${Math.random().toString(36).substr(2, 9)}`, []);
+
+    const modules = useMemo(() => ({
+        toolbar: false
+    }), []);
+
+    const formats = [
+        'bold', 'italic', 'list', 'code-block'
+    ];
+
+    return (
+        <div className="bg-white border-2 border-indigo-100 rounded-[2.5rem] shadow-2xl overflow-hidden animate-slideUp font-sans group">
+            <div className="quill-wrapper">
+                <ReactQuill
+                    theme="snow"
+                    value={value}
+                    onChange={onChange}
+                    placeholder={placeholder}
+                    modules={modules}
+                    formats={formats}
+                    className="faculty-quill"
+                />
+            </div>
+
+            <style dangerouslySetInnerHTML={{ __html: `
+                .faculty-quill .ql-container {
+                    border: none !important;
+                    font-family: inherit;
+                    min-height: 150px;
+                }
+                .faculty-quill .ql-editor {
+                    padding: 1.5rem;
+                    font-size: 0.875rem;
+                    font-weight: 500;
+                    color: #374151;
+                    min-height: 150px;
+                    line-height: 1.6;
+                    text-align: left;
+                }
+                .faculty-quill .ql-editor strong, .faculty-quill .ql-editor b {
+                    font-weight: 900 !important;
+                }
+                .faculty-quill .ql-editor em, .faculty-quill .ql-editor i {
+                    font-style: italic !important;
+                }
+                .faculty-quill .ql-editor strong, .faculty-quill .ql-editor b {
+                    font-weight: 900 !important;
+                }
+                .faculty-quill .ql-editor em, .faculty-quill .ql-editor i {
+                    font-style: italic !important;
+                    font-weight: 500 !important;
+                }
+                .faculty-quill .ql-editor.ql-blank::before {
+                    color: #d1d5db;
+                    font-style: italic;
+                    left: 1.5rem;
+                    font-weight: 400;
+                }
+                .ql-bold.ql-active, .ql-italic.ql-active, .ql-list.ql-active, .ql-code-block.ql-active {
+                    background: white !important;
+                    color: #4f46e5 !important;
+                    box-shadow: 0 4px 12px -2px rgba(99, 102, 241, 0.15);
+                }
+                .faculty-quill .ql-toolbar {
+                    display: none;
+                }
+                .quill-content h1, .quill-content h2 { font-weight: 900; color: #111827; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+                .quill-content ul { list-style-type: disc; margin-left: 2rem; margin-bottom: 1.25rem; }
+                .quill-content ol { list-style-type: decimal; margin-left: 2rem; margin-bottom: 1.25rem; }
+                .quill-content blockquote { border-left: 6px solid #818cf8; padding: 1rem 1.5rem; font-style: italic; color: #4338ca; background: #eef2ff; border-radius: 0 0.75rem 0.75rem 0; margin-bottom: 1.5rem; }
+                .quill-content a { color: #6366f1; text-decoration: underline; font-weight: 800; text-underline-offset: 4px; }
+                .quill-content code { background: #f3f4f6; color: #be185d; padding: 0.25rem 0.5rem; rounded: 0.5rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 0.9em; }
+                .quill-content pre { background: #111827; color: #f9fafb; padding: 1.5rem; border-radius: 1rem; margin-bottom: 1.5rem; overflow-x: auto; font-family: inherit; }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+            `}} />
+
+            <div className="p-5 bg-gray-50/50 flex gap-4 justify-start items-center border-t border-gray-100">
+                <Button 
+                    size="sm" 
+                    className="px-10 bg-indigo-600 hover:bg-indigo-700 font-black uppercase tracking-widest rounded-2xl shadow-xl hover:shadow-indigo-200/50 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                    onClick={(e) => { e.preventDefault(); onSave(); }}
+                >
+                    Log Activity
+                </Button>
+                <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="px-8 text-gray-400 hover:text-gray-600 hover:bg-white font-black uppercase tracking-widest rounded-2xl transition-all"
+                    onClick={(e) => { e.preventDefault(); onCancel(); }}
+                >
+                    Cancel
+                </Button>
+                <div className="ml-auto flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">
+                    <Layout size={12} /> Rich Editor Ready
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const TaskActivity = ({ taskId }) => {
+    const [comments, setComments] = useState([]);
+    const [newComment, setNewComment] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState('comments');
+    const [isInputFocused, setIsInputFocused] = useState(false);
+    
+    // Editing state
+    const [editingId, setEditingId] = useState(null);
+    const [editContent, setEditContent] = useState('');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const currentUserId = user.id || user.user_id;
+
+    const fetchComments = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await API.get(`/tasks/${taskId}/comments`);
+            setComments(res.data || []);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    }, [taskId]);
+
+    useEffect(() => {
+        if (taskId) fetchComments();
+    }, [taskId, fetchComments]);
+
+    const handleSend = async () => {
+        if (!newComment.trim()) return;
+        try {
+            await API.post(`/tasks/${taskId}/comments`, { comment_text: newComment });
+            setNewComment('');
+            setIsInputFocused(false);
+            fetchComments();
+            toast.success('Comment logged');
+        } catch (e) {
+            toast.error('Failed to log activity');
+        }
+    };
+
+    const handleUpdate = async (id) => {
+        if (!editContent.trim()) return;
+        try {
+            await API.put(`/tasks/comments/${id}`, { comment_text: editContent });
+            setEditingId(null);
+            fetchComments();
+            toast.success('Activity updated');
+        } catch (e) {
+            toast.error('Failed to update activity');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Erase this activity log entry permanently?')) return;
+        try {
+            await API.delete(`/tasks/comments/${id}`);
+            fetchComments();
+            toast.success('Activity erased');
+        } catch (e) {
+            toast.error('Failed to erase activity');
+        }
+    };
+
+    return (
+        <div className="mt-8 pt-8 border-t border-gray-100 animate-fadeIn text-left">
+            <h3 className="text-lg font-black text-gray-800 mb-4 flex items-center gap-2">
+                <Layout size={20} className="text-gray-400" /> Activity
+            </h3>
+            
+            <div className="flex gap-1 border-b border-gray-100 mb-6 overflow-x-auto pb-1 no-scrollbar">
+                {['all', 'comments', 'history', 'approvals'].map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${
+                            activeTab === tab 
+                            ? 'border-indigo-600 text-indigo-600' 
+                            : 'border-transparent text-gray-400 hover:text-gray-600'
+                        }`}
+                    >
+                        {tab}
+                    </button>
+                ))}
+            </div>
+
+            {(activeTab === 'comments' || activeTab === 'all') ? (
+                <div className="space-y-6">
+                    {/* Add Comment Section */}
+                    <div className="flex gap-4 group">
+                        <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-100 shrink-0 uppercase">
+                            {localStorage.getItem('userName')?.charAt(0) || 'U'}
+                        </div>
+                        <div className="flex-1 space-y-3">
+                            {!isInputFocused ? (
+                                <div 
+                                    onClick={() => setIsInputFocused(true)}
+                                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-gray-400 text-sm font-medium cursor-text hover:bg-white hover:border-gray-200 transition-all shadow-sm"
+                                >
+                                    Add a comment or observation...
+                                </div>
+                            ) : (
+                                <CommentEditor 
+                                    value={newComment}
+                                    onChange={setNewComment}
+                                    onSave={handleSend}
+                                    onCancel={() => { setIsInputFocused(false); setNewComment(''); }}
+                                    placeholder="Type your message here..."
+                                    autoFocus
+                                />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Comments Feed */}
+                    <div className="space-y-8 pl-14 pt-4 border-l-2 border-gray-50">
+                        {loading && comments.length === 0 ? (
+                            [1,2].map(i => <div key={i} className="h-24 bg-gray-50 animate-pulse rounded-2xl" />)
+                        ) : comments.length === 0 ? (
+                            <div className="text-center py-10">
+                                <MessageSquare size={32} className="mx-auto text-gray-200 mb-2" />
+                                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">No activity logged yet</p>
+                            </div>
+                        ) : (
+                            comments.map(c => (
+                                <div key={c.id} className="relative group/msg">
+                                    <div className={`absolute -left-[65px] top-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-[10px] shadow-sm z-10 transition-transform group-hover/msg:scale-110 uppercase ${
+                                        c.role === 'student' ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-gray-100 text-gray-400'
+                                    }`}>
+                                        {c.user_name?.charAt(0) || '?'}
+                                    </div>
+                                    
+                                    {editingId === c.id ? (
+                                        <div className="space-y-3 animate-fadeIn">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Editing Entry</span>
+                                            </div>
+                                            <CommentEditor 
+                                                value={editContent}
+                                                onChange={setEditContent}
+                                                onSave={() => handleUpdate(c.id)}
+                                                onCancel={() => setEditingId(null)}
+                                                autoFocus
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-black text-gray-800">{c.user_name}</span>
+                                                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+                                                        c.role === 'student' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'
+                                                    }`}>
+                                                        {c.role}
+                                                    </span>
+                                                    <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis">
+                                                        • {new Date(c.created_at).toLocaleDateString()} at {new Date(c.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                    </span>
+                                                </div>
+                                                
+                                                {c.user_id === currentUserId && (
+                                                    <div className="flex gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                                                        <button 
+                                                            onClick={() => { setEditingId(c.id); setEditContent(c.comment_text); }}
+                                                            className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                        >
+                                                            <Edit3 size={14} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDelete(c.id)}
+                                                            className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className={`p-5 rounded-3xl border shadow-sm hover:shadow-md transition-shadow overflow-hidden text-left ${
+                                                c.role === 'student' ? 'bg-amber-50/30 border-amber-100' : 'bg-white border-gray-100'
+                                            }`}>
+                                                <RichContent content={c.comment_text} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <div className="py-20 text-center bg-gray-50/50 rounded-[2rem] border border-dashed border-gray-200">
+                    <History size={40} className="mx-auto text-gray-200 mb-3" />
+                    <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Log History Coming Soon</p>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const FacultyTasks = () => {
-    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
     // Data State
@@ -34,6 +349,7 @@ const FacultyTasks = () => {
     const [submissions, setSubmissions] = useState([]);
     const [statusFilter, setStatusFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState("");
+    const [activeTaskActivity, setActiveTaskActivity] = useState(null);
 
     // Form State (Controlled)
     const initialForm = {
@@ -393,6 +709,8 @@ const FacultyTasks = () => {
                                 onDelete={() => handleDelete(task.id)}
                                 onEdit={() => handleEditClick(task)}
                                 onViewSubmissions={() => handleViewSubmissions(task)}
+                                isActiveActivity={activeTaskActivity === task.id}
+                                toggleActivity={() => setActiveTaskActivity(activeTaskActivity === task.id ? null : task.id)}
                             />
                         ))}
                     </div>
@@ -422,7 +740,7 @@ const FacultyTasks = () => {
     );
 };
 
-const TaskCard = ({ task, onPublish, onDelete, onEdit, onViewSubmissions }) => {
+const TaskCard = ({ task, onPublish, onDelete, onEdit, onViewSubmissions, isActiveActivity, toggleActivity }) => {
     const isOverdue = new Date(task.deadline) < new Date();
     return (
         <motion.div layout variants={cardEntrance}>
@@ -510,15 +828,36 @@ const TaskCard = ({ task, onPublish, onDelete, onEdit, onViewSubmissions }) => {
                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600/60">
                         {task.project_title || `Track #${task.project_id}`}
                     </p>
-                    {task.status !== 'draft' && (
+                    <div className="flex items-center gap-6">
                         <button
-                            onClick={onViewSubmissions}
-                            className="flex items-center gap-2 text-emerald-600 font-black text-xs uppercase tracking-widest group/btn"
+                            onClick={toggleActivity}
+                            className={`flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-colors ${isActiveActivity ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-500'}`}
                         >
-                            Review Submissions <Eye size={16} className="group-hover/btn:scale-110 transition-transform" />
+                            Activity Log <MessageSquare size={16} />
                         </button>
-                    )}
+                        {task.status !== 'draft' && (
+                            <button
+                                onClick={onViewSubmissions}
+                                className="flex items-center gap-2 text-emerald-600 font-black text-xs uppercase tracking-widest group/btn"
+                            >
+                                Review Submissions <Eye size={16} className="group-hover/btn:scale-110 transition-transform" />
+                            </button>
+                        )}
+                    </div>
                 </div>
+
+                <AnimatePresence>
+                    {isActiveActivity && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="bg-white px-8 pb-10 overflow-hidden"
+                        >
+                            <TaskActivity taskId={task.id} />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </GlassCard>
         </motion.div>
     );

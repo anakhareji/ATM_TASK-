@@ -1,101 +1,314 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  CheckSquare, UploadCloud, MessageSquare, Calendar, User, Users, 
-  AlertCircle, MessageCircle, Send, Clock, Search, Filter, ChevronRight,
-  Info, CheckCircle2, FileText, CheckCircle
+  CheckSquare, UploadCloud, MessageSquare, User, Users, 
+  AlertCircle, Clock, Search,
+  Info, CheckCircle2, FileText, CheckCircle,
+  Layout, Bold, Italic, Link, Paperclip, AtSign, Smile, Code, History, List, Edit3, Trash2
 } from 'lucide-react';
 import API from '../api/axios';
-import GlassCard from '../components/ui/GlassCard';
-import Button from '../components/ui/Button';
 import { staggerContainer, cardEntrance } from '../utils/motionVariants';
 import toast from 'react-hot-toast';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
+import DOMPurify from 'dompurify';
 
-const TaskComments = ({ taskId }) => {
-  const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState('');
-  const [loading, setLoading] = useState(false);
+const RichContent = ({ content, className = '' }) => {
+    return (
+        <div 
+            className={`prose prose-sm max-w-none text-gray-600 font-medium leading-relaxed quill-content ${className}`}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}
+        />
+    );
+};
 
-  useEffect(() => {
-    fetchComments();
-  }, [taskId]);
+// Toolbar removed as requested
 
-  const fetchComments = async () => {
-    setLoading(true);
-    try {
-      const res = await API.get(`/tasks/${taskId}/comments`);
-      setComments(res.data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+const CommentEditor = ({ value, onChange, onSave, onCancel, placeholder, autoFocus = false }) => {
+    const toolbarId = useMemo(() => `toolbar-${Math.random().toString(36).substr(2, 9)}`, []);
 
-  const handleSend = async (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-    try {
-      await API.post(`/tasks/${taskId}/comments`, { comment_text: newComment });
-      setNewComment('');
-      fetchComments();
-    } catch (e) {
-      toast.error('Failed to post comment');
-    }
-  };
+    const modules = useMemo(() => ({
+        toolbar: false, // Explicitly disabled as requested
+        keyboard: {
+            bindings: {
+                tab: false,
+            }
+        }
+    }), []);
 
-  return (
-    <div className="mt-5 pt-5 border-t border-gray-100 flex flex-col h-[350px]">
-      <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
-            <MessageCircle size={16} className="text-gray-500" /> Discussion
-        </h4>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto mb-4 pr-2 space-y-3 custom-scrollbar">
-        {loading ? (
-           <div className="space-y-3">
-               {[1,2,3].map(i => <div key={i} className="h-12 bg-gray-50 animate-pulse rounded-lg md:w-2/3" />)}
-           </div>
-        ) : comments.length === 0 ? (
-           <div className="h-full flex flex-col items-center justify-center text-gray-400 text-center">
-               <MessageSquare size={32} className="mb-2 opacity-50" />
-               <p className="text-sm font-medium">No comments yet</p>
-           </div>
-        ) : (
-          comments.map(c => (
-            <div key={c.id} className={`flex flex-col ${c.role === 'student' ? 'items-end' : 'items-start'}`}>
-                <div className={`max-w-[85%] px-4 py-2.5 rounded-2xl shadow-sm text-sm ${
-                    c.role === 'student' 
-                    ? 'bg-indigo-600 text-white rounded-br-sm' 
-                    : 'bg-gray-100 text-gray-800 rounded-bl-sm'
-                }`}>
-                  <p className="leading-relaxed whitespace-pre-wrap">{c.comment_text}</p>
-                </div>
-                <div className="flex items-center gap-1.5 mt-1 text-[10px] text-gray-400 font-medium px-1">
-                  <span>{c.user_name}</span>
-                  <span>•</span>
-                  <span>{new Date(c.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+    const formats = [
+        'bold', 'italic', 'list', 'code'
+    ];
+
+    return (
+        <div className="bg-white border-2 border-indigo-100 rounded-3xl shadow-xl overflow-hidden animate-slideUp group">
+            <div className="quill-wrapper">
+                <ReactQuill
+                    theme="snow"
+                    value={value}
+                    onChange={onChange}
+                    placeholder={placeholder}
+                    modules={modules}
+                    formats={formats}
+                    className="comment-quill"
+                />
+            </div>
+
+            <style dangerouslySetInnerHTML={{ __html: `
+                .comment-quill .ql-container {
+                    border: none !important;
+                    font-family: inherit;
+                    min-height: 120px;
+                }
+                .comment-quill .ql-editor {
+                    padding: 1.25rem;
+                    font-size: 0.75rem;
+                    font-weight: 500;
+                    color: #4b5563;
+                    min-height: 120px;
+                    text-align: left;
+                }
+                .comment-quill .ql-editor strong, .comment-quill .ql-editor b {
+                    font-weight: 800 !important;
+                }
+                .comment-quill .ql-editor em, .comment-quill .ql-editor i {
+                    font-style: italic !important;
+                    font-weight: 500 !important;
+                }
+                .comment-quill .ql-editor.ql-blank::before {
+                    color: #d1d5db;
+                    font-style: normal;
+                    left: 1.25rem;
+                }
+                .ql-bold.ql-active, .ql-italic.ql-active, .ql-list.ql-active, .ql-code.ql-active {
+                    background: white !important;
+                    color: #4f46e5 !important;
+                    box-shadow: 0 4px 12px -2px rgba(99, 102, 241, 0.15);
+                }
+                .comment-quill .ql-toolbar {
+                    display: none;
+                }
+                .quill-content h1, .quill-content h2, .quill-content h3 { font-weight: 800; color: #111827; margin-bottom: 0.5rem; }
+                .quill-content ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 1rem; }
+                .quill-content ol { list-style-type: decimal; margin-left: 1.5rem; margin-bottom: 1rem; }
+                .quill-content blockquote { border-left: 4px solid #6366f1; padding-left: 1rem; font-style: italic; color: #4f46e5; background: #f5f3ff; padding-top: 0.5rem; padding-bottom: 0.5rem; border-radius: 0 0.75rem 0.75rem 0; margin-bottom: 1rem; }
+                .quill-content a { color: #4f46e5; text-decoration: underline; font-weight: 700; }
+                .quill-content code { background: #f3f4f6; color: #e11d48; padding: 0.2rem 0.4rem; border-radius: 0.375rem; font-family: monospace; }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+            `}} />
+
+            <div className="p-4 bg-gray-50 flex gap-3 justify-start items-center border-t border-gray-100">
+                <button 
+                    type="button"
+                    className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg hover:shadow-indigo-200/50 ring-offset-2 focus:ring-2 focus:ring-indigo-500"
+                    onClick={(e) => { e.preventDefault(); onSave(); }}
+                >
+                    Save Entry
+                </button>
+                <button 
+                    type="button"
+                    className="px-6 py-2 text-gray-500 hover:text-gray-700 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all hover:bg-gray-100"
+                    onClick={(e) => { e.preventDefault(); onCancel(); }}
+                >
+                    Discard
+                </button>
+                <div className="ml-auto flex items-center gap-1.5 text-[8px] font-black text-indigo-300 uppercase tracking-widest opacity-60 group-hover:opacity-100 transition-opacity">
+                    <CheckSquare size={10} /> Instant Sync Active
                 </div>
             </div>
-          ))
-        )}
-      </div>
+        </div>
+    );
+};
 
-      <form onSubmit={handleSend} className="relative mt-auto">
-        <input 
-          type="text" 
-          value={newComment}
-          onChange={(e) => setNewComment(e.target.value)}
-          placeholder="Write a comment..."
-          className="w-full pl-4 pr-12 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-sm transition-all shadow-sm"
-        />
-        <button type="submit" disabled={!newComment.trim()} className="absolute right-1.5 top-1.5 p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all">
-          <Send size={16} />
-        </button>
-      </form>
-    </div>
-  );
+const TaskComments = ({ taskId }) => {
+    const [comments, setComments] = useState([]);
+    const [newComment, setNewComment] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState('comments');
+    const [isInputFocused, setIsInputFocused] = useState(false);
+    
+    // Editing state
+    const [editingId, setEditingId] = useState(null);
+    const [editContent, setEditContent] = useState('');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const currentUserId = user.id || user.user_id;
+
+    const fetchComments = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await API.get(`/tasks/${taskId}/comments`);
+            setComments(res.data || []);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    }, [taskId]);
+
+    useEffect(() => {
+        if (taskId) fetchComments();
+    }, [taskId, fetchComments]);
+
+    const handleSend = async () => {
+        if (!newComment.trim()) return;
+        try {
+            await API.post(`/tasks/${taskId}/comments`, { comment_text: newComment });
+            setNewComment('');
+            setIsInputFocused(false);
+            fetchComments();
+            toast.success('Comment logged');
+        } catch (e) {
+            toast.error('Failed to log activity');
+        }
+    };
+
+    const handleUpdate = async (id) => {
+        if (!editContent.trim()) return;
+        try {
+            await API.put(`/tasks/comments/${id}`, { comment_text: editContent });
+            setEditingId(null);
+            fetchComments();
+            toast.success('Activity updated');
+        } catch (e) {
+            toast.error('Failed to update activity');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Erase this activity entry permanently?')) return;
+        try {
+            await API.delete(`/tasks/comments/${id}`);
+            fetchComments();
+            toast.success('Activity erased');
+        } catch (e) {
+            toast.error('Failed to erase activity');
+        }
+    };
+
+    return (
+        <div className="mt-6 pt-6 border-t border-gray-100 animate-fadeIn text-left">
+            <h3 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2 uppercase tracking-wider">
+                <Layout size={16} className="text-indigo-500" /> Activity Log
+            </h3>
+            
+            <div className="flex gap-1 border-b border-gray-100 mb-6 overflow-x-auto pb-1 custom-scrollbar">
+                {['all', 'comments', 'history', 'approvals'].map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${
+                            activeTab === tab 
+                            ? 'border-indigo-600 text-indigo-600' 
+                            : 'border-transparent text-gray-400 hover:text-gray-600'
+                        }`}
+                    >
+                        {tab}
+                    </button>
+                ))}
+            </div>
+
+            {activeTab === 'comments' ? (
+                <div className="space-y-6">
+                    {/* Add Comment Section */}
+                    <div className="flex gap-3 group">
+                        <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-[10px] shadow-md shrink-0 uppercase">
+                            {localStorage.getItem('userName')?.charAt(0) || 'U'}
+                        </div>
+                        <div className="flex-1 space-y-3">
+                            {!isInputFocused ? (
+                                <div 
+                                    onClick={() => setIsInputFocused(true)}
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-gray-400 text-xs font-medium cursor-text hover:bg-white hover:border-gray-200 transition-all shadow-sm"
+                                >
+                                    Add a comment...
+                                </div>
+                            ) : (
+                                <CommentEditor 
+                                    value={newComment}
+                                    onChange={setNewComment}
+                                    onSave={handleSend}
+                                    onCancel={() => { setIsInputFocused(false); setNewComment(''); }}
+                                    placeholder="Type your message here..."
+                                    autoFocus
+                                />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Comments Feed */}
+                    <div className="space-y-6 pt-2">
+                        {loading && comments.length === 0 ? (
+                            [1,2].map(i => <div key={i} className="h-20 bg-gray-50 animate-pulse rounded-xl" />)
+                        ) : comments.length === 0 ? (
+                            <div className="text-center py-6">
+                                <MessageSquare size={24} className="mx-auto text-gray-200 mb-2" />
+                                <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No activity yet</p>
+                            </div>
+                        ) : (
+                            comments.map(c => (
+                                <div key={c.id} className="relative">
+                                    <div className="flex gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 font-bold text-[10px] shrink-0 uppercase">
+                                            {c.user_name?.charAt(0) || '?'}
+                                        </div>
+                                        <div className="flex-1 space-y-1">
+                                            {editingId === c.id ? (
+                                                <div className="animate-fadeIn space-y-2">
+                                                     <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-widest">Editing Activity</span>
+                                                    </div>
+                                                    <CommentEditor 
+                                                        value={editContent}
+                                                        onChange={setEditContent}
+                                                        onSave={() => handleUpdate(c.id)}
+                                                        onCancel={() => setEditingId(null)}
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[11px] font-bold text-gray-800">{c.user_name}</span>
+                                                            <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">• {new Date(c.created_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                        {c.user_id === currentUserId && (
+                                                            <div className="flex gap-1">
+                                                                <button 
+                                                                    onClick={() => { setEditingId(c.id); setEditContent(c.comment_text); }}
+                                                                    className="p-1 text-gray-400 hover:text-indigo-600 transition-all"
+                                                                >
+                                                                    <Edit3 size={12} />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => handleDelete(c.id)}
+                                                                    className="p-1 text-gray-400 hover:text-rose-600 transition-all"
+                                                                >
+                                                                    <Trash2 size={12} />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm overflow-hidden text-left">
+                                                        <RichContent content={c.comment_text} />
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <div className="py-12 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                    <History size={24} className="mx-auto text-gray-200 mb-2" />
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">History Log Coming Soon</p>
+                </div>
+            )}
+        </div>
+    );
 };
 
 const MissionTimer = ({ startedAt }) => {
@@ -317,13 +530,13 @@ const StudentTasks = () => {
                 <div className="mt-auto pl-2 space-y-4">
                   <div className="flex items-center justify-between pt-5 border-t border-gray-100">
                     <button 
-                      className={`text-sm font-medium flex items-center gap-2 transition-colors ${
-                          activeCommentTask === task.id ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900'
+                      className={`text-sm font-bold flex items-center gap-2 transition-colors uppercase tracking-widest ${
+                          activeCommentTask === task.id ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'
                       }`}
                       onClick={() => setActiveCommentTask(activeCommentTask === task.id ? null : task.id)}
                     >
-                      <MessageCircle size={16} /> 
-                      {activeCommentTask === task.id ? 'Close Discussion' : 'Discussion'}
+                      <MessageSquare size={16} /> 
+                      {activeCommentTask === task.id ? 'Close Log' : 'Activity Log'}
                     </button>
                     
                     <div className="flex items-center gap-3">

@@ -82,8 +82,9 @@ const StudentTodo = () => {
       toast.success("Operational Intel Secured. Timer Activated.", { id: loadToast });
       fetchData();
       // Should ideally navigate or user can see it in My Tasks
-    } catch {
-      toast.error("Authorization Protocols Failed.", { id: loadToast });
+    } catch (err) {
+      const msg = err.response?.data?.detail || "Authorization Protocols Failed.";
+      toast.error(msg, { id: loadToast });
     }
   };
 
@@ -164,11 +165,20 @@ const StudentTodo = () => {
                           <div className="flex-1 w-full text-left">
                              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-2">
                                 <h3 className="text-xl font-black text-gray-800 uppercase italic tracking-tight">{t.title}</h3>
-                                <span className="px-4 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-[0.2em] bg-indigo-100 text-indigo-700 border border-indigo-200">
-                                   System Directive
+                                <span className={`px-4 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-[0.2em] border shadow-sm ${
+                                   t.task_type === 'group' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-indigo-100 text-indigo-700 border-indigo-200'
+                                }`}>
+                                   {t.task_type === 'group' ? 'Squad Mission' : 'Solo Directive'}
                                 </span>
-                                <span className="px-3 py-1 bg-amber-50 text-amber-600 rounded-full text-[8px] font-black uppercase tracking-widest italic border border-amber-100">
-                                   Awaiting Personnel
+                                {t.task_type === 'group' && (
+                                  <span className={`px-4 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-[0.2em] border shadow-sm ${
+                                     t.is_leader ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-400 border-gray-200'
+                                  }`}>
+                                     {t.is_leader ? 'Mission Lead' : 'Specialist'}
+                                  </span>
+                                )}
+                                <span className="px-3 py-1 bg-white/80 backdrop-blur-sm text-indigo-500 rounded-full text-[8px] font-black uppercase tracking-widest italic border border-indigo-100 shadow-sm">
+                                   Awaiting Activation
                                 </span>
                              </div>
                              <p className={`text-sm font-medium text-gray-500 max-w-2xl ${isExpanded ? '' : 'line-clamp-2'}`}>
@@ -204,13 +214,20 @@ const StudentTodo = () => {
                           className="relative z-10 mt-6 pt-6 border-t border-indigo-200/50 flex flex-col items-center sm:items-end overflow-hidden"
                         >
                            <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-4 italic text-center sm:text-right max-w-sm">
-                             Confirm readiness to begin mission protocol. This action will transfer the task to your active queue and mark it "In Progress".
+                             {t.task_type === 'group' && !t.is_leader 
+                               ? "Standing by for Squad Leader to initialize mission protocols. Shared timer will activate across all personal dashboards once secured."
+                               : "Confirm readiness to begin mission protocol. This action will transfer the task to your active queue and mark it \"In Progress\"."}
                            </p>
                            <Button 
-                              onClick={(e) => { e.stopPropagation(); acceptTask(t.id); }}
-                              className="bg-indigo-600 hover:bg-indigo-700 text-[10px] font-black uppercase tracking-widest py-4 px-10 rounded-2xl shadow-xl shadow-indigo-500/20 active:scale-95 transition-all w-full sm:w-auto"
+                               disabled={t.task_type === 'group' && !t.is_leader}
+                               onClick={(e) => { e.stopPropagation(); acceptTask(t.id); }}
+                               className={`text-[10px] font-black uppercase tracking-widest py-4 px-10 rounded-2xl shadow-xl transition-all w-full sm:w-auto ${
+                                 t.task_type === 'group' && !t.is_leader
+                                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-100 shadow-none'
+                                   : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/20 active:scale-95'
+                               }`}
                            >
-                              Set to In-Progress & Save
+                               {t.task_type === 'group' && !t.is_leader ? 'Awaiting Authorization' : 'Initialize Mission & Sync'}
                            </Button>
                         </motion.div>
                       )}

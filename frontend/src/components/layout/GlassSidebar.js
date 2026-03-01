@@ -66,7 +66,7 @@ const STUDENT_NAV = [
         label: 'Mission Control',
         items: [
             { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
-            { name: 'My Tasks', path: '/dashboard/my-tasks', icon: CheckSquare },
+            { name: 'My Tasks', path: '/dashboard/tasks', icon: CheckSquare },
         ]
     },
     {

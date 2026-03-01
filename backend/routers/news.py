@@ -45,6 +45,20 @@ def create_news(
     db.add(news)
     db.commit()
     db.refresh(news)
+    
+    # Notify All Users
+    from models.user import User
+    from routers.notification import add_notification
+    users = db.query(User).all()
+    for u in users:
+        add_notification(
+            db, 
+            user_id=u.id, 
+            title="Campus Update", 
+            message=f"New bulletin posted: '{news.title}'", 
+            type="system"
+        )
+
     db.add(AuditLog(
         user_id=current_user["user_id"],
         action="news.create",

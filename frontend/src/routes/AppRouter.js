@@ -49,6 +49,11 @@ const LayoutWrapper = () => {
   );
 };
 
+const TaskRoute = () => {
+  const role = (localStorage.getItem("userRole") || "").toLowerCase();
+  return role === 'faculty' ? <FacultyTasks /> : <StudentTasks />;
+};
+
 function AppRouter() {
   return (
     <BrowserRouter>
@@ -66,14 +71,16 @@ function AppRouter() {
             <Route path="/dashboard/leaderboard" element={<Leaderboard />} />
             <Route path="/dashboard/grades" element={<GradeChart />} />
             <Route path="/dashboard/notifications" element={<Notifications />} />
-            <Route path="/dashboard/my-tasks" element={<StudentTasks />} />
+            {/* Task & Operations Routing */}
+            <Route path="/dashboard/tasks" element={<TaskRoute />} />
+            <Route path="/dashboard/my-tasks" element={<StudentTasks />} /> 
+
             <Route path="/dashboard/todo" element={<StudentTodo />} />
             <Route path="/dashboard/my-groups" element={<StudentGroups />} />
             <Route path="/dashboard/timetable" element={<StudentTimetable />} />
 
             {/* Faculty Routes */}
             <Route path="/dashboard/projects" element={<FacultyProjects />} />
-            <Route path="/dashboard/tasks" element={<FacultyTasks />} />
             <Route path="/dashboard/groups" element={<FacultyGroups />} />
             <Route path="/dashboard/submissions" element={<FacultySubmissions />} />
             <Route path="/dashboard/planner" element={<FacultyPlanner />} />
