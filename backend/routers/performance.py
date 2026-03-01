@@ -172,22 +172,26 @@ def create_performance_report(
 # MY PERFORMANCE (STUDENT ONLY)
 # =====================================================
 @router.post("/seed")
-def seed_performance_data(db: Session = Depends(get_db)):
+def seed_performance_data(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     from models.user import User
     from models.project import Project
     from datetime import datetime, timedelta
 
-    student = db.query(User).filter(User.role == "student", User.email == "student@atm.com").first()
+    # Seed for the current logged-in student
+    student = db.query(User).filter(User.id == current_user["user_id"]).first()
     if not student:
-        return {"error": "Student not found"}
-        
+        return {"error": "User not found"}
+
     project = db.query(Project).first()
     project_id = project.id if project else 1
 
     records = [
-        {"semester": "SEM S4", "score": 75.0, "system_score": 80.0, "final_score": 77.5, "grade": "B", "offset": 180},
+        {"semester": "SEM S4", "score": 75.0, "system_score": 80.0, "final_score": 77.5, "grade": "B",  "offset": 180},
         {"semester": "SEM S5", "score": 82.0, "system_score": 86.0, "final_score": 84.0, "grade": "B+", "offset": 90},
-        {"semester": "SEM S6", "score": 88.0, "system_score": 92.0, "final_score": 90.0, "grade": "A", "offset": 5},
+        {"semester": "SEM S6", "score": 88.0, "system_score": 92.0, "final_score": 90.0, "grade": "A",  "offset": 5},
     ]
 
     added = 0
@@ -201,7 +205,7 @@ def seed_performance_data(db: Session = Depends(get_db)):
             perf = StudentPerformance(
                 student_id=student.id,
                 project_id=project_id,
-                faculty_id=2, 
+                faculty_id=current_user["user_id"],
                 semester=rec["semester"],
                 score=rec["score"],
                 system_score=rec["system_score"],
@@ -214,9 +218,10 @@ def seed_performance_data(db: Session = Depends(get_db)):
             added += 1
 
     db.commit()
-    return {"message": f"Added {added} records"}
+    return {"message": f"Added {added} records for {student.name}"}
 
 @router.get("/me")
+
 def get_my_performance_history(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
