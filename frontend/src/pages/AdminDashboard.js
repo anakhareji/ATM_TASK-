@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import AdminGlassLayout from '../components/layout/AdminGlassLayout';
 import AnimatedPage from '../components/layout/AnimatedPage';
 import GradeChart from '../components/dashboard/GradeChart';
@@ -10,7 +11,7 @@ import { staggerContainer, cardEntrance } from '../utils/motionVariants';
 import API from '../api/axios';
 import {
     Activity, Users, Folder, TrendingUp, AlertCircle,
-    CheckCircle, ArrowUpRight, ArrowDownRight, Zap
+    CheckCircle, ArrowUpRight, ArrowDownRight, Zap, CalendarClock
 } from 'lucide-react';
 import {
     XAxis, YAxis, CartesianGrid,
@@ -22,9 +23,11 @@ import GlassCard from '../components/ui/GlassCard';
 import Counter from '../components/ui/Counter';
 
 const AdminDashboard = () => {
+    const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [pendingEvents, setPendingEvents] = useState(0);
 
     const fetchStats = useCallback(async () => {
         try {
@@ -42,7 +45,21 @@ const AdminDashboard = () => {
         if (storedUser) setUser(JSON.parse(storedUser));
         fetchStats();
 
-        const interval = setInterval(fetchStats, 60000);
+        // Fetch pending event requests
+        API.get('/events')
+            .then(res => {
+                const pending = (res.data || []).filter(e => e.status === 'pending').length;
+                setPendingEvents(pending);
+            })
+            .catch(() => {});
+
+        const interval = setInterval(() => {
+            fetchStats();
+            API.get('/events').then(res => {
+                const pending = (res.data || []).filter(e => e.status === 'pending').length;
+                setPendingEvents(pending);
+            }).catch(() => {});
+        }, 60000);
         return () => clearInterval(interval);
     }, [fetchStats]);
 
@@ -57,10 +74,18 @@ const AdminDashboard = () => {
 
         if (kpi.avg_score < 40) alerts.push({ type: 'warning', priority: 2, msg: `Academic Alert: Avg performance below 40%.` });
 
+        // Pending event requests
+        if (pendingEvents > 0) alerts.push({
+            type: 'event',
+            priority: 2,
+            msg: `${pendingEvents} student event request${pendingEvents > 1 ? 's' : ''} awaiting your approval.`,
+            link: '/dashboard/campus-pulse'
+        });
+
         if (alerts.length === 0) alerts.push({ type: 'healthy', priority: 4, msg: "All systems operating within normal parameters." });
 
         return alerts.sort((a, b) => a.priority - b.priority);
-    }, [kpi]);
+    }, [kpi, pendingEvents]);
 
     if (loading) return (
         <AdminGlassLayout>
@@ -196,19 +221,31 @@ const AdminDashboard = () => {
                                             initial={{ opacity: 0, x: 20 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: idx * 0.1 }}
-                                            className={`p-4 rounded-2xl border flex gap-3 ${alert.type === 'critical' ? 'bg-red-50 border-red-100 text-red-700' :
-                                                alert.type === 'warning' ? 'bg-amber-50 border-amber-100 text-amber-700' :
-                                                    alert.type === 'healthy' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                                        'bg-indigo-50 border-indigo-100 text-indigo-700'
+                                            onClick={() => alert.link && navigate(alert.link)}
+                                            className={`p-4 rounded-2xl border flex gap-3 transition-all
+                                                ${ alert.link ? 'cursor-pointer hover:shadow-md hover:scale-[1.02]' : '' }
+                                                ${ alert.type === 'critical' ? 'bg-red-50 border-red-100 text-red-700' :
+                                                   alert.type === 'warning'  ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                                   alert.type === 'event'    ? 'bg-violet-50 border-violet-200 text-violet-700' :
+                                                   alert.type === 'healthy'  ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                                                               'bg-indigo-50 border-indigo-100 text-indigo-700'
                                                 }`}
                                         >
-                                            <div className="mt-0.5">
+                                            <div className="mt-0.5 shrink-0">
                                                 {alert.type === 'critical' ? <AlertCircle size={18} /> :
-                                                    alert.type === 'healthy' ? <CheckCircle size={18} /> : <Zap size={18} />}
+                                                 alert.type === 'event'    ? <CalendarClock size={18} /> :
+                                                 alert.type === 'healthy'  ? <CheckCircle size={18} /> : <Zap size={18} />}
                                             </div>
-                                            <div>
-                                                <p className="text-[10px] uppercase font-black tracking-widest opacity-60 mb-1">{alert.type}</p>
+                                            <div className="flex-1">
+                                                <p className="text-[10px] uppercase font-black tracking-widest opacity-60 mb-1">
+                                                    {alert.type === 'event' ? 'Event Request' : alert.type}
+                                                </p>
                                                 <p className="text-sm font-bold leading-snug">{alert.msg}</p>
+                                                {alert.link && (
+                                                    <p className="text-[10px] font-black uppercase tracking-widest mt-2 opacity-70 flex items-center gap-1">
+                                                        <ArrowUpRight size={11}/> Click to review
+                                                    </p>
+                                                )}
                                             </div>
                                         </motion.div>
                                     ))}

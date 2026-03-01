@@ -79,8 +79,18 @@ try:
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'contact_info') ALTER TABLE campus_events ADD contact_info NVARCHAR(300) NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'tags') ALTER TABLE campus_events ADD tags NVARCHAR(500) NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'max_participants') ALTER TABLE campus_events ADD max_participants INT NULL;"))
+        # New campus_news columns
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'category') ALTER TABLE campus_news ADD category NVARCHAR(60) NULL DEFAULT 'general';"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'cover_image_url') ALTER TABLE campus_news ADD cover_image_url NVARCHAR(500) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'tags') ALTER TABLE campus_news ADD tags NVARCHAR(400) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'is_featured') ALTER TABLE campus_news ADD is_featured BIT NULL DEFAULT 0;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'source') ALTER TABLE campus_news ADD source NVARCHAR(200) NULL DEFAULT 'internal';"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'external_url') ALTER TABLE campus_news ADD external_url NVARCHAR(500) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'read_time_mins') ALTER TABLE campus_news ADD read_time_mins INT NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'updated_at') ALTER TABLE campus_news ADD updated_at DATETIME NULL;"))
 except Exception as e:
     print(f"Auto-migration error: {e}")
+
 
 # -------- Include Routers (ONLY PREFIX HERE) --------
 app.include_router(auth_router, prefix="/api/auth")

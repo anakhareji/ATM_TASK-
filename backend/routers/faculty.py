@@ -300,3 +300,107 @@ def get_recommendations(
     recommendations = query.order_by(desc(StudentRecommendation.created_at)).all()
 
     return recommendations
+
+
+# ── GET /faculty/students/progress ────────────────────────────────────────────
+@router.get("/students/progress")
+def get_student_progress(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns all visible students with their progress metrics:
+    - task completion rate
+    - overdue count
+    - system score
+    - existing performance record (if already evaluated)
+    Available to faculty and admin.
+    """
+    from models.task import Task
+    from models.todo import Todo
+    from services.performance_service import calculate_system_performance
+
+    if current_user["role"] not in [FACULTY, "admin"]:
+        raise HTTPException(403, "Faculty / Admin only")
+
+    # Determine visible students
+    if current_user["role"] == "admin":
+        students = db.query(User).filter(User.role == "student", User.status == "active").all()
+        all_projects = db.query(Project).all()
+        project_ids = [p.id for p in all_projects]
+    else:
+        # Faculty: students in their department / projects
+        assigned_projects = db.query(Project).outerjoin(
+            ProjectFaculty, ProjectFaculty.project_id == Project.id
+        ).filter(
+            (ProjectFaculty.faculty_id == current_user["user_id"]) |
+            (Project.lead_faculty_id == current_user["user_id"]) |
+            (Project.created_by == current_user["user_id"])
+        ).all()
+
+        dept_ids = {p.department_id for p in assigned_projects if p.department_id}
+        project_ids = [p.id for p in assigned_projects]
+
+        fac_user = db.query(User).filter(User.id == current_user["user_id"]).first()
+        if fac_user and fac_user.department_id:
+            dept_ids.add(fac_user.department_id)
+
+        if dept_ids:
+            students = db.query(User).filter(
+                User.role == "student",
+                User.status == "active",
+                User.department_id.in_(dept_ids)
+            ).all()
+        else:
+            students = db.query(User).filter(User.role == "student", User.status == "active").all()
+
+    result = []
+    for s in students:
+        # --- Task stats ---
+        assigned_tasks = db.query(Task).filter(
+            Task.assigned_to == s.id
+        ).all() if hasattr(Task, 'assigned_to') else []
+
+        total_tasks     = len(assigned_tasks)
+        completed_tasks = sum(1 for t in assigned_tasks if getattr(t, 'status', '') in ('completed', 'verified', 'submitted'))
+
+        # --- Todo stats ---
+        todos    = db.query(Todo).filter(Todo.student_id == s.id).all()
+        total_td = len(todos)
+        done_td  = sum(1 for t in todos if t.status == 'completed')
+
+        # --- System score (pick first project if available) ---
+        sys_data   = {"system_score": 0, "completion_rate": 0, "overdue_todos": 0}
+        first_proj = project_ids[0] if project_ids else None
+        if first_proj:
+            sys_data = calculate_system_performance(db, s.id, first_proj)
+
+        # --- Existing performance record ---
+        perf_record = db.query(StudentPerformance).filter(
+            StudentPerformance.student_id == s.id
+        ).order_by(desc(StudentPerformance.created_at)).first()
+
+        result.append({
+            "id":              s.id,
+            "name":            s.name,
+            "email":           s.email,
+            "semester":        s.current_semester,
+            "department_id":   s.department_id,
+            "batch":           s.batch,
+            # Progress
+            "total_tasks":     total_tasks,
+            "completed_tasks": completed_tasks,
+            "task_rate":       round((completed_tasks / total_tasks * 100) if total_tasks else 0, 1),
+            "total_todos":     total_td,
+            "done_todos":      done_td,
+            "todo_rate":       round((done_td / total_td * 100) if total_td else 0, 1),
+            "overdue_todos":   sys_data.get("overdue_todos", 0),
+            "system_score":    sys_data.get("system_score", 0),
+            # Existing grade
+            "has_record":      perf_record is not None,
+            "latest_grade":    perf_record.grade if perf_record else None,
+            "latest_score":    float(perf_record.final_score) if perf_record else None,
+            "latest_semester": perf_record.semester if perf_record else None,
+        })
+
+    return result

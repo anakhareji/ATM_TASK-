@@ -22,9 +22,10 @@ const ADMIN_NAV = [
     {
         label: 'Academic Activity',
         items: [
-            { name: 'Global Projects', path: '/dashboard/projects-global', icon: Briefcase },
-            { name: 'Global Submissions', path: '/dashboard/submissions-global', icon: ClipboardList },
-            { name: 'Performance Analytics', path: '/dashboard/performance', icon: Activity },
+            { name: 'Global Projects',        path: '/dashboard/projects-global',    icon: Briefcase     },
+            { name: 'Global Submissions',     path: '/dashboard/submissions-global', icon: ClipboardList },
+            { name: 'Performance Analytics',  path: '/dashboard/performance',        icon: Activity      },
+            { name: 'Evaluate Students',      path: '/dashboard/evaluate',           icon: GraduationCap },
         ]
     },
     {
@@ -58,7 +59,8 @@ const FACULTY_NAV = [
         label: 'Execution',
         items: [
             { name: 'Operational Intel', path: '/dashboard/submissions', icon: FileText },
-            { name: 'Academic Planner', path: '/dashboard/planner', icon: ListTodo },
+            { name: 'Academic Planner',  path: '/dashboard/planner',     icon: ListTodo },
+            { name: 'Evaluate Students', path: '/dashboard/evaluate',    icon: GraduationCap },
         ]
     }
 ];

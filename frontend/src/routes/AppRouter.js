@@ -25,6 +25,7 @@ import AdminProjects from "../pages/AdminProjects";
 import AdminSubmissions from "../pages/AdminSubmissions";
 import AdminRecognition from "../pages/AdminRecognition";
 import AdminCampusPulse from "../pages/AdminCampusPulse";
+import StudentEvaluation from "../pages/StudentEvaluation";
 
 // Faculty Pages
 import FacultyProjects from "../pages/FacultyProjects";
@@ -100,6 +101,7 @@ function AppRouter() {
             <Route path="/dashboard/performance" element={<AdminPerformance />} />
             <Route path="/dashboard/recognition" element={<AdminRecognition />} />
             <Route path="/dashboard/campus-pulse" element={<AdminCampusPulse />} />
+            <Route path="/dashboard/evaluate" element={<StudentEvaluation />} />
           </Route>
           <Route path="/admin/*" element={<AdminSaaSRoutes />} />
         </Route>
