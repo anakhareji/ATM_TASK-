@@ -119,6 +119,36 @@ const AdminEvents = () => {
     }
   };
 
+  const handleApproveEnd = async (id) => {
+    try {
+      await API.patch(`/events/${id}/approve-end`);
+      setToast({ open: true, type: 'success', message: 'Event end approved' });
+      fetchEvents();
+    } catch (e) {
+      setToast({ open: true, type: 'error', message: getErrorMessage(e, 'Failed to approve end') });
+    }
+  };
+
+  const handleHold = async (id) => {
+    try {
+      await API.patch(`/events/${id}/hold`);
+      setToast({ open: true, type: 'success', message: 'Event on hold' });
+      fetchEvents();
+    } catch (e) {
+      setToast({ open: true, type: 'error', message: getErrorMessage(e, 'Failed to hold') });
+    }
+  };
+
+  const handleUnhold = async (id) => {
+    try {
+      await API.patch(`/events/${id}/unhold`);
+      setToast({ open: true, type: 'success', message: 'Event unheld' });
+      fetchEvents();
+    } catch (e) {
+      setToast({ open: true, type: 'error', message: getErrorMessage(e, 'Failed to unhold') });
+    }
+  };
+
   if (role !== 'admin') {
     return (
       <AdminGlassLayout>
@@ -163,7 +193,7 @@ const AdminEvents = () => {
                       <p className="text-sm text-gray-600 mt-2">{ev.description}</p>
                     </div>
                     <div className="text-right">
-                      <Badge variant={ev.status === 'pending' ? 'warning' : upcoming ? 'primary' : 'default'}>{ev.status === 'pending' ? 'Pending' : ev.status === 'rejected' ? 'Rejected' : upcoming ? 'Upcoming' : 'Past'}</Badge>
+                      <Badge variant={ev.status === 'pending' || ev.status === 'end_requested' ? 'warning' : ev.status === 'held' ? 'danger' : ev.status === 'ended' ? 'default' : upcoming ? 'primary' : 'default'}>{ev.status === 'pending' ? 'Pending' : ev.status === 'end_requested' ? 'End Requested' : ev.status === 'rejected' ? 'Rejected' : ev.status === 'held' ? 'On Hold' : ev.status === 'ended' ? 'Ended' : upcoming ? 'Upcoming' : 'Past'}</Badge>
                       <p className="text-xs text-gray-500 mt-2">{new Date(ev.event_date).toLocaleString()}</p>
                     </div>
                   </div>
@@ -173,6 +203,15 @@ const AdminEvents = () => {
                         <Button className="bg-emerald-600 hover:bg-emerald-500 text-white" size="sm" onClick={() => handleApprove(ev.id)}>Approve</Button>
                         <Button className="bg-orange-500 hover:bg-orange-600 text-white" size="sm" onClick={() => handleReject(ev.id)}>Reject</Button>
                       </>
+                    )}
+                    {ev.status === 'end_requested' && (
+                      <Button className="bg-purple-600 hover:bg-purple-500 text-white" size="sm" onClick={() => handleApproveEnd(ev.id)}>Approve End</Button>
+                    )}
+                    {ev.status === 'approved' && (
+                      <Button className="bg-yellow-500 hover:bg-yellow-600 text-white" size="sm" onClick={() => handleHold(ev.id)}>Hold</Button>
+                    )}
+                    {ev.status === 'held' && (
+                      <Button className="bg-emerald-600 hover:bg-emerald-500 text-white" size="sm" onClick={() => handleUnhold(ev.id)}>Unhold</Button>
                     )}
                     <Button
                       variant="secondary"

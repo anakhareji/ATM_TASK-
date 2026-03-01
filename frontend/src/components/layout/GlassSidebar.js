@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Bell, FileText, Newspaper, Activity,
     Calendar, LogOut, Briefcase, Layers, CheckSquare, Shield,
     GraduationCap, ClipboardList, Award, Trophy, ListTodo
 } from 'lucide-react';
+import API from '../../api/axios';
 
 const ADMIN_NAV = [
     {
@@ -29,6 +30,7 @@ const ADMIN_NAV = [
     {
         label: 'Administration',
         items: [
+            { name: 'Campus Pulse', path: '/dashboard/campus-pulse', icon: Newspaper },
             { name: 'Academic Structure', path: '/dashboard/academic-structure', icon: Layers },
             { name: 'Audit Logs', path: '/dashboard/audit', icon: Shield },
             { name: 'Achievement & Recognition', path: '/dashboard/recognition', icon: Award },
@@ -107,6 +109,28 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
     const navSections = role === 'admin' ? ADMIN_NAV : role === 'faculty' ? FACULTY_NAV : STUDENT_NAV;
     const portalLabel = role.charAt(0).toUpperCase() + role.slice(1) + ' Portal';
 
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    // Fetch unread notification count (students & faculty only)
+    useEffect(() => {
+        if (role === 'admin') return;
+        const fetchUnread = async () => {
+            try {
+                const res = await API.get('/notifications');
+                const data = res.data || [];
+                setUnreadCount(data.filter(n => !n.is_read).length);
+            } catch { /* silent */ }
+        };
+        fetchUnread();
+        const interval = setInterval(fetchUnread, 30000); // refresh every 30s
+        // Also re-fetch immediately whenever a notification is read
+        window.addEventListener('notificationRead', fetchUnread);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('notificationRead', fetchUnread);
+        };
+    }, [role]);
+
     const handleLogout = () => {
         localStorage.clear();
         navigate('/login');
@@ -147,18 +171,27 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
                                     }
                                 `}
                             >
-                                {({ isActive }) => (
-                                    <>
-                                        <item.icon
-                                            size={18}
-                                            className={`shrink-0 transition-all duration-300 ${isActive ? 'scale-110 text-emerald-600' : 'text-gray-400 group-hover:text-gray-600 group-hover:scale-110'}`}
-                                        />
-                                        <span className="truncate">{item.name}</span>
-                                        {isActive && (
-                                            <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                                        )}
-                                    </>
-                                )}
+                                {({ isActive }) => {
+                                    const isNotifications = item.path === '/dashboard/notifications';
+                                    const badgeCount = isNotifications ? unreadCount : 0;
+                                    return (
+                                        <>
+                                            <item.icon
+                                                size={18}
+                                                className={`shrink-0 transition-all duration-300 ${isActive ? 'scale-110 text-emerald-600' : 'text-gray-400 group-hover:text-gray-600 group-hover:scale-110'}`}
+                                            />
+                                            <span className="truncate flex-1">{item.name}</span>
+                                            {badgeCount > 0 && (
+                                                <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shadow-md shadow-red-500/30 shrink-0">
+                                                    {badgeCount > 99 ? '99+' : badgeCount}
+                                                </span>
+                                            )}
+                                            {isActive && badgeCount === 0 && (
+                                                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                            )}
+                                        </>
+                                    );
+                                }}
                             </NavLink>
                         ))}
                     </div>

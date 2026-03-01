@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from database import engine, Base
+import os
 
 # -------- Import Models --------
 from models.user import User
@@ -70,8 +72,15 @@ from sqlalchemy import text
 try:
     with engine.begin() as conn:
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[notifications]') AND name = 'title') ALTER TABLE notifications ADD title NVARCHAR(200) NULL;"))
+        # New campus_events columns
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'image_url') ALTER TABLE campus_events ADD image_url NVARCHAR(500) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'location') ALTER TABLE campus_events ADD location NVARCHAR(300) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'organizer') ALTER TABLE campus_events ADD organizer NVARCHAR(200) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'contact_info') ALTER TABLE campus_events ADD contact_info NVARCHAR(300) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'tags') ALTER TABLE campus_events ADD tags NVARCHAR(500) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'max_participants') ALTER TABLE campus_events ADD max_participants INT NULL;"))
 except Exception as e:
-    print(f"Failed to auto-migrate 'title' on notifications: {e}")
+    print(f"Auto-migration error: {e}")
 
 # -------- Include Routers (ONLY PREFIX HERE) --------
 app.include_router(auth_router, prefix="/api/auth")
@@ -94,6 +103,11 @@ app.include_router(academic_router, prefix="/api/academic")
 app.include_router(academic_structure_v1_router, prefix="/api/v1/academic-structure")
 app.include_router(academic_structure_v1_router, prefix="/api/v1/academic_structure")
 app.include_router(admin_v1_router, prefix="/api/v1/admin")
+
+# -------- Static Files (uploads) --------
+uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 # -------- Root --------
 @app.get("/")
