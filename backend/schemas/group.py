@@ -4,6 +4,8 @@ from typing import Optional
 class GroupCreate(BaseModel):
     project_id: int
     name: Optional[str] = None
+    student_ids: Optional[list[int]] = []
+    leader_id: Optional[int] = None
 
 class AddGroupMember(BaseModel):
     student_id: int

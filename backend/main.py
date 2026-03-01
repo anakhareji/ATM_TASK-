@@ -66,6 +66,13 @@ app.add_middleware(
 # -------- Create Tables --------
 Base.metadata.create_all(bind=engine)
 
+from sqlalchemy import text
+try:
+    with engine.begin() as conn:
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[notifications]') AND name = 'title') ALTER TABLE notifications ADD title NVARCHAR(200) NULL;"))
+except Exception as e:
+    print(f"Failed to auto-migrate 'title' on notifications: {e}")
+
 # -------- Include Routers (ONLY PREFIX HERE) --------
 app.include_router(auth_router, prefix="/api/auth")
 app.include_router(test_router, prefix="/api/test")

@@ -1,14 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import AdminGlassLayout from '../components/layout/AdminGlassLayout';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import PageHeader from '../components/ui/PageHeader';
 import GlassCard from '../components/ui/GlassCard';
-import { UserPlus, Download, RefreshCw, Search, Shield, Trash2, Edit, Mail, MoreHorizontal, ArrowRight, GraduationCap } from 'lucide-react';
+import { UserPlus, Search, Shield, Trash2, Mail, ArrowRight, GraduationCap } from 'lucide-react';
 import API from '../api/axios';
 import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
 import { getErrorMessage } from '../utils/errorHelpers';
 
 const AdminUsers = () => {
@@ -37,7 +36,7 @@ const AdminUsers = () => {
   };
   const [userModal, setUserModal] = useState(userModalDefault);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, page_size: pageSize };
@@ -52,9 +51,9 @@ const AdminUsers = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, pageSize, q, filterRole]);
 
-  const fetchAcademicData = async () => {
+  const fetchAcademicData = useCallback(async () => {
     try {
       const results = await Promise.allSettled([
         API.get('/v1/academic-structure/departments?page=1&page_size=100'),
@@ -96,14 +95,14 @@ const AdminUsers = () => {
         setCourses([]);
       }
     } catch { }
-  };
+  }, []);
 
   useEffect(() => {
     if (role === 'admin') {
       fetchUsers();
       fetchAcademicData();
     }
-  }, [q, filterRole, page, pageSize]);
+  }, [role, fetchUsers, fetchAcademicData]);
 
   const handleSaveUser = async () => {
     try {
@@ -111,7 +110,14 @@ const AdminUsers = () => {
         return toast.error("Incomplete identity profile");
       }
 
-      const payload = { ...userModal };
+      const payload = { 
+        ...userModal,
+        department_id: userModal.department_id || null,
+        program_id: userModal.program_id || null,
+        course_id: userModal.course_id || null,
+        current_semester: userModal.current_semester || null
+      };
+
       if (payload.id) {
         delete payload.password; // Don't update password through this modal for now
         await API.put(`/admin/users/${payload.id}`, payload);
@@ -138,14 +144,25 @@ const AdminUsers = () => {
     }
   };
 
-  const handleChangeRole = async () => {
+   const handleChangeRole = async () => {
     try {
-      await API.patch(`/admin/change-role/${changeRoleModal.userId}`, { role: 'student' });
-      toast.success("Perms updated");
+      await API.patch(`/admin/change-role/${changeRoleModal.userId}`, { role: changeRoleModal.role });
+      toast.success("Identity reclassified");
       setChangeRoleModal({ open: false, userId: null, role: 'student' });
       fetchUsers();
     } catch {
-      toast.error("Perms update failed");
+      toast.error("Reclassification failed");
+    }
+  };
+
+  const handleApproveStatus = async (user) => {
+    const loadToast = toast.loading(`Activating ${user.name}...`);
+    try {
+      await API.patch(`/admin/activate-user/${user.id}`);
+      toast.success("Identity verified and activated", { id: loadToast });
+      fetchUsers();
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Activation failed"), { id: loadToast });
     }
   };
 
@@ -296,10 +313,15 @@ const AdminUsers = () => {
                                 <ArrowRight size={18} />
                               </Button>
                             )}
+                            {u.status === 'inactive' && (
+                              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleApproveStatus(u); }} className="p-2 hover:bg-emerald-50 rounded-xl text-emerald-600 bg-emerald-50/50">
+                                <Shield className="fill-emerald-600/10" size={18} />
+                              </Button>
+                            )}
                             <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setChangeRoleModal({ open: true, userId: u.id, role: u.role }); }} className="p-2 hover:bg-white rounded-xl text-indigo-500">
                               <Shield size={18} />
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setConfirmDelete({ open: true, userId: u.id }); }} className="p-2 hover:bg-white rounded-xl text-red-500">
+                            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setConfirmDelete({ open: false, userId: u.id }); }} className="p-2 hover:bg-white rounded-xl text-red-500">
                               <Trash2 size={18} />
                             </Button>
                           </div>
@@ -476,14 +498,16 @@ const AdminUsers = () => {
           actions={<Button onClick={handleChangeRole} className="bg-indigo-600 hover:bg-indigo-500 px-8 font-black rounded-2xl">Modify Perms</Button>}
         >
           <div className="space-y-4">
-            <p className="text-sm text-gray-500">Reclassify this identity within the academic hierarchy.</p>
-            <input
-              type="text"
-              className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-2xl text-sm font-bold text-gray-700"
-              value="Student"
-              readOnly
-              autoComplete="off"
-            />
+            <p className="text-sm text-gray-500">Reclassify this identity within the academic hierarchy. This will immediately update their access level.</p>
+            <select
+              className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-2xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-indigo-500/20"
+              value={changeRoleModal.role}
+              onChange={e => setChangeRoleModal({ ...changeRoleModal, role: e.target.value })}
+            >
+              <option value="student">Student</option>
+              <option value="faculty">Faculty</option>
+              <option value="admin">Administrator</option>
+            </select>
           </div>
         </Modal>
 

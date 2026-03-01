@@ -6,10 +6,53 @@ from models.group import ProjectGroup, GroupMember, ContributionLog
 from models.project_faculty import ProjectFaculty
 from schemas.group import GroupCreate, AddGroupMember, GroupEvaluationRequest
 from utils.security import get_current_user, FACULTY, ADMIN
+from routers.notification import add_notification
 
 router = APIRouter(
     tags=["Groups & Contributions"]
 )
+
+@router.get("/my-groups")
+def get_my_groups(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    from models.user import User
+    from models.project import Project
+    
+    user_id = current_user["user_id"]
+    
+    # Get IDs of groups the student is in
+    group_ids = db.query(GroupMember.group_id).filter(GroupMember.student_id == user_id).all()
+    group_ids = [r[0] for r in group_ids]
+    
+    if not group_ids:
+        return []
+    
+    groups = db.query(ProjectGroup).filter(ProjectGroup.id.in_(group_ids)).all()
+    
+    res = []
+    for g in groups:
+        project = db.query(Project).filter(Project.id == g.project_id).first()
+        members = db.query(GroupMember, User).join(User, GroupMember.student_id == User.id).filter(GroupMember.group_id == g.id).all()
+        
+        res.append({
+            "id": g.id,
+            "name": g.name,
+            "project_id": g.project_id,
+            "project_title": project.title if project else "Unknown Project",
+            "project_description": project.description if project else "",
+            "status": g.status,
+            "members": [
+                {
+                    "student_id": m[1].id,
+                    "name": m[1].name,
+                    "email": m[1].email,
+                    "is_leader": bool(int(m[0].is_leader or 0) == 1)
+                } for m in members
+            ]
+        })
+    return res
 
 @router.post("")
 def create_group(
@@ -33,8 +76,31 @@ def create_group(
         name=data.name
     )
     db.add(group)
+    db.flush() # Get the group ID before commit
+
+    # Add Members
+    if data.student_ids:
+        for sid in data.student_ids:
+            member = GroupMember(
+                group_id=group.id,
+                student_id=sid,
+                is_leader=1 if sid == data.leader_id else 0
+            )
+            db.add(member)
+
     db.commit()
     db.refresh(group)
+
+    # Notify Members
+    if data.student_ids:
+        for sid in data.student_ids:
+            add_notification(
+                db, 
+                user_id=sid, 
+                title="Squad Assignment", 
+                message=f"You have been deployed to squad '{group.name}' for operational duty.",
+                type="group"
+            )
 
     return {"message": "Group created", "id": group.id}
 
@@ -72,6 +138,14 @@ def add_member(
     )
     db.add(member)
     db.commit()
+
+    add_notification(
+        db, 
+        user_id=data.student_id, 
+        title="Squad Reinforcement", 
+        message=f"You have been added to squad '{group.name}' as reinforcements.",
+        type="group"
+    )
 
     return {"message": "Member added"}
 

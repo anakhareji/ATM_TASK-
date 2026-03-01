@@ -46,6 +46,20 @@ def create_event(
     db.add(event)
     db.commit()
     db.refresh(event)
+
+    # Notify All Users
+    from models.user import User
+    from routers.notification import add_notification
+    users = db.query(User).all()
+    for u in users:
+        add_notification(
+            db, 
+            user_id=u.id, 
+            title="New Campus Event", 
+            message=f"Event scheduled: '{event.title}' on {event.event_date.strftime('%Y-%m-%d')}", 
+            type="event"
+        )
+
     db.add(AuditLog(
         user_id=current_user["user_id"],
         action="create_event",
@@ -101,6 +115,18 @@ def approve_event(
     
     event.status = "approved"
     db.commit()
+
+    # Notify Host Student
+    from routers.notification import add_notification
+    if event.host_student_id:
+        add_notification(
+            db, 
+            user_id=event.host_student_id, 
+            title="Event Approved", 
+            message=f"Your request to host '{event.title}' has been approved by admin.", 
+            type="event"
+        )
+
     db.add(AuditLog(user_id=current_user["user_id"], action="approve_event", entity_type="event", entity_id=event_id))
     db.commit()
     return {"message": "Event approved"}

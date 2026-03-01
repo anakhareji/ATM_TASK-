@@ -21,6 +21,7 @@ from typing import List
 from utils.security import get_current_user, FACULTY, STUDENT, ADMIN
 from models.audit_log import AuditLog
 from datetime import datetime
+from routers.notification import add_notification
 
 router = APIRouter(
     tags=["Tasks"]
@@ -78,6 +79,27 @@ def create_task(
     db.add(task)
     db.commit()
     db.refresh(task)
+
+    # Notify Target (Student or Group)
+    if task.student_id:
+        add_notification(
+            db, 
+            user_id=task.student_id, 
+            title="New Mission Deployed", 
+            message=f"A new academic mission '{task.title}' has been assigned to you.",
+            type="task"
+        )
+    elif task.group_id:
+        from models.group import GroupMember
+        members = db.query(GroupMember).filter(GroupMember.group_id == task.group_id).all()
+        for m in members:
+            add_notification(
+                db, 
+                user_id=m.student_id, 
+                title="Squad Mission Deployed", 
+                message=f"A new squad mission '{task.title}' has been deployed for your unit.",
+                type="task"
+            )
 
     return {"message": "Mission deployed successfully", "task_id": task.id}
 
@@ -199,6 +221,16 @@ def submit_task(
     # task.status = "submitted" # Only for individual really
     
     db.commit()
+    
+    # Notify Faculty
+    add_notification(
+        db,
+        user_id=task.faculty_id,
+        title="Mission Submission Received",
+        message=f"Operative has submitted evidence for mission '{task.title}'.",
+        type="task"
+    )
+
     return {"message": "Task submitted", "is_late": is_late}
 
 # =========================
@@ -268,7 +300,64 @@ def add_task_comment(
     db.add(comment)
     db.commit()
     
+    # 🔔 Notifications for Comments
+    if current_user["role"] == FACULTY:
+        # Notify student(s)
+        if task.student_id:
+            add_notification(db, user_id=task.student_id, title="New Faculty Feedback", message=f"Faculty has commented on mission '{task.title}'", type="task")
+        elif task.group_id:
+            from models.group import GroupMember
+            members = db.query(GroupMember).filter(GroupMember.group_id == task.group_id).all()
+            for m in members:
+                add_notification(db, user_id=m.student_id, title="Squad Intel Briefing", message=f"Faculty has added a directive to squad mission '{task.title}'", type="task")
+    elif current_user["role"] == STUDENT:
+        # Notify faculty
+        add_notification(db, user_id=task.faculty_id, title="Operative Broadcast", message=f"Operative has commented on mission '{task.title}'", type="task")
+        # Notify group members 
+        if task.group_id:
+            from models.group import GroupMember
+            others = db.query(GroupMember).filter(GroupMember.group_id == task.group_id, GroupMember.student_id != current_user["user_id"]).all()
+            for o in others:
+                add_notification(db, user_id=o.student_id, title="Squad Communication", message=f"A teammate shared intel on mission '{task.title}'", type="task")
+    
     return {"message": "Comment added"}
+
+@router.put("/comments/{comment_id}")
+def update_task_comment(
+    comment_id: int,
+    data: CommentCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    from models.task_comment import TaskComment
+    comment = db.query(TaskComment).filter(TaskComment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(404, "Comment not found")
+        
+    if comment.user_id != current_user["user_id"] and current_user["role"] != ADMIN:
+        raise HTTPException(403, "You can't edit others' comments")
+        
+    comment.comment_text = data.comment_text
+    db.commit()
+    return {"message": "Comment updated"}
+
+@router.delete("/comments/{comment_id}")
+def delete_task_comment(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    from models.task_comment import TaskComment
+    comment = db.query(TaskComment).filter(TaskComment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(404, "Comment not found")
+        
+    if comment.user_id != current_user["user_id"] and current_user["role"] != ADMIN:
+        raise HTTPException(403, "You can't delete others' comments")
+        
+    db.delete(comment)
+    db.commit()
+    return {"message": "Comment deleted"}
 
 # =========================
 # VIEW TASKS (FOR CURRENT USER)
@@ -391,8 +480,20 @@ def get_assigned_tasks(
         Task.status.in_(["published", "draft", "assigned"])
     ).all()
     
-    return [
-        {
+    res = []
+    for t in tasks:
+        is_leader = True # Default for individual tasks
+        
+        task_type_clean = (t.task_type or "").lower()
+        if task_type_clean == "group":
+            member_record = db.query(GroupMember).filter(
+                GroupMember.group_id == t.group_id,
+                GroupMember.student_id == user_id
+            ).first()
+            # Explicit integer check for SQL Server BIT/INT compatibility
+            is_leader = bool(member_record and int(member_record.is_leader or 0) == 1)
+        
+        res.append({
             "id": t.id,
             "title": t.title,
             "description": t.description,
@@ -402,10 +503,10 @@ def get_assigned_tasks(
             "task_type": t.task_type,
             "project_id": t.project_id,
             "status": t.status,
-            "created_at": t.created_at
-        }
-        for t in tasks
-    ]
+            "created_at": t.created_at,
+            "is_leader": is_leader
+        })
+    return res
 
 # =========================
 # ACCEPT TASK (START TIMER)
@@ -416,30 +517,57 @@ def accept_task(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    if current_user["role"] != STUDENT:
-        raise HTTPException(403, "Student access only")
+    # Verify role (case-insensitive)
+    role = (current_user.get("role") or "").lower()
+    if role != STUDENT.lower():
+        raise HTTPException(403, "Sector authorization restricted to active student personnel.")
 
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
-        raise HTTPException(404, "Mission identifier not found")
+        raise HTTPException(404, "Mission identifier not found in database.")
     
-    if task.status not in ["published", "draft", "assigned"]:
-         raise HTTPException(400, "Mission is not in an acceptable state")
+    if task.status.lower() not in ["published", "draft", "assigned"]:
+         raise HTTPException(400, f"Mission state '{task.status}' prohibits activation protocols.")
 
-    # Verify ownership
+    # Verify authorization
     is_allowed = False
-    if task.student_id == current_user["user_id"]:
-        is_allowed = True
-    elif task.group_id:
+    error_msg = f"Sector Authorization Denied for Personnel-ID {current_user['user_id']}"
+
+    task_type_clean = (task.task_type or "individual").lower()
+
+    if task_type_clean == "group":
+        # Must be in the group AND be the leader
+        if not task.group_id:
+             raise HTTPException(400, "Corrupted Mission Intel: Squad identifier missing.")
+             
         member = db.query(GroupMember).filter(
             GroupMember.group_id == task.group_id,
             GroupMember.student_id == current_user["user_id"]
         ).first()
-        if member:
+        
+        if not member:
+            is_allowed = False
+            error_msg = f"Critical: Personnel-ID {current_user['user_id']} is not recognized as a member of Squad-ID {task.group_id}."
+        elif int(member.is_leader or 0) != 1:
+            is_allowed = False
+            error_msg = "Only the commissioned Squad Leader can initialize this mission protocol."
+        else:
             is_allowed = True
+    else:
+        # Individual Task - check either student_id match or group membership if relevant
+        if task.student_id == current_user["user_id"]:
+            is_allowed = True
+        elif task.group_id:
+             # Fallback for old tasks that might be group but type is 'individual'
+             member = db.query(GroupMember).filter(
+                 GroupMember.group_id == task.group_id,
+                 GroupMember.student_id == current_user["user_id"]
+             ).first()
+             if member:
+                  is_allowed = True
             
     if not is_allowed:
-        raise HTTPException(403, "Sector Authorization Denied")
+        raise HTTPException(403, error_msg)
 
     task.status = "in_progress"
     task.started_at = datetime.utcnow()
@@ -541,6 +669,15 @@ def grade_submission(
         perf.faculty_id = faculty_id # ensure faculty is set
         
     db.commit()
+
+    # Notify student
+    add_notification(
+        db, 
+        user_id=student_id, 
+        title="Mission Evaluation Complete", 
+        message=f"Faculty evaluator has graded mission '{task.title}'. Grade: {data.grade}", 
+        type="task"
+    )
     
     return {"message": "Graded successfully and performance updated"}
 
