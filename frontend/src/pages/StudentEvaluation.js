@@ -79,8 +79,8 @@ const EvalModal = ({ student, projects, onClose, onSuccess }) => {
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-8 py-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-white text-xl font-black">
-              {student.name.charAt(0).toUpperCase()}
+            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-white text-xl font-black overflow-hidden ring-2 ring-white/50">
+              {student.avatar ? <img src={student.avatar} alt="User" className="w-full h-full object-cover" /> : student.name.charAt(0).toUpperCase()}
             </div>
             <div>
               <h2 className="text-lg font-black text-white">{student.name}</h2>
@@ -320,8 +320,8 @@ const StudentEvaluation = () => {
                   {/* Card header */}
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-emerald-500/20">
-                        {s.name.charAt(0).toUpperCase()}
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-emerald-500/20 overflow-hidden">
+                        {s.avatar ? <img src={s.avatar} alt="User" className="w-full h-full object-cover" /> : s.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <h3 className="font-black text-gray-800 uppercase italic text-sm leading-tight">{s.name}</h3>

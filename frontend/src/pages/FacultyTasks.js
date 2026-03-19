@@ -220,8 +220,12 @@ const TaskActivity = ({ taskId }) => {
                 <div className="space-y-6">
                     {/* Add Comment Section */}
                     <div className="flex gap-4 group">
-                        <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-100 shrink-0 uppercase">
-                            {localStorage.getItem('userName')?.charAt(0) || 'U'}
+                        <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-100 shrink-0 uppercase overflow-hidden">
+                            {localStorage.getItem('userAvatar') ? (
+                                <img src={localStorage.getItem('userAvatar')} alt="User" className="w-full h-full object-cover" />
+                            ) : (
+                                localStorage.getItem('userName')?.charAt(0) || 'U'
+                            )}
                         </div>
                         <div className="flex-1 space-y-3">
                             {!isInputFocused ? (
@@ -256,10 +260,14 @@ const TaskActivity = ({ taskId }) => {
                         ) : (
                             comments.map(c => (
                                 <div key={c.id} className="relative group/msg">
-                                    <div className={`absolute -left-[65px] top-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-[10px] shadow-sm z-10 transition-transform group-hover/msg:scale-110 uppercase ${
+                                    <div className={`absolute -left-[65px] top-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-[10px] shadow-sm z-10 transition-transform group-hover/msg:scale-110 uppercase overflow-hidden ${
                                         c.role === 'student' ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-gray-100 text-gray-400'
                                     }`}>
-                                        {c.user_name?.charAt(0) || '?'}
+                                        {c.user_avatar ? (
+                                            <img src={c.user_avatar} alt="User" className="w-full h-full object-cover" />
+                                        ) : (
+                                            c.user_name?.charAt(0) || '?'
+                                        )}
                                     </div>
                                     
                                     {editingId === c.id ? (
@@ -1087,8 +1095,8 @@ const SubmissionsModal = ({ isOpen, onClose, task, submissions, gradeData, setGr
                         <div key={sub.id} className="group p-8 bg-gray-50/50 rounded-[2.5rem] border border-gray-100 flex flex-col xl:flex-row gap-10 hover:bg-white hover:border-emerald-100 transition-all duration-500 shadow-sm hover:shadow-xl">
                             <div className="flex-1">
                                 <div className="flex items-center gap-4 mb-6">
-                                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center font-black text-lg text-emerald-600 shadow-sm">
-                                        {sub.student_name?.charAt(0) || '?'}
+                                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center font-black text-lg text-emerald-600 shadow-sm overflow-hidden">
+                                        {sub.student_avatar ? <img src={sub.student_avatar} alt="User" className="w-full h-full object-cover" /> : (sub.student_name?.charAt(0) || '?')}
                                     </div>
                                     <div>
                                         <p className="text-xl font-black text-gray-800">{sub.student_name}</p>

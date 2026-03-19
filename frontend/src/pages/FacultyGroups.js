@@ -335,8 +335,8 @@ const FacultyGroups = () => {
                                                     }`}
                                                 >
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${isSelected ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                                                            {s.name.charAt(0)}
+                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs overflow-hidden ${isSelected ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                                            {s.avatar ? <img src={s.avatar} alt={s.name} className="w-full h-full object-cover" /> : s.name.charAt(0)}
                                                         </div>
                                                         <span className={`text-[11px] font-black uppercase tracking-tight ${isSelected ? 'text-indigo-700' : 'text-gray-600'}`}>{s.name}</span>
                                                     </div>
@@ -510,8 +510,8 @@ const GroupCard = ({ group, allStudents, onDelete, setGroups }) => {
                                 return (
                                     <div key={m.student_id} className={`flex justify-between items-center p-4 rounded-2xl border transition-all ${m.is_leader ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' : 'bg-white border-gray-100 hover:border-indigo-100 shadow-sm'}`}>
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs ${m.is_leader ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                                                {s?.name?.charAt(0) || '?'}
+                                            <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-xs overflow-hidden ${m.is_leader ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                                {s?.avatar ? <img src={s?.avatar} alt={s?.name} className="w-full h-full object-cover" /> : (s?.name?.charAt(0) || '?')}
                                             </div>
                                             <div>
                                                 <p className="text-sm font-black tracking-tight">{s?.name || `Ref ID: ${m.student_id}`}</p>

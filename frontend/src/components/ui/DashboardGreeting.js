@@ -23,23 +23,27 @@ const DashboardGreeting = ({ user }) => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="bg-gradient-to-r from-emerald-50 to-indigo-50 p-8 rounded-[2.5rem] shadow-sm border border-white/50 backdrop-blur-xl mb-8"
+            className="bg-[#ffece0] p-8 md:px-10 rounded-[2.5rem] mb-8 relative overflow-hidden"
         >
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
                 <div>
-                    <h1 className="text-4xl font-black text-gray-800 tracking-tight">
-                        {getGreeting(user.name || user.username || 'User')} 👋
+                    <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+                        Welcome back, {(user?.name || user?.username || 'Sarah').split(' ')[0]}!
+                        <span className="text-3xl md:text-4xl">👋</span>
                     </h1>
-                    <p className="text-gray-500 font-medium mt-2 flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                        {randomLine}
+                    <p className="text-gray-700 font-medium mt-2 text-base md:text-lg">
+                        Let's make learning amazing today!
                     </p>
                 </div>
-                <div className="hidden md:block">
-                    <span className="px-5 py-2 bg-white/60 backdrop-blur-md border border-white rounded-full text-[10px] font-black uppercase tracking-widest text-gray-400 shadow-sm">
-                        {user.role || 'Dashboard'} Access
-                    </span>
-                </div>
+            </div>
+            
+            {/* SVG Illustration Wrapper */}
+            <div className="hidden md:block absolute right-0 bottom-0 top-0 w-1/3 opacity-80 pointer-events-none">
+                <svg viewBox="0 0 400 200" className="w-full h-full object-cover object-right-bottom">
+                    <circle cx="300" cy="100" r="80" fill="#ffb4a2" opacity="0.3"/>
+                    <rect x="220" y="140" width="120" height="15" rx="7.5" fill="#f87171" opacity="0.4"/>
+                    <rect x="240" y="125" width="80" height="15" rx="7.5" fill="#34d399" opacity="0.4"/>
+                </svg>
             </div>
         </motion.div>
     );

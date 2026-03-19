@@ -211,8 +211,8 @@ const TaskComments = ({ taskId }) => {
                 <div className="space-y-6">
                     {/* Add Comment Section */}
                     <div className="flex gap-3 group">
-                        <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-[10px] shadow-md shrink-0 uppercase">
-                            {localStorage.getItem('userName')?.charAt(0) || 'U'}
+                        <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-[10px] shadow-md shrink-0 uppercase overflow-hidden">
+                            {localStorage.getItem('userAvatar') ? <img src={localStorage.getItem('userAvatar')} alt="User" className="w-full h-full object-cover" /> : (localStorage.getItem('userName')?.charAt(0) || 'U')}
                         </div>
                         <div className="flex-1 space-y-3">
                             {!isInputFocused ? (
@@ -248,8 +248,8 @@ const TaskComments = ({ taskId }) => {
                             comments.map(c => (
                                 <div key={c.id} className="relative">
                                     <div className="flex gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 font-bold text-[10px] shrink-0 uppercase">
-                                            {c.user_name?.charAt(0) || '?'}
+                                        <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 font-bold text-[10px] shrink-0 uppercase overflow-hidden">
+                                            {c.user_avatar ? <img src={c.user_avatar} alt="User" className="w-full h-full object-cover" /> : (c.user_name?.charAt(0) || '?')}
                                         </div>
                                         <div className="flex-1 space-y-1">
                                             {editingId === c.id ? (

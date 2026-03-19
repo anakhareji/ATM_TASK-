@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from database import Base
 from datetime import datetime
 
@@ -11,6 +11,7 @@ class User(Base):
     password = Column(String(255), nullable=False)
     role = Column(String(20), nullable=False)
     status = Column(String(20), default="active")
+    avatar = Column(Text, nullable=True)
 
     created_by_faculty_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     
