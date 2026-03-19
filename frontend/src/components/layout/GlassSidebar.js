@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Bell, FileText, Newspaper, Activity,
     Calendar, LogOut, Briefcase, Layers, CheckSquare, Shield,
-    GraduationCap, ClipboardList, Award, Trophy, ListTodo
+    GraduationCap, ClipboardList, Award, Trophy, ListTodo, User
 } from 'lucide-react';
 import API from '../../api/axios';
 
@@ -104,9 +104,19 @@ const STUDENT_NAV = [
 
 const GlassSidebar = ({ isOpen, setIsOpen }) => {
     const navigate = useNavigate();
-    const role = (localStorage.getItem('userRole') || 'student').toLowerCase();
-    const userName = localStorage.getItem('userName') || 'User';
-    const initials = userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const [role, setRole] = useState((localStorage.getItem('userRole') || 'student').toLowerCase());
+    const [userName, setUserName] = useState(localStorage.getItem('userName') || 'User');
+    const [userAvatar, setUserAvatar] = useState(localStorage.getItem('userAvatar'));
+
+    useEffect(() => {
+        const handleProfileUpdate = () => {
+            setUserName(localStorage.getItem('userName') || 'User');
+            setUserAvatar(localStorage.getItem('userAvatar'));
+            setRole((localStorage.getItem('userRole') || 'student').toLowerCase());
+        };
+        window.addEventListener('profileUpdated', handleProfileUpdate);
+        return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
+    }, []);
 
     const navSections = role === 'admin' ? ADMIN_NAV : role === 'faculty' ? FACULTY_NAV : STUDENT_NAV;
     const portalLabel = role.charAt(0).toUpperCase() + role.slice(1) + ' Portal';
@@ -142,12 +152,12 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
         <div className="w-72 h-full bg-white border-r border-gray-100 flex flex-col shadow-lg overflow-hidden">
             {/* Logo */}
             <div className="flex items-center gap-3 px-6 h-20 border-b border-gray-100 shrink-0">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                    <GraduationCap className="w-5 h-5 text-white" />
+                <div className="w-9 h-9 rounded-xl bg-[#ffece0] flex items-center justify-center shadow-lg shadow-orange-500/10">
+                    <GraduationCap className="w-5 h-5 text-[#ea580c]" />
                 </div>
                 <div>
                     <h1 className="text-lg font-black text-gray-800 tracking-tight leading-none uppercase">Academia</h1>
-                    <p className="text-[9px] font-black text-emerald-500 uppercase tracking-[0.2em] leading-none mt-1">{portalLabel}</p>
+                    <p className="text-[9px] font-black text-[#ea580c] uppercase tracking-[0.2em] leading-none mt-1">{portalLabel}</p>
                 </div>
             </div>
 
@@ -168,7 +178,7 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
                                     flex items-center gap-3 px-4 py-2.5 rounded-2xl
                                     transition-all duration-300 group text-sm font-bold
                                     ${isActive
-                                        ? 'bg-emerald-50/80 text-emerald-700 shadow-sm border border-emerald-100/50'
+                                        ? 'bg-[#ffeddf] text-[#2c2c2c] shadow-sm relative overflow-hidden'
                                         : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800 border border-transparent'
                                     }
                                 `}
@@ -180,7 +190,7 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
                                         <>
                                             <item.icon
                                                 size={18}
-                                                className={`shrink-0 transition-all duration-300 ${isActive ? 'scale-110 text-emerald-600' : 'text-gray-400 group-hover:text-gray-600 group-hover:scale-110'}`}
+                                                className={`shrink-0 transition-all duration-300 ${isActive ? 'scale-110 text-[#ea580c]' : 'text-gray-400 group-hover:text-gray-600 group-hover:scale-110'}`}
                                             />
                                             <span className="truncate flex-1">{item.name}</span>
                                             {badgeCount > 0 && (
@@ -189,7 +199,7 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
                                                 </span>
                                             )}
                                             {isActive && badgeCount === 0 && (
-                                                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#ea580c] shrink-0 shadow-[0_0_8px_rgba(234,88,12,0.5)]" />
                                             )}
                                         </>
                                     );
@@ -203,8 +213,12 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
             {/* Profile & Logout */}
             <div className="p-4 border-t border-gray-100 shrink-0 space-y-3 bg-gray-50/30">
                 <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-white border border-gray-100 shadow-sm">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-md shadow-emerald-400/20 shrink-0">
-                        <span className="font-black text-white text-xs">{initials}</span>
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 overflow-hidden flex items-center justify-center shadow-md shadow-emerald-400/20 shrink-0">
+                        {userAvatar ? (
+                            <img src={userAvatar} alt="User" className="w-full h-full object-cover" />
+                        ) : (
+                            <User size={20} className="text-white" />
+                        )}
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-black text-gray-800 truncate leading-tight">{userName}</p>
@@ -216,7 +230,7 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-300 active:scale-95 text-xs font-black uppercase tracking-widest"
                 >
                     <LogOut size={16} />
-                    Terminate Session
+                    Sign Out
                 </button>
             </div>
         </div>

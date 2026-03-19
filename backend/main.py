@@ -44,6 +44,7 @@ from routers.audit import router as audit_router
 from routers.academic import router as academic_router
 from routers.academic_structure_v1 import router as academic_structure_v1_router
 from routers.admin_v1 import router as admin_v1_router
+from routers.user import router as user_router
 
 # -------- Create App --------
 app = FastAPI(
@@ -79,6 +80,8 @@ try:
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'contact_info') ALTER TABLE campus_events ADD contact_info NVARCHAR(300) NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'tags') ALTER TABLE campus_events ADD tags NVARCHAR(500) NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'max_participants') ALTER TABLE campus_events ADD max_participants INT NULL;"))
+        # New users columns
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[users]') AND name = 'avatar') ALTER TABLE users ADD avatar NVARCHAR(MAX) NULL;"))
         # New campus_news columns
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'category') ALTER TABLE campus_news ADD category NVARCHAR(60) NULL DEFAULT 'general';"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'cover_image_url') ALTER TABLE campus_news ADD cover_image_url NVARCHAR(500) NULL;"))
@@ -113,6 +116,7 @@ app.include_router(academic_router, prefix="/api/academic")
 app.include_router(academic_structure_v1_router, prefix="/api/v1/academic-structure")
 app.include_router(academic_structure_v1_router, prefix="/api/v1/academic_structure")
 app.include_router(admin_v1_router, prefix="/api/v1/admin")
+app.include_router(user_router, prefix="/api/users")
 
 # -------- Static Files (uploads) --------
 uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")

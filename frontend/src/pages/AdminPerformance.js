@@ -270,8 +270,8 @@ const AdminPerformance = () => {
                         className="hover:bg-emerald-50/20 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-700 font-bold text-xs">
-                              {(r.student_name || '?').charAt(0).toUpperCase()}
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-700 font-bold text-xs overflow-hidden">
+                              {r.student_avatar ? <img src={r.student_avatar} alt="User" className="w-full h-full object-cover" /> : (r.student_name || '?').charAt(0).toUpperCase()}
                             </div>
                             <span className="font-bold text-gray-700">{r.student_name || `Student #${r.student_id}`}</span>
                           </div>

@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import PageHeader from '../components/ui/PageHeader';
 import GlassCard from '../components/ui/GlassCard';
-import { UserPlus, Search, Shield, Trash2, Mail, ArrowRight, GraduationCap } from 'lucide-react';
+import { UserPlus, Search, Shield, Trash2, Mail, ArrowRight, GraduationCap, User } from 'lucide-react';
 import API from '../api/axios';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../utils/errorHelpers';
@@ -267,8 +267,12 @@ const AdminUsers = () => {
                       >
                         <td className="px-8 py-5">
                           <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-black text-sm group-hover:scale-110 transition-transform">
-                              {u.name?.[0]?.toUpperCase()}
+                            <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-black text-sm group-hover:scale-110 transition-transform overflow-hidden">
+                              {u.avatar ? (
+                                <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
+                              ) : (
+                                u.name?.[0]?.toUpperCase() || <User size={20} />
+                              )}
                             </div>
                             <div>
                               <p className="text-gray-800 font-bold leading-none mb-1">{u.name}</p>
@@ -610,8 +614,12 @@ const AdminUsers = () => {
           {userDetailsModal.user && (
             <div className="space-y-6">
               <div className="flex items-center gap-6 p-6 bg-gray-50 rounded-3xl border border-gray-100 shadow-inner">
-                <div className="w-20 h-20 rounded-[2rem] bg-indigo-600 flex items-center justify-center text-white text-3xl font-black shadow-xl shadow-indigo-600/20">
-                  {userDetailsModal.user.name?.[0]?.toUpperCase()}
+                <div className="w-20 h-20 rounded-[2rem] bg-indigo-600 flex items-center justify-center text-white text-3xl font-black shadow-xl shadow-indigo-600/20 overflow-hidden ring-4 ring-white">
+                  {userDetailsModal.user.avatar ? (
+                      <img src={userDetailsModal.user.avatar} alt={userDetailsModal.user.name} className="w-full h-full object-cover" />
+                  ) : (
+                      userDetailsModal.user.name?.[0]?.toUpperCase() || <User size={32} />
+                  )}
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-gray-800 leading-tight">{userDetailsModal.user.name}</h3>
