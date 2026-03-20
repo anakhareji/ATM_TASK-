@@ -59,8 +59,8 @@ const StudentDashboard = () => {
                  <Zap size={14} className="text-emerald-500 fill-emerald-500" />
                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Academic Uplink Active</span>
               </div>
-              <h1 className="text-4xl lg:text-5xl font-black text-gray-900 tracking-tight flex items-baseline gap-4 italic underline-offset-8">
-                 Welcome Back, <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-600 uppercase">{userName.split(' ')[0]}</span>
+              <h1 className="text-4xl lg:text-5xl font-black text-gray-900 tracking-tight flex items-baseline gap-4 underline-offset-8">
+                 Welcome Back, <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-600 uppercase italic">{userName.split(' ')[0]}</span>
               </h1>
               <div className="flex items-center gap-6 mt-4">
                  <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
@@ -86,7 +86,7 @@ const StudentDashboard = () => {
               </div>
               <div className="w-px h-12 bg-gray-200 hidden lg:block mx-4" />
               <div className="flex flex-col items-center">
-                 <div className="relative">
+                 <div className="relative w-20 h-20">
                     <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 rotate-12 absolute -inset-1 blur-lg opacity-40 animate-pulse" />
                     <div className="w-20 h-20 rounded-[1.5rem] bg-white flex flex-col items-center justify-center border border-emerald-100 shadow-xl relative z-10">
                        <span className="text-[10px] font-black text-emerald-500 uppercase leading-none mb-1">XP</span>
@@ -141,7 +141,7 @@ const StudentDashboard = () => {
          
          {/* Live Objectives Feed */}
          <GlassCard className="lg:col-span-2 border-white/50 relative overflow-hidden">
-            <div className="flex justify-between items-center mb-10">
+            <div className="flex justify-between items-start mb-10">
                <div>
                   <h3 className="text-2xl font-black text-gray-800 tracking-tight uppercase italic flex items-center gap-3">
                      <ClipboardList className="text-emerald-500" /> Upcoming Briefings
@@ -320,7 +320,7 @@ const StudentDashboard = () => {
 const KPICard = ({ title, value, subtext, icon: Icon, color, bg, badge }) => (
   <motion.div variants={cardEntrance} whileHover={{ y: -5 }} className="h-full relative">
     <GlassCard className="h-full flex flex-col justify-between py-8 border-white/50">
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex justify-between items-center mb-6">
         <div className={`p-4 rounded-2xl ${bg} ${color} shadow-lg shadow-gray-200/5`}>
           <Icon size={24} />
         </div>
@@ -331,7 +331,7 @@ const KPICard = ({ title, value, subtext, icon: Icon, color, bg, badge }) => (
         )}
       </div>
       <div>
-        <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mb-1">{title}</p>
+        <p className="text-gray-400 text-[10px] font-black uppercase tracking-[0.3em] mb-2">{title}</p>
         <div className="flex items-baseline gap-2">
           <h3 className="text-4xl font-black text-gray-800 tracking-tighter italic">
             <Counter value={value} />

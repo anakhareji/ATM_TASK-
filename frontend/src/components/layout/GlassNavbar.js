@@ -1,9 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Bell, Search, User, Menu, Briefcase, LogOut, X,
-         Mail, Shield, BookOpen, GraduationCap, Layers, CalendarDays,
-         Hash, CheckCircle, ChevronRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useState } from 'react'; 
+import { Bell, Search, Menu, Calendar, X, User, Hash, Mail, Shield, Layers, BookOpen, GraduationCap, CalendarDays, ChevronRight, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import API from '../../api/axios';
 
 // ─────────────────────────────────────────────
@@ -133,83 +131,24 @@ const ProfilePanel = ({ user, profile, onClose }) => {
 // Main Navbar
 // ─────────────────────────────────────────────
 const GlassNavbar = ({ isSidebarOpen, setIsOpen }) => {
-    const [profileOpen, setProfileOpen]   = useState(false);
-    const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [unreadCount, setUnreadCount]   = useState(0);
-    const [recent, setRecent]             = useState([]);
-    const [searchQuery, setSearchQuery]   = useState('');
-    const [searchResults, setSearchResults] = useState([]);
-    const [isSearching, setIsSearching]   = useState(false);
-    const [profile, setProfile]           = useState(null);
+    const navigate = useNavigate();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const userRole = (localStorage.getItem('userRole') || 'student').toLowerCase();
+    
+    // Search filter logic
+    const filteredSearch = searchQuery.trim() === '' ? [] : SEARCH_INDEX.filter(item => 
+        item.roles.includes(userRole) && 
+        (item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+         item.subtitle.toLowerCase().includes(searchQuery.toLowerCase()))
+    ).slice(0, 5);
 
-    const profileRef = useRef(null);
-    const navigate   = useNavigate();
-    const role       = localStorage.getItem('userRole');
-    const user       = JSON.parse(localStorage.getItem('user') || '{}');
-    const rc         = roleColors(role);
-
-    // Close profile panel when clicking outside
-    useEffect(() => {
-      const handler = (e) => {
-        if (profileRef.current && !profileRef.current.contains(e.target)) {
-          setProfileOpen(false);
-        }
-      };
-      document.addEventListener('mousedown', handler);
-      return () => document.removeEventListener('mousedown', handler);
-    }, []);
-
-    // Fetch full profile on open
-    const fetchProfile = async () => {
-      if (profile) return; // already loaded
-      try {
-        const res = await API.get('/auth/me');
-        setProfile(res.data);
-      } catch {
-        // fallback to localStorage data
-        setProfile({ ...user, role, status: 'active' });
-      }
-    };
-
-    const handleProfileToggle = () => {
-      if (!profileOpen) fetchProfile();
-      setProfileOpen(o => !o);
-      setDropdownOpen(false);
-    };
-
-    // Debounced search
-    useEffect(() => {
-        const fn = setTimeout(async () => {
-            if (searchQuery.length > 1) {
-                setIsSearching(true);
-                try {
-                    const res = await API.get(`/admin/search?q=${searchQuery}`);
-                    setSearchResults(res.data);
-                } catch {
-                    setSearchResults([]);
-                } finally {
-                    setIsSearching(false);
-                }
-            } else {
-                setSearchResults([]);
-            }
-        }, 300);
-        return () => clearTimeout(fn);
-    }, [searchQuery]);
-
-    const fetchUnread = async () => {
-        try {
-            const res = await API.get('/notifications/unread-count');
-            setUnreadCount(res.data?.unread || 0);
-        } catch { setUnreadCount(0); }
-    };
-
-    const fetchRecent = async () => {
-        try {
-            const res = await API.get('/notifications');
-            setRecent((res.data || []).slice(0, 5));
-        } catch { setRecent([]); }
-    };
+    const currentDate = new Date().toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
 
     useEffect(() => {
         fetchUnread();
@@ -270,70 +209,48 @@ const GlassNavbar = ({ isSidebarOpen, setIsOpen }) => {
             </div>
 
             {/* Right: Actions */}
-            <div className="flex items-center gap-3">
-
-                {/* Bell */}
-                <div className="relative">
-                    <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-200 group active:scale-95"
-                        onClick={() => { setDropdownOpen(o => !o); setProfileOpen(false); }}>
-                        <Bell className="w-5 h-5 text-gray-500 group-hover:text-indigo-600 transition-colors"/>
-                        {unreadCount > 0 && (
-                            <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
-                                {unreadCount > 99 ? '99+' : unreadCount}
-                            </span>
-                        )}
-                    </button>
-                    <AnimatePresence>
-                        {dropdownOpen && (
-                            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                className="absolute right-0 mt-3 w-80 bg-white border border-gray-100 rounded-2xl shadow-2xl p-4 ring-1 ring-black/5 z-50">
-                                <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-50">
-                                    <p className="font-bold text-gray-800">Notifications</p>
-                                    <button className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:text-indigo-800" onClick={() => navigate('/dashboard/notifications')}>View All</button>
+            <div className="flex items-center gap-4">
+                {/* Search */}
+                <div className="relative group hidden sm:block z-50">
+                    <input 
+                        type="text" 
+                        placeholder="Search your task here..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onFocus={() => setIsSearchFocused(true)}
+                        onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                        className="w-64 bg-white border border-gray-100 rounded-2xl px-5 py-3 pl-12 text-sm focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all duration-300 text-secondary placeholder-secondary-muted"
+                    />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-muted w-5 h-5 group-focus-within:text-primary transition-colors"/>
+                    
+                    {/* Search Dropdown */}
+                    {isSearchFocused && searchQuery.trim() !== '' && (
+                        <div className="absolute top-full left-0 right-0 mt-3 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden py-2 z-50">
+                            {filteredSearch.length > 0 ? (
+                                filteredSearch.map((result, idx) => (
+                                    <div 
+                                        key={idx}
+                                        onClick={() => {
+                                            navigate(result.path);
+                                            setSearchQuery('');
+                                            setIsSearchFocused(false);
+                                        }}
+                                        className="px-5 py-3 hover:bg-gray-50 cursor-pointer flex items-center justify-between group transition-colors"
+                                    >
+                                        <div>
+                                            <p className="text-sm font-bold text-gray-800">{result.title}</p>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{result.subtitle}</p>
+                                        </div>
+                                        <ChevronRight size={14} className="text-gray-300 group-hover:text-primary opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="px-5 py-6 text-center">
+                                    <p className="text-sm font-bold text-gray-400">No matching operations</p>
                                 </div>
-                                <div className="space-y-3">
-                                    {recent.length === 0 ? (
-                                        <div className="py-8 text-center"><p className="text-xs text-gray-400">All caught up!</p></div>
-                                    ) : (
-                                        recent.map((n) => (
-                                            <div key={n.id} className="p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 cursor-pointer">
-                                                <p className="text-xs text-gray-700 leading-relaxed mb-1">{n.message}</p>
-                                                <p className="text-[10px] text-gray-400 font-medium">Recently</p>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
-
-                <div className="h-8 w-px bg-gray-200 mx-1 hidden sm:block"/>
-
-                {/* Profile button + panel */}
-                <div className="relative" ref={profileRef}>
-                    <button onClick={handleProfileToggle}
-                        className={`flex items-center gap-3 pl-2 pr-1 py-1 rounded-2xl transition-all duration-200 ${profileOpen ? 'bg-gray-100' : 'hover:bg-gray-50'}`}>
-                        <div className="hidden sm:block text-right">
-                            <p className="text-xs font-bold text-gray-800 leading-none mb-1 capitalize">{user.name || 'User'}</p>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">{role}</p>
+                            )}
                         </div>
-                        <div className="relative">
-                            <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${rc.bg} p-0.5 shadow-lg transition-transform duration-300 ${profileOpen ? 'rotate-6' : ''}`}>
-                                <div className="w-full h-full rounded-[14px] bg-white flex items-center justify-center font-bold text-sm"
-                                    style={{ color: 'var(--tw-gradient-to)' }}>
-                                    {(user.name || 'U').charAt(0).toUpperCase()}
-                                </div>
-                            </div>
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"/>
-                        </div>
-                    </button>
-
-                    <AnimatePresence>
-                        {profileOpen && (
-                            <ProfilePanel user={{ ...user, role }} profile={profile} onClose={() => setProfileOpen(false)}/>
-                        )}
-                    </AnimatePresence>
+                    )}
                 </div>
 
             </div>
