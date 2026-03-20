@@ -66,136 +66,140 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-white font-sans">
-      {/* Left Side */}
-      <div className="hidden lg:flex w-1/2 relative bg-emerald-900 overflow-hidden items-center justify-center">
-        <div className="absolute inset-0 z-0">
-          <img
-            src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1950&q=80"
-            alt="Library"
-            className="w-full h-full object-cover opacity-30"
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/90 to-teal-900/90 mix-blend-multiply"></div>
-        </div>
-
-        <div className="relative z-10 px-20 text-white animate-fadeIn">
-          <div className="mb-8 p-3 bg-white/10 w-fit rounded-xl backdrop-blur-sm animate-bounce">
-            <svg
-              className="w-10 h-10 text-emerald-300"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-              />
-            </svg>
+    <div className="min-h-screen flex bg-surface font-sans">
+      {/* Left Side: Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white relative z-10">
+        <div className="max-w-md w-full">
+          {/* Logo/Brand (AT) */}
+          <div className="mb-12">
+            <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center text-violet-600 font-bold">
+              AT
+            </div>
           </div>
 
-          <h1 className="text-5xl font-bold mb-6 leading-tight">
-            Welcome to <br /> Academia
-          </h1>
-          <p className="text-emerald-100 text-lg leading-relaxed max-w-md">
-            Your gateway to world-class education management. Access your
-            courses, track your progress, and connect with mentors.
-          </p>
-        </div>
-      </div>
-
-      {/* Right Side */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
-        <div className="max-w-md w-full bg-white p-10 rounded-2xl shadow-xl transition-all duration-300 hover:shadow-2xl">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+          <div className="mb-10 text-left">
+            <h2 className="text-4xl font-black text-secondary mb-4 tracking-tight">
               Sign In
             </h2>
-            <p className="text-gray-500">
-              Enter your credentials to access your account
-            </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6" autoComplete="off">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Email Address
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-secondary-muted ml-1">
+                Username or Email
               </label>
-              <input
-                type="email"
-                name="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all duration-200"
-                placeholder="student@academia.edu"
-                autoComplete="username"
-                required
-              />
+              <div className="relative group">
+                <input
+                  type="email"
+                  name="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-gray-200 group-hover:border-primary focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-300 shadow-sm"
+                  placeholder="Enter Username"
+                  autoComplete="username"
+                  required
+                />
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-muted">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Password
-                </label>
-              </div>
-              <div className="relative">
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-secondary-muted ml-1">
+                Password
+              </label>
+              <div className="relative group">
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 outline-none transition-all duration-200 pr-12"
-                  placeholder="••••••••"
-                  autoComplete="new-password"
+                  className="w-full pl-12 pr-12 py-4 rounded-2xl bg-white border border-gray-200 group-hover:border-primary focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-300 shadow-sm"
+                  placeholder="Enter Password"
+                  autoComplete="current-password"
                   required
                 />
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-muted">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600 transition-colors p-1"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-secondary-muted hover:text-primary transition-colors p-1"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
 
-            <Button
-              variant="primary"
-              className="w-full py-3.5 text-lg"
-              isLoading={isLoading}
+            <div className="flex items-center gap-3 ml-1">
+                <input type="checkbox" id="remember" className="w-5 h-5 accent-primary rounded-lg border-gray-300" />
+                <label htmlFor="remember" className="text-sm font-bold text-gray-700">Remember Me</label>
+            </div>
+
+            <button
+              className="w-32 py-4 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-hover active:scale-95 transition-all duration-300"
+              disabled={isLoading}
               type="submit"
             >
-              Sign In
-            </Button>
+              {isLoading ? "Signing in..." : "Login"}
+            </button>
           </form>
 
-          <div className="mt-8 text-center text-sm text-gray-500">
+          <div className="mt-12 text-left">
+            <p className="text-sm font-bold text-secondary-muted inline">Or, Login with </p>
+            <div className="inline-flex gap-4 ml-4 align-middle">
+                {/* Social icons placeholders */}
+                <div className="p-2 border border-gray-100 rounded-lg hover:shadow-md cursor-pointer transition-all">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" className="w-6 h-6" alt="FB" />
+                </div>
+                <div className="p-2 border border-gray-100 rounded-lg hover:shadow-md cursor-pointer transition-all">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" className="w-6 h-6" alt="G" />
+                </div>
+                <div className="p-2 border border-gray-100 rounded-lg hover:shadow-md cursor-pointer transition-all">
+                    <img src="https://abs.twimg.com/favicons/twitter.3.ico" className="w-6 h-6" alt="X" />
+                </div>
+            </div>
+          </div>
+
+          <div className="mt-8 text-sm text-secondary-muted font-bold">
             Don't have an account?{" "}
             <Link
               to="/register"
-              className="font-bold text-emerald-600 hover:text-emerald-700"
+              className="text-accent-blue font-black hover:underline underline-offset-4"
             >
-              Create Account
+              Create One
             </Link>
           </div>
+        </div>
+      </div>
 
-          <div className="mt-4 text-center">
-            <Link
-              to="/"
-              className="text-sm text-gray-500 hover:text-emerald-600 transition-colors inline-flex items-center gap-1"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Home
-            </Link>
-          </div>
+      {/* Right Side: Illustration */}
+      <div className="hidden lg:flex w-1/2 bg-white relative items-center justify-center p-20 overflow-hidden">
+        {/* Decorative background patterns */}
+        <div className="absolute inset-0 z-0 opacity-10">
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[100px]" />
+            <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-accent-blue/20 rounded-full blur-[80px]" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20" />
+        </div>
 
-          <div className="mt-6 pt-6 border-t border-gray-100 text-center text-xs text-gray-400">
-            &copy; 2026 Academia Inc. Secure Login
-          </div>
+        <div className="relative z-10 w-full h-full flex items-center justify-center">
+             {/* Using a placeholder for the illustration since generate_image failed */}
+             <div className="relative scale-110">
+                <img 
+                    src="https://img.freepik.com/free-vector/login-concept-illustration_114360-739.jpg" 
+                    alt="Login Illustration" 
+                    className="max-w-xl drop-shadow-3xl"
+                />
+                {/* Simulated floating elements */}
+                <div className="absolute -top-10 -left-10 w-20 h-20 bg-accent-green/20 rounded-3xl blur-xl animate-pulse" />
+                <div className="absolute bottom-10 right-10 w-32 h-32 bg-primary/20 rounded-full blur-2xl animate-pulse delay-500" />
+             </div>
         </div>
       </div>
     </div>

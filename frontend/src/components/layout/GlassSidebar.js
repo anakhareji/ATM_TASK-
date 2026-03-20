@@ -47,9 +47,23 @@ const NAV_SECTIONS = [
 
 const GlassSidebar = ({ isOpen, setIsOpen }) => {
     const navigate = useNavigate();
-    const userName = localStorage.getItem('userName') || 'Administrator';
-    const userEmail = localStorage.getItem('userEmail') || '';
-    const initials = userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    const [role, setRole] = useState((localStorage.getItem('userRole') || 'student').toLowerCase());
+    const [userName, setUserName] = useState(localStorage.getItem('userName') || 'User');
+    const [userEmail, setUserEmail] = useState(localStorage.getItem('userEmail') || 'user@example.com');
+    const [userAvatar, setUserAvatar] = useState(localStorage.getItem('userAvatar'));
+
+    useEffect(() => {
+        const handleProfileUpdate = () => {
+            setUserName(localStorage.getItem('userName') || 'User');
+            setUserEmail(localStorage.getItem('userEmail') || 'user@example.com');
+            setUserAvatar(localStorage.getItem('userAvatar'));
+            setRole((localStorage.getItem('userRole') || 'student').toLowerCase());
+        };
+        window.addEventListener('profileUpdated', handleProfileUpdate);
+        return () => window.removeEventListener('profileUpdated', handleProfileUpdate);
+    }, []);
+
+    const navSections = role === 'admin' ? ADMIN_NAV : role === 'faculty' ? FACULTY_NAV : STUDENT_NAV;
 
     const handleLogout = () => {
         localStorage.clear();
@@ -57,25 +71,34 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
     };
 
     return (
-        <div className="w-72 h-full bg-white border-r border-gray-100 flex flex-col shadow-lg">
-            {/* Logo */}
-            <div className="flex items-center gap-3 px-6 h-20 border-b border-gray-100 shrink-0">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                    <GraduationCap className="w-5 h-5 text-white" />
+        <div className="w-72 h-full bg-[#000000] flex flex-col overflow-hidden text-white font-sans">
+            {/* Profile Section at TOP */}
+            <div className="p-8 flex flex-col items-center border-b border-white/10">
+                <div className="w-20 h-20 rounded-full border-2 border-primary overflow-hidden mb-4 p-1 ring-2 ring-primary/20 bg-white">
+                    {userAvatar ? (
+                        <img src={userAvatar} alt="User" className="w-full h-full object-cover rounded-full" />
+                    ) : (
+                        <div className="w-full h-full bg-surface-muted flex items-center justify-center text-secondary">
+                             <User size={32} />
+                        </div>
+                    )}
                 </div>
-                <div>
-                    <h1 className="text-lg font-black text-gray-800 tracking-tight leading-none">ATM</h1>
-                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-[0.15em] leading-none mt-0.5">Admin Portal</p>
+                <div className="text-center">
+                    <h3 className="text-lg font-black tracking-tight leading-tight">{userName}</h3>
+                    <p className="text-xs text-secondary-muted font-bold mt-1 lowercase opacity-70 truncate max-w-[200px]">{userEmail}</p>
                 </div>
             </div>
 
+            {/* Logo / App Name */}
+            <div className="px-8 py-4 flex items-center gap-2 opacity-80">
+                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Mission Control</span>
+            </div>
+
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-2">
-                {NAV_SECTIONS.map((section) => (
-                    <div key={section.label} className="mb-2">
-                        <div className="px-4 py-2 rounded-lg bg-gray-50 text-xs font-bold uppercase tracking-widest text-gray-600">
-                            {section.label}
-                        </div>
+            <nav className="flex-1 overflow-y-auto px-4 py-2 space-y-2 custom-scrollbar-hidden">
+                {navSections.map((section) => (
+                    <div key={section.label} className="space-y-1">
                         {section.items.map((item) => (
                             <NavLink
                                 key={item.path}
@@ -83,23 +106,23 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
                                 end={item.path === '/dashboard'}
                                 onClick={() => setIsOpen && setIsOpen(false)}
                                 className={({ isActive }) => `
-                                    flex items-center gap-3 px-3 py-2.5 rounded-xl
-                                    transition-all duration-200 group text-sm font-semibold
+                                    flex items-center gap-4 px-6 py-4 rounded-2xl
+                                    transition-all duration-300 group text-sm font-bold
                                     ${isActive
-                                        ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100/50'
-                                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+                                        ? 'bg-primary/10 text-primary border border-primary/20'
+                                        : 'text-secondary-muted hover:text-white hover:bg-white/5'
                                     }
                                 `}
                             >
                                 {({ isActive }) => (
                                     <>
                                         <item.icon
-                                            size={18}
-                                            className={`shrink-0 transition-colors ${isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-gray-600'}`}
+                                            size={20}
+                                            className={`shrink-0 transition-all duration-300 ${isActive ? 'text-primary scale-110' : 'text-secondary-muted group-hover:text-white'}`}
                                         />
-                                        <span className="truncate">{item.name}</span>
+                                        <span className="truncate flex-1 tracking-tight">{item.name}</span>
                                         {isActive && (
-                                            <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                            <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_10px_#FF6767]" />
                                         )}
                                     </>
                                 )}
@@ -107,25 +130,27 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
                         ))}
                     </div>
                 ))}
+                
+                {/* Fixed Utilities for all roles */}
+                <div className="pt-4 border-t border-white/5 mt-4">
+                     <NavLink
+                        to="/dashboard/settings"
+                        className={({ isActive }) => `flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-bold transition-all ${isActive ? 'bg-primary/10 text-primary' : 'text-secondary-muted hover:text-white hover:bg-white/5'}`}
+                     >
+                        <Shield size={20} className="shrink-0" />
+                        <span>Settings</span>
+                     </NavLink>
+                </div>
             </nav>
 
-            {/* User Profile & Logout */}
-            <div className="p-4 border-t border-gray-100 shrink-0 space-y-3">
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50/80 border border-gray-100">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-sm shrink-0">
-                        <span className="font-black text-white text-xs">{initials}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-gray-800 truncate leading-tight">{userName}</p>
-                        <p className="text-[10px] text-gray-400 truncate font-medium">Administrator</p>
-                    </div>
-                </div>
+            {/* Logout at BOTTOM */}
+            <div className="p-6 border-t border-white/10">
                 <button
                     onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-200 active:scale-95 text-sm font-bold"
+                    className="w-full flex items-center gap-4 px-6 py-4 rounded-2xl text-secondary-muted hover:text-white hover:bg-white/5 transition-all duration-300 group"
                 >
-                    <LogOut size={16} />
-                    Sign Out
+                    <LogOut size={20} className="shrink-0 group-hover:text-primary transition-colors" />
+                    <span className="text-sm font-bold tracking-tight">Logout</span>
                 </button>
             </div>
         </div>
