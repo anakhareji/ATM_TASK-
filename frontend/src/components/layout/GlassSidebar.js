@@ -200,8 +200,17 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
                 ))}
             </nav>
 
-            {/* Logout at BOTTOM */}
-            <div className="px-4 py-6 border-t border-white/10">
+            {/* Profile & Logout */}
+            <div className="p-4 border-t border-gray-100 shrink-0 space-y-3 bg-gray-50/30">
+                <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-white border border-gray-100 shadow-sm">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-md shadow-emerald-400/20 shrink-0">
+                        <span className="font-black text-white text-xs">{initials}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black text-gray-800 truncate leading-tight">{userName}</p>
+                        <p className="text-[10px] text-gray-400 truncate font-bold uppercase tracking-widest">{role}</p>
+                    </div>
+                </div>
                 <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border border-red-100 text-red-500 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all duration-300 active:scale-95 text-xs font-black uppercase tracking-widest"
