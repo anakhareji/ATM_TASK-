@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Bell, FileText, Newspaper, Activity,
     Calendar, LogOut, Briefcase, Layers, CheckSquare, Shield,
-    GraduationCap, ClipboardList, ChevronDown, ChevronUp, Award
+    GraduationCap, ClipboardList, ChevronDown, ChevronUp, Award, User, Trophy, ListTodo
 } from 'lucide-react';
 
-const NAV_SECTIONS = [
+const ADMIN_NAV = [
     {
         label: 'Overview',
         items: [
@@ -41,6 +41,69 @@ const NAV_SECTIONS = [
             { name: 'News & Events', path: '/dashboard/news', icon: Newspaper },
             { name: 'Notifications', path: '/dashboard/notifications', icon: Bell },
             { name: 'Achievement & Recognition', path: '/dashboard/recognition', icon: Award },
+        ]
+    }
+];
+
+const FACULTY_NAV = [
+    {
+        label: 'Overview',
+        items: [
+            { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+        ]
+    },
+    {
+        label: 'Management',
+        items: [
+            { name: 'Students', path: '/dashboard/students', icon: Users },
+            { name: 'Groups', path: '/dashboard/groups', icon: Layers },
+        ]
+    },
+    {
+        label: 'Academic Activity',
+        items: [
+            { name: 'Projects', path: '/dashboard/projects', icon: Briefcase },
+            { name: 'Tasks', path: '/dashboard/tasks', icon: CheckSquare },
+            { name: 'Submissions', path: '/dashboard/submissions', icon: FileText },
+        ]
+    },
+    {
+        label: 'Other',
+        items: [
+            { name: 'Academic Planner', path: '/dashboard/planner', icon: ListTodo },
+            { name: 'News & Events', path: '/dashboard/news-events', icon: Newspaper },
+            { name: 'Notifications', path: '/dashboard/notifications', icon: Bell },
+        ]
+    }
+];
+
+const STUDENT_NAV = [
+    {
+        label: 'Overview',
+        items: [
+            { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+        ]
+    },
+    {
+        label: 'My Activities',
+        items: [
+            { name: 'My Tasks', path: '/dashboard/my-tasks', icon: CheckSquare },
+            { name: 'My To-Do', path: '/dashboard/todo', icon: ListTodo },
+            { name: 'My Groups', path: '/dashboard/my-groups', icon: Layers },
+        ]
+    },
+    {
+        label: 'Progress',
+        items: [
+            { name: 'Grades', path: '/dashboard/grades', icon: Award },
+            { name: 'Leaderboard', path: '/dashboard/leaderboard', icon: Trophy },
+        ]
+    },
+    {
+        label: 'Other',
+        items: [
+            { name: 'Timetable', path: '/dashboard/timetable', icon: Calendar },
+            { name: 'Notifications', path: '/dashboard/notifications', icon: Bell },
         ]
     }
 ];
