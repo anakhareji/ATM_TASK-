@@ -1,20 +1,343 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import {
-    Plus, Calendar, AlertCircle, Trash2, Edit3,
-    User, Users, CheckCircle2,
-    FileText, Eye, X, Download, Send, Search, Filter, Info
+    Plus, AlertCircle, Trash2, Edit3, Calendar, Download,
+    User, Users,
+    FileText, Eye, X, Send, Search, Info, Clock,
+    MessageSquare, History, List, Bold, Italic, Link, Paperclip, AtSign, Smile, Layout, Code, PlusCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import API from '../api/axios';
 import GlassCard from '../components/ui/GlassCard';
 import Button from '../components/ui/Button';
 import { staggerContainer, cardEntrance } from '../utils/motionVariants';
 import { getErrorMessage } from '../utils/errorHelpers';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
+import DOMPurify from 'dompurify';
+
+const RichContent = ({ content, className = '' }) => {
+    return (
+        <div 
+            className={`prose prose-sm max-w-none text-gray-600 font-medium leading-relaxed quill-content ${className}`}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }}
+        />
+    );
+};
+
+// Toolbar removed as requested
+
+const CommentEditor = ({ value, onChange, onSave, onCancel, placeholder, autoFocus = false }) => {
+    const toolbarId = useMemo(() => `toolbar-faculty-${Math.random().toString(36).substr(2, 9)}`, []);
+
+    const modules = useMemo(() => ({
+        toolbar: false
+    }), []);
+
+    const formats = [
+        'bold', 'italic', 'list', 'code-block'
+    ];
+
+    return (
+        <div className="bg-white border-2 border-indigo-100 rounded-[2.5rem] shadow-2xl overflow-hidden animate-slideUp font-sans group">
+            <div className="quill-wrapper">
+                <ReactQuill
+                    theme="snow"
+                    value={value}
+                    onChange={onChange}
+                    placeholder={placeholder}
+                    modules={modules}
+                    formats={formats}
+                    className="faculty-quill"
+                />
+            </div>
+
+            <style dangerouslySetInnerHTML={{ __html: `
+                .faculty-quill .ql-container {
+                    border: none !important;
+                    font-family: inherit;
+                    min-height: 150px;
+                }
+                .faculty-quill .ql-editor {
+                    padding: 1.5rem;
+                    font-size: 0.875rem;
+                    font-weight: 500;
+                    color: #374151;
+                    min-height: 150px;
+                    line-height: 1.6;
+                    text-align: left;
+                }
+                .faculty-quill .ql-editor strong, .faculty-quill .ql-editor b {
+                    font-weight: 900 !important;
+                }
+                .faculty-quill .ql-editor em, .faculty-quill .ql-editor i {
+                    font-style: italic !important;
+                }
+                .faculty-quill .ql-editor strong, .faculty-quill .ql-editor b {
+                    font-weight: 900 !important;
+                }
+                .faculty-quill .ql-editor em, .faculty-quill .ql-editor i {
+                    font-style: italic !important;
+                    font-weight: 500 !important;
+                }
+                .faculty-quill .ql-editor.ql-blank::before {
+                    color: #d1d5db;
+                    font-style: italic;
+                    left: 1.5rem;
+                    font-weight: 400;
+                }
+                .ql-bold.ql-active, .ql-italic.ql-active, .ql-list.ql-active, .ql-code-block.ql-active {
+                    background: white !important;
+                    color: #4f46e5 !important;
+                    box-shadow: 0 4px 12px -2px rgba(99, 102, 241, 0.15);
+                }
+                .faculty-quill .ql-toolbar {
+                    display: none;
+                }
+                .quill-content h1, .quill-content h2 { font-weight: 900; color: #111827; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+                .quill-content ul { list-style-type: disc; margin-left: 2rem; margin-bottom: 1.25rem; }
+                .quill-content ol { list-style-type: decimal; margin-left: 2rem; margin-bottom: 1.25rem; }
+                .quill-content blockquote { border-left: 6px solid #818cf8; padding: 1rem 1.5rem; font-style: italic; color: #4338ca; background: #eef2ff; border-radius: 0 0.75rem 0.75rem 0; margin-bottom: 1.5rem; }
+                .quill-content a { color: #6366f1; text-decoration: underline; font-weight: 800; text-underline-offset: 4px; }
+                .quill-content code { background: #f3f4f6; color: #be185d; padding: 0.25rem 0.5rem; rounded: 0.5rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 0.9em; }
+                .quill-content pre { background: #111827; color: #f9fafb; padding: 1.5rem; border-radius: 1rem; margin-bottom: 1.5rem; overflow-x: auto; font-family: inherit; }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+            `}} />
+
+            <div className="p-5 bg-gray-50/50 flex gap-4 justify-start items-center border-t border-gray-100">
+                <Button 
+                    size="sm" 
+                    className="px-10 bg-indigo-600 hover:bg-indigo-700 font-black uppercase tracking-widest rounded-2xl shadow-xl hover:shadow-indigo-200/50 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+                    onClick={(e) => { e.preventDefault(); onSave(); }}
+                >
+                    Log Activity
+                </Button>
+                <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="px-8 text-gray-400 hover:text-gray-600 hover:bg-white font-black uppercase tracking-widest rounded-2xl transition-all"
+                    onClick={(e) => { e.preventDefault(); onCancel(); }}
+                >
+                    Cancel
+                </Button>
+                <div className="ml-auto flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity">
+                    <Layout size={12} /> Rich Editor Ready
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const TaskActivity = ({ taskId }) => {
+    const [comments, setComments] = useState([]);
+    const [newComment, setNewComment] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState('comments');
+    const [isInputFocused, setIsInputFocused] = useState(false);
+    
+    // Editing state
+    const [editingId, setEditingId] = useState(null);
+    const [editContent, setEditContent] = useState('');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const currentUserId = user.id || user.user_id;
+
+    const fetchComments = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await API.get(`/tasks/${taskId}/comments`);
+            setComments(res.data || []);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    }, [taskId]);
+
+    useEffect(() => {
+        if (taskId) fetchComments();
+    }, [taskId, fetchComments]);
+
+    const handleSend = async () => {
+        if (!newComment.trim()) return;
+        try {
+            await API.post(`/tasks/${taskId}/comments`, { comment_text: newComment });
+            setNewComment('');
+            setIsInputFocused(false);
+            fetchComments();
+            toast.success('Comment logged');
+        } catch (e) {
+            toast.error('Failed to log activity');
+        }
+    };
+
+    const handleUpdate = async (id) => {
+        if (!editContent.trim()) return;
+        try {
+            await API.put(`/tasks/comments/${id}`, { comment_text: editContent });
+            setEditingId(null);
+            fetchComments();
+            toast.success('Activity updated');
+        } catch (e) {
+            toast.error('Failed to update activity');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('Erase this activity log entry permanently?')) return;
+        try {
+            await API.delete(`/tasks/comments/${id}`);
+            fetchComments();
+            toast.success('Activity erased');
+        } catch (e) {
+            toast.error('Failed to erase activity');
+        }
+    };
+
+    return (
+        <div className="mt-8 pt-8 border-t border-gray-100 animate-fadeIn text-left">
+            <h3 className="text-lg font-black text-gray-800 mb-4 flex items-center gap-2">
+                <Layout size={20} className="text-gray-400" /> Activity
+            </h3>
+            
+            <div className="flex gap-1 border-b border-gray-100 mb-6 overflow-x-auto pb-1 no-scrollbar">
+                {['all', 'comments', 'history', 'approvals'].map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${
+                            activeTab === tab 
+                            ? 'border-indigo-600 text-indigo-600' 
+                            : 'border-transparent text-gray-400 hover:text-gray-600'
+                        }`}
+                    >
+                        {tab}
+                    </button>
+                ))}
+            </div>
+
+            {(activeTab === 'comments' || activeTab === 'all') ? (
+                <div className="space-y-6">
+                    {/* Add Comment Section */}
+                    <div className="flex gap-4 group">
+                        <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-100 shrink-0 uppercase overflow-hidden">
+                            {localStorage.getItem('userAvatar') ? (
+                                <img src={localStorage.getItem('userAvatar')} alt="User" className="w-full h-full object-cover" />
+                            ) : (
+                                localStorage.getItem('userName')?.charAt(0) || 'U'
+                            )}
+                        </div>
+                        <div className="flex-1 space-y-3">
+                            {!isInputFocused ? (
+                                <div 
+                                    onClick={() => setIsInputFocused(true)}
+                                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-gray-400 text-sm font-medium cursor-text hover:bg-white hover:border-gray-200 transition-all shadow-sm"
+                                >
+                                    Add a comment or observation...
+                                </div>
+                            ) : (
+                                <CommentEditor 
+                                    value={newComment}
+                                    onChange={setNewComment}
+                                    onSave={handleSend}
+                                    onCancel={() => { setIsInputFocused(false); setNewComment(''); }}
+                                    placeholder="Type your message here..."
+                                    autoFocus
+                                />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Comments Feed */}
+                    <div className="space-y-8 pl-14 pt-4 border-l-2 border-gray-50">
+                        {loading && comments.length === 0 ? (
+                            [1,2].map(i => <div key={i} className="h-24 bg-gray-50 animate-pulse rounded-2xl" />)
+                        ) : comments.length === 0 ? (
+                            <div className="text-center py-10">
+                                <MessageSquare size={32} className="mx-auto text-gray-200 mb-2" />
+                                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">No activity logged yet</p>
+                            </div>
+                        ) : (
+                            comments.map(c => (
+                                <div key={c.id} className="relative group/msg">
+                                    <div className={`absolute -left-[65px] top-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-[10px] shadow-sm z-10 transition-transform group-hover/msg:scale-110 uppercase overflow-hidden ${
+                                        c.role === 'student' ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-gray-100 text-gray-400'
+                                    }`}>
+                                        {c.user_avatar ? (
+                                            <img src={c.user_avatar} alt="User" className="w-full h-full object-cover" />
+                                        ) : (
+                                            c.user_name?.charAt(0) || '?'
+                                        )}
+                                    </div>
+                                    
+                                    {editingId === c.id ? (
+                                        <div className="space-y-3 animate-fadeIn">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Editing Entry</span>
+                                            </div>
+                                            <CommentEditor 
+                                                value={editContent}
+                                                onChange={setEditContent}
+                                                onSave={() => handleUpdate(c.id)}
+                                                onCancel={() => setEditingId(null)}
+                                                autoFocus
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-black text-gray-800">{c.user_name}</span>
+                                                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+                                                        c.role === 'student' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'
+                                                    }`}>
+                                                        {c.role}
+                                                    </span>
+                                                    <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest whitespace-nowrap overflow-hidden text-ellipsis">
+                                                        • {new Date(c.created_at).toLocaleDateString()} at {new Date(c.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                    </span>
+                                                </div>
+                                                
+                                                {c.user_id === currentUserId && (
+                                                    <div className="flex gap-1 opacity-0 group-hover/msg:opacity-100 transition-opacity">
+                                                        <button 
+                                                            onClick={() => { setEditingId(c.id); setEditContent(c.comment_text); }}
+                                                            className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                        >
+                                                            <Edit3 size={14} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDelete(c.id)}
+                                                            className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className={`p-5 rounded-3xl border shadow-sm hover:shadow-md transition-shadow overflow-hidden text-left ${
+                                                c.role === 'student' ? 'bg-amber-50/30 border-amber-100' : 'bg-white border-gray-100'
+                                            }`}>
+                                                <RichContent content={c.comment_text} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <div className="py-20 text-center bg-gray-50/50 rounded-[2rem] border border-dashed border-gray-200">
+                    <History size={40} className="mx-auto text-gray-200 mb-3" />
+                    <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Log History Coming Soon</p>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const FacultyTasks = () => {
-    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
 
     // Data State
@@ -28,11 +351,13 @@ const FacultyTasks = () => {
     const [submitting, setSubmitting] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
 
     const [selectedTask, setSelectedTask] = useState(null);
     const [submissions, setSubmissions] = useState([]);
     const [statusFilter, setStatusFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState("");
+    const [activeTaskActivity, setActiveTaskActivity] = useState(null);
 
     // Form State (Controlled)
     const initialForm = {
@@ -43,6 +368,7 @@ const FacultyTasks = () => {
         project_id: (searchParams.get('project_id') && searchParams.get('project_id') !== "undefined") ? searchParams.get('project_id') : '',
         task_type: 'individual',
         student_id: '',
+        selected_students: [],
         group_id: '',
         max_marks: 100,
         file_url: '',
@@ -113,8 +439,8 @@ const FacultyTasks = () => {
         if (!formData.deadline) errors.deadline = "Completion deadline is mandatory";
         if (formData.max_marks <= 0) errors.max_marks = "Max marks must be a positive integer";
 
-        if (formData.task_type === 'individual' && !formData.student_id) {
-            errors.student_id = "Individual recipient must be selected";
+        if (formData.task_type === 'individual' && (!formData.selected_students || formData.selected_students.length === 0)) {
+            errors.student_id = "At least one individual recipient must be added";
         }
         if (formData.task_type === 'group' && !formData.group_id) {
             errors.group_id = "Assigned squad must be selected";
@@ -132,17 +458,114 @@ const FacultyTasks = () => {
 
         setSubmitting(true);
         const loadToast = toast.loading("Deploying task draft...");
+        
         try {
-            await API.post('/tasks', formData);
-            toast.success("Task deployed as draft. You must publish it to notify recipients.", { id: loadToast });
+            // Construct a clean payload
+            const payload = {
+                title: formData.title,
+                description: formData.description,
+                priority: formData.priority,
+                deadline: formData.deadline,
+                project_id: parseInt(formData.project_id),
+                task_type: formData.task_type,
+                max_marks: parseInt(formData.max_marks || 100),
+                file_url: formData.file_url || null,
+                late_penalty: parseFloat(formData.late_penalty || 0)
+            };
+
+            // Add targeted recipient based on type
+            if (formData.task_type === 'individual') {
+                payload.group_id = null; // Backend expects None for group_id in individual mode
+                
+                if (isEditing && formData._identical_tasks) {
+                     const oldTasks = formData._identical_tasks.filter(t => t.student_id);
+                     const oldSids = oldTasks.map(t => String(t.student_id));
+                     const newSids = formData.selected_students || [];
+                     
+                     const tasksToDelete = oldTasks.filter(t => !newSids.includes(String(t.student_id)));
+                     const sidsToAdd = newSids.filter(sid => !oldSids.includes(sid));
+                     const tasksToUpdate = oldTasks.filter(t => newSids.includes(String(t.student_id)));
+
+                     // Use Promise.all fallback gracefully if delete is completely empty
+                     const deletePromises = tasksToDelete.map(t => API.delete(`/tasks/${t.id}`));
+                     const addPromises = sidsToAdd.map(sid => API.post('/tasks', { ...payload, student_id: parseInt(sid) }));
+                     const updatePromises = tasksToUpdate.map(t => API.put(`/tasks/${t.id}`, { ...payload, student_id: parseInt(t.student_id) }));
+
+                     await Promise.all([...deletePromises, ...addPromises, ...updatePromises]);
+                     
+                     toast.success("Assignment updated across all selected recipients.", { id: loadToast });
+                } else {
+                     await Promise.all((formData.selected_students || []).map(async (sid) => {
+                          return API.post('/tasks', { ...payload, student_id: parseInt(sid) });
+                     }));
+                     toast.success("Tasks deployed as drafts. You must publish them to notify recipients.", { id: loadToast });
+                }
+            } else {
+                payload.group_id = parseInt(formData.group_id);
+                payload.student_id = null;
+                if (isEditing && selectedTask) {
+                    await API.put(`/tasks/${selectedTask.id}`, payload);
+                    toast.success("Task updated successfully.", { id: loadToast });
+                } else {
+                    await API.post('/tasks', payload);
+                    toast.success("Task deployed as draft. You must publish it to notify recipients.", { id: loadToast });
+                }
+            }
             setShowCreateModal(false);
             setFormData(initialForm);
+            setIsEditing(false);
+            setSelectedTask(null);
             fetchInitialData();
         } catch (err) {
             toast.error(getErrorMessage(err, "Task deployment failed."), { id: loadToast });
         } finally {
             setSubmitting(false);
         }
+    };
+    
+    // Handler: Edit Task Load
+    const handleEditClick = async (task) => {
+        setIsEditing(true);
+        setSelectedTask(task);
+        if (task.project_id) {
+            try {
+                const res = await API.get(`/groups/project/${task.project_id}`);
+                setGroups(res.data || []);
+            } catch (e) {
+                setGroups([]);
+            }
+        }
+        
+        let deadlineLocal = "";
+        try {
+            if (task.deadline) {
+                const d = new Date(task.deadline);
+                deadlineLocal = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            }
+        } catch(e) {}
+        
+        const identicalTasks = tasks.filter(t => 
+            t.title === task.title && 
+            t.project_id === task.project_id && 
+            t.task_type === task.task_type
+        );
+
+        setFormData({
+            title: task.title,
+            description: task.description || '',
+            priority: task.priority || 'Medium',
+            deadline: deadlineLocal,
+            project_id: task.project_id || '',
+            task_type: task.task_type || 'individual',
+            student_id: '',
+            selected_students: task.task_type === 'individual' ? identicalTasks.map(t => String(t.student_id)).filter(id => id !== "null") : [],
+            group_id: task.group_id || '',
+            max_marks: task.max_marks || 100,
+            file_url: task.file_url || '',
+            late_penalty: task.late_penalty || 0,
+            _identical_tasks: identicalTasks
+        });
+        setShowCreateModal(true);
     };
 
     // Handler: Publish
@@ -266,7 +689,12 @@ const FacultyTasks = () => {
                         <option value="published">Active (Published)</option>
                         <option value="submitted">Needs Review</option>
                     </select>
-                    <Button icon={<Plus size={20} />} onClick={() => setShowCreateModal(true)} className="bg-emerald-600 hover:bg-emerald-700 shadow-xl shadow-emerald-100 px-8">
+                    <Button icon={<Plus size={20} />} onClick={() => {
+                        setIsEditing(false);
+                        setSelectedTask(null);
+                        setFormData(initialForm);
+                        setShowCreateModal(true);
+                    }} className="bg-emerald-600 hover:bg-emerald-700 shadow-xl shadow-emerald-100 px-8">
                         Deploy Task
                     </Button>
                 </div>
@@ -287,7 +715,10 @@ const FacultyTasks = () => {
                                 key={task.id} task={task}
                                 onPublish={() => handlePublish(task.id)}
                                 onDelete={() => handleDelete(task.id)}
+                                onEdit={() => handleEditClick(task)}
                                 onViewSubmissions={() => handleViewSubmissions(task)}
+                                isActiveActivity={activeTaskActivity === task.id}
+                                toggleActivity={() => setActiveTaskActivity(activeTaskActivity === task.id ? null : task.id)}
                             />
                         ))}
                     </div>
@@ -298,10 +729,10 @@ const FacultyTasks = () => {
             <AnimatePresence>
                 {showCreateModal && (
                     <CreateTaskModal
-                        isOpen={showCreateModal} onClose={() => setShowCreateModal(false)}
+                        isOpen={showCreateModal} onClose={() => { setShowCreateModal(false); setIsEditing(false); setSelectedTask(null); }}
                         onSubmit={handleCreateTask} formData={formData} setFormData={setFormData}
                         formErrors={formErrors} projects={projects} students={students} groups={groups}
-                        onProjectChange={handleProjectChange} submitting={submitting}
+                        onProjectChange={handleProjectChange} submitting={submitting} isEditing={isEditing}
                     />
                 )}
 
@@ -317,7 +748,7 @@ const FacultyTasks = () => {
     );
 };
 
-const TaskCard = ({ task, onPublish, onDelete, onViewSubmissions }) => {
+const TaskCard = ({ task, onPublish, onDelete, onEdit, onViewSubmissions, isActiveActivity, toggleActivity }) => {
     const isOverdue = new Date(task.deadline) < new Date();
     return (
         <motion.div layout variants={cardEntrance}>
@@ -332,17 +763,30 @@ const TaskCard = ({ task, onPublish, onDelete, onViewSubmissions }) => {
                                 <h3 className="text-xl font-black text-gray-800 tracking-tight group-hover:text-emerald-700 transition-colors uppercase">
                                     {task.title}
                                 </h3>
-                                <div className="flex items-center gap-3 mt-1">
+                                <div className="flex flex-wrap items-center gap-3 mt-1">
                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase ${task.status === 'draft' ? 'bg-gray-100 text-gray-500' : 'bg-emerald-100 text-emerald-600'}`}>
                                         {task.status}
                                     </span>
                                     <span className={`text-[10px] font-black uppercase tracking-widest ${task.priority === 'High' ? 'text-rose-500' : task.priority === 'Medium' ? 'text-amber-500' : 'text-emerald-500'}`}>
                                         {task.priority} Priority
                                     </span>
+                                    {task.student_name && (
+                                        <span className="text-[10px] font-black uppercase text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                            {task.student_name}
+                                        </span>
+                                    )}
+                                    {task.group_name && (
+                                        <span className="text-[10px] font-black uppercase text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                            {task.group_name}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>
                         <div className="flex gap-2">
+                            <button onClick={onEdit} className="p-3 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-2xl transition-all">
+                                <Edit3 size={20} />
+                            </button>
                             {task.status === 'draft' && (
                                 <button onClick={onPublish} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all">
                                     <Send size={14} /> Global Publish
@@ -373,26 +817,61 @@ const TaskCard = ({ task, onPublish, onDelete, onViewSubmissions }) => {
                                 <p className="text-xs font-black">{task.max_marks} Points</p>
                             </div>
                         </div>
+                        {task.started_at && (
+                            <div className="col-span-2 p-4 bg-emerald-50/50 text-emerald-600 rounded-2xl flex items-center justify-between border border-emerald-100/50">
+                                <div className="flex items-center gap-3">
+                                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                                   <div>
+                                       <p className="text-[8px] uppercase font-black opacity-60 tracking-wider">Operational Intake Pulse</p>
+                                       <p className="text-xs font-bold italic">{new Date(task.started_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                                   </div>
+                                </div>
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">Active Phase</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 <div className="px-8 py-5 bg-gray-50/50 border-t border-gray-100 flex justify-between items-center group-hover:bg-emerald-50/20">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Track ID: {task.project_id}</p>
-                    {task.status !== 'draft' && (
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600/60">
+                        {task.project_title || `Track #${task.project_id}`}
+                    </p>
+                    <div className="flex items-center gap-6">
                         <button
-                            onClick={onViewSubmissions}
-                            className="flex items-center gap-2 text-emerald-600 font-black text-xs uppercase tracking-widest group/btn"
+                            onClick={toggleActivity}
+                            className={`flex items-center gap-2 font-black text-xs uppercase tracking-widest transition-colors ${isActiveActivity ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-500'}`}
                         >
-                            Review Submissions <Eye size={16} className="group-hover/btn:scale-110 transition-transform" />
+                            Activity Log <MessageSquare size={16} />
                         </button>
-                    )}
+                        {task.status !== 'draft' && (
+                            <button
+                                onClick={onViewSubmissions}
+                                className="flex items-center gap-2 text-emerald-600 font-black text-xs uppercase tracking-widest group/btn"
+                            >
+                                Review Submissions <Eye size={16} className="group-hover/btn:scale-110 transition-transform" />
+                            </button>
+                        )}
+                    </div>
                 </div>
+
+                <AnimatePresence>
+                    {isActiveActivity && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="bg-white px-8 pb-10 overflow-hidden"
+                        >
+                            <TaskActivity taskId={task.id} />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </GlassCard>
         </motion.div>
     );
 };
 
-const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, formErrors, projects, students, groups, onProjectChange, submitting }) => (
+const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, formErrors, projects, students, groups, onProjectChange, submitting, isEditing }) => (
     <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -408,8 +887,8 @@ const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, for
         >
             <div className="flex justify-between items-center mb-10">
                 <div>
-                    <h2 className="text-3xl font-black text-gray-800 tracking-tight flex items-center gap-3"><Plus className="text-emerald-600" /> New Assignment</h2>
-                    <p className="text-gray-400 font-bold text-sm mt-1">Configure objective parameters and target recipients</p>
+                    <h2 className="text-3xl font-black text-gray-800 tracking-tight flex items-center gap-3"><Plus className="text-emerald-600" /> {isEditing ? 'Update Task' : 'New Assignment'}</h2>
+                    <p className="text-gray-400 font-bold text-sm mt-1">{isEditing ? 'Modify your mission parameters' : 'Configure objective parameters and target recipients'}</p>
                 </div>
                 <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-400"><X size={24} /></button>
             </div>
@@ -449,14 +928,71 @@ const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, for
                 <div className="space-y-3">
                     <label className="text-xs font-black uppercase tracking-widest text-gray-400">Assigned Recipient <span className="text-rose-500">*</span></label>
                     {formData.task_type === 'individual' ? (
-                        <select
-                            className={`w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none font-bold text-sm ${formErrors.student_id ? 'border-rose-300 ring-2 ring-rose-100' : 'border-gray-100 focus:ring-2 focus:ring-emerald-500'}`}
-                            value={formData.student_id}
-                            onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
-                        >
-                            <option value="">Select Student...</option>
-                            {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>)}
-                        </select>
+                        <div className="space-y-4">
+                            <div className="flex gap-2 relative">
+                                <select
+                                    className={`w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none font-bold text-sm ${formErrors.student_id ? 'border-rose-300 ring-2 ring-rose-100' : 'border-gray-100 focus:ring-2 focus:ring-emerald-500'}`}
+                                    value={formData.student_id}
+                                    onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
+                                >
+                                    <option value="">Select Student...</option>
+                                    {(() => {
+                                        const selectedProj = projects.find(p => String(p.id || p.project_id) === String(formData.project_id));
+                                        let filtered = students;
+                                        if (selectedProj) {
+                                            if (selectedProj.department_id) filtered = filtered.filter(s => String(s.department_id) === String(selectedProj.department_id));
+                                            if (selectedProj.course_id) filtered = filtered.filter(s => !s.course_id || String(s.course_id) === String(selectedProj.course_id));
+                                        }
+                                        filtered = filtered.filter(s => !(formData.selected_students || []).includes(String(s.id)));
+                                        return filtered.map(s => <option key={s.id} value={s.id}>{s.name} ({s.email})</option>);
+                                    })()}
+                                </select>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (!formData.student_id) return;
+                                        const currentSelected = formData.selected_students || [];
+                                        if (!currentSelected.includes(String(formData.student_id))) {
+                                            setFormData({ 
+                                                ...formData, 
+                                                selected_students: [...currentSelected, String(formData.student_id)], 
+                                                student_id: '' 
+                                            });
+                                        }
+                                    }}
+                                    className="px-5 bg-emerald-100 text-emerald-600 hover:bg-emerald-200 rounded-2xl transition-colors font-black flex items-center justify-center shadow-sm"
+                                >
+                                    <Plus size={20} />
+                                </button>
+                            </div>
+                            
+                            {(formData.selected_students && formData.selected_students.length > 0) && (
+                                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 max-h-40 overflow-y-auto custom-scrollbar flex flex-col gap-2 shadow-inner">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-1 px-1">Selected Recipients ({formData.selected_students.length})</p>
+                                    {formData.selected_students.map(sid => {
+                                        const stu = students.find(s => String(s.id) === String(sid));
+                                        return (
+                                            <div key={sid} className="flex justify-between items-center bg-white px-4 py-3 rounded-xl shadow-sm text-sm font-bold border border-gray-100 group">
+                                                <span className="text-gray-700">{stu ? `${stu.name} (${stu.email})` : `Student ID: ${sid}`}</span>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => {
+                                                        const currentSelected = formData.selected_students || [];
+                                                        setFormData({
+                                                            ...formData,
+                                                            selected_students: currentSelected.filter(id => String(id) !== String(sid))
+                                                        });
+                                                    }} 
+                                                    className="text-gray-300 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     ) : (
                         <select
                             className={`w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none font-bold text-sm disabled:opacity-50 ${formErrors.group_id ? 'border-rose-300 ring-2 ring-rose-100' : 'border-gray-100 focus:ring-2 focus:ring-emerald-500'}`}
@@ -518,7 +1054,7 @@ const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, for
                 <div className="flex gap-4 pt-6">
                     <Button type="button" variant="secondary" className="flex-1 py-5" onClick={onClose}>Abort Mission</Button>
                     <Button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700 py-5 shadow-xl shadow-emerald-100" disabled={submitting}>
-                        {submitting ? 'Initializing...' : 'Establish Draft'}
+                        {submitting ? 'Initializing...' : (isEditing ? 'Update' : 'Establish Draft')}
                     </Button>
                 </div>
             </form>
@@ -559,8 +1095,8 @@ const SubmissionsModal = ({ isOpen, onClose, task, submissions, gradeData, setGr
                         <div key={sub.id} className="group p-8 bg-gray-50/50 rounded-[2.5rem] border border-gray-100 flex flex-col xl:flex-row gap-10 hover:bg-white hover:border-emerald-100 transition-all duration-500 shadow-sm hover:shadow-xl">
                             <div className="flex-1">
                                 <div className="flex items-center gap-4 mb-6">
-                                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center font-black text-lg text-emerald-600 shadow-sm">
-                                        {sub.student_name?.charAt(0) || '?'}
+                                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center font-black text-lg text-emerald-600 shadow-sm overflow-hidden">
+                                        {sub.student_avatar ? <img src={sub.student_avatar} alt="User" className="w-full h-full object-cover" /> : (sub.student_name?.charAt(0) || '?')}
                                     </div>
                                     <div>
                                         <p className="text-xl font-black text-gray-800">{sub.student_name}</p>
@@ -578,11 +1114,31 @@ const SubmissionsModal = ({ isOpen, onClose, task, submissions, gradeData, setGr
                                     <p className="text-sm text-gray-600 font-medium leading-relaxed italic">" {sub.submission_text || "Zero payload detected."} "</p>
                                 </div>
 
-                                {sub.file_url && (
-                                    <a href={sub.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-3 px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all">
-                                        <Download size={16} /> Open Attachment
-                                    </a>
-                                )}
+                                <div className="flex flex-wrap items-center gap-6 mt-4 pt-4 border-t border-gray-100 mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1 bg-emerald-100 text-emerald-600 rounded-lg"><Clock size={12} /></div>
+                                        <div>
+                                            <p className="text-[7px] font-black uppercase text-gray-400 tracking-widest">Intake Pulse</p>
+                                            <p className="text-[10px] font-bold text-gray-600">
+                                                {sub.task_started_at ? new Date(sub.task_started_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1 bg-blue-100 text-blue-600 rounded-lg"><Send size={12} /></div>
+                                        <div>
+                                            <p className="text-[7px] font-black uppercase text-gray-400 tracking-widest">Transmission</p>
+                                            <p className="text-[10px] font-bold text-gray-600">
+                                                {new Date(sub.submitted_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {sub.file_url && (
+                                        <a href={sub.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-3 px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all ml-auto">
+                                            <Download size={16} /> Open Payload
+                                        </a>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="w-full xl:w-80 flex flex-col justify-center gap-4 border-t xl:border-t-0 xl:border-l border-gray-100 pt-6 xl:pt-0 xl:pl-10">

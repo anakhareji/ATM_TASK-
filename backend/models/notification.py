@@ -8,9 +8,10 @@ class Notification(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String(200), nullable=True)
     message = Column(String(500), nullable=False)
 
-    type = Column(String(50))  # performance / task / event
+    type = Column(String(50))  # performance / task / event / system
     is_read = Column(Boolean, default=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)

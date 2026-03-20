@@ -26,6 +26,22 @@ class UserCreateRequest(BaseModel):
     email: EmailStr
     password: str
     role: str = "student"
+    department_id: int | None = None
+    program_id: int | None = None
+    course_id: int | None = None
+    batch: str | None = None
+    current_semester: int | None = None
+
+class UserUpdateRequest(BaseModel):
+    name: str | None = None
+    email: EmailStr | None = None
+    role: str | None = None
+    status: str | None = None
+    department_id: int | None = None
+    program_id: int | None = None
+    course_id: int | None = None
+    batch: str | None = None
+    current_semester: int | None = None
 
 class BulkActivateUsersRequest(BaseModel):
     user_ids: List[int]

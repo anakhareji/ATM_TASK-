@@ -26,13 +26,15 @@ class Task(Base):
     # Task lifecycle
     status = Column(
         String(30),
-        default="assigned"
+        default="assigned"  # assigned/draft → published → in_progress → submitted → graded
     )
-    # assigned → submitted → verified → returned
+    
+    # Operational Timestamps
+    started_at = Column(DateTime, nullable=True) # When student accepts task
+    submitted_at = Column(DateTime, nullable=True)
 
     # Student submission
     submission_content = Column(Text, nullable=True)
-    submitted_at = Column(DateTime, nullable=True)
 
     # Faculty evaluation
     faculty_feedback = Column(Text, nullable=True)

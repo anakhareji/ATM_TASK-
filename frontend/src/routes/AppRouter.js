@@ -8,7 +8,7 @@ import GradeChart from "../pages/GradeChart";
 import NewsEvents from "../pages/NewsEvents";
 import Notifications from "../pages/Notifications";
 import ProtectedRoute from "../utils/ProtectedRoute";
-import Layout from "../components/layout/Layout";
+import AppGlassLayout from "../components/layout/AppGlassLayout";
 import AdminSaaSRoutes from "./AdminSaaSRoutes";
 import Users from "../pages/Users";
 import News from "../pages/News";
@@ -24,6 +24,8 @@ import AcademicStructure from "../pages/AcademicStructure";
 import AdminProjects from "../pages/AdminProjects";
 import AdminSubmissions from "../pages/AdminSubmissions";
 import AdminRecognition from "../pages/AdminRecognition";
+import AdminCampusPulse from "../pages/AdminCampusPulse";
+import StudentEvaluation from "../pages/StudentEvaluation";
 
 // Faculty Pages
 import FacultyProjects from "../pages/FacultyProjects";
@@ -34,18 +36,24 @@ import FacultyPlanner from "../pages/FacultyPlanner";
 import FacultyStudents from "../pages/FacultyStudents";
 
 const LayoutWrapper = () => {
-  const role = localStorage.getItem("userRole");
+  const role = (localStorage.getItem("userRole") || "").toLowerCase();
 
-  // Admin pages provide their own AdminGlassLayout, so we skip the default Layout wrapper
+  // Admin pages provide their own AdminGlassLayout as specified in their components
   if (role === "admin") {
     return <Outlet />;
   }
 
+  // Both Faculty and Student now use the Premium Glass Layout
   return (
-    <Layout>
+    <AppGlassLayout>
       <Outlet />
-    </Layout>
+    </AppGlassLayout>
   );
+};
+
+const TaskRoute = () => {
+  const role = (localStorage.getItem("userRole") || "").toLowerCase();
+  return role === 'faculty' ? <FacultyTasks /> : <StudentTasks />;
 };
 
 function AppRouter() {
@@ -65,14 +73,16 @@ function AppRouter() {
             <Route path="/dashboard/leaderboard" element={<Leaderboard />} />
             <Route path="/dashboard/grades" element={<GradeChart />} />
             <Route path="/dashboard/notifications" element={<Notifications />} />
-            <Route path="/dashboard/my-tasks" element={<StudentTasks />} />
+            {/* Task & Operations Routing */}
+            <Route path="/dashboard/tasks" element={<TaskRoute />} />
+            <Route path="/dashboard/my-tasks" element={<StudentTasks />} /> 
+
             <Route path="/dashboard/todo" element={<StudentTodo />} />
             <Route path="/dashboard/my-groups" element={<StudentGroups />} />
             <Route path="/dashboard/timetable" element={<StudentTimetable />} />
 
             {/* Faculty Routes */}
             <Route path="/dashboard/projects" element={<FacultyProjects />} />
-            <Route path="/dashboard/tasks" element={<FacultyTasks />} />
             <Route path="/dashboard/groups" element={<FacultyGroups />} />
             <Route path="/dashboard/submissions" element={<FacultySubmissions />} />
             <Route path="/dashboard/planner" element={<FacultyPlanner />} />
@@ -90,6 +100,8 @@ function AppRouter() {
             <Route path="/dashboard/academic-structure" element={<AcademicStructure />} />
             <Route path="/dashboard/performance" element={<AdminPerformance />} />
             <Route path="/dashboard/recognition" element={<AdminRecognition />} />
+            <Route path="/dashboard/campus-pulse" element={<AdminCampusPulse />} />
+            <Route path="/dashboard/evaluate" element={<StudentEvaluation />} />
           </Route>
           <Route path="/admin/*" element={<AdminSaaSRoutes />} />
         </Route>

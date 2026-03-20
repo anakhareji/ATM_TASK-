@@ -5,13 +5,12 @@ import {
     Calendar, LogOut, Briefcase, Layers, CheckSquare, Shield,
     GraduationCap, ClipboardList, ChevronDown, ChevronUp, Award, User, Trophy, ListTodo
 } from 'lucide-react';
+import API from '../../api/axios';
 
 const ADMIN_NAV = [
     {
         label: 'Overview',
-        items: [
-            { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        ]
+        items: [{ name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard }]
     },
     {
         label: 'People & Access',
@@ -21,25 +20,20 @@ const ADMIN_NAV = [
         ]
     },
     {
-        label: 'Academic Structure',
-        items: [
-            { name: 'Departments & Courses', path: '/dashboard/academic-structure', icon: Layers },
-        ]
-    },
-    {
         label: 'Academic Activity',
         items: [
-            { name: 'Global Projects', path: '/dashboard/projects-global', icon: Briefcase },
-            { name: 'Global Submissions', path: '/dashboard/submissions-global', icon: ClipboardList },
-            { name: 'Performance Analytics', path: '/dashboard/performance', icon: Activity },
+            { name: 'Global Projects',        path: '/dashboard/projects-global',    icon: Briefcase     },
+            { name: 'Global Submissions',     path: '/dashboard/submissions-global', icon: ClipboardList },
+            { name: 'Performance Analytics',  path: '/dashboard/performance',        icon: Activity      },
+            { name: 'Evaluate Students',      path: '/dashboard/evaluate',           icon: GraduationCap },
         ]
     },
     {
         label: 'Administration',
         items: [
+            { name: 'Campus Pulse', path: '/dashboard/campus-pulse', icon: Newspaper },
+            { name: 'Academic Structure', path: '/dashboard/academic-structure', icon: Layers },
             { name: 'Audit Logs', path: '/dashboard/audit', icon: Shield },
-            { name: 'News & Events', path: '/dashboard/news', icon: Newspaper },
-            { name: 'Notifications', path: '/dashboard/notifications', icon: Bell },
             { name: 'Achievement & Recognition', path: '/dashboard/recognition', icon: Award },
         ]
     }

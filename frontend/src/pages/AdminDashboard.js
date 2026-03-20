@@ -5,9 +5,11 @@ import AdminGlassLayout from '../components/layout/AdminGlassLayout';
 import { CheckCircle2, Clock, MoreHorizontal, User, Calendar } from 'lucide-react';
 
 const AdminDashboard = () => {
+    const navigate = useNavigate();
     const [user, setUser] = useState(null);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [pendingEvents, setPendingEvents] = useState(0);
 
     const fetchStats = useCallback(async () => {
         try {

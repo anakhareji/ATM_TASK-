@@ -27,6 +27,11 @@ const Login = () => {
       localStorage.setItem("userRole", response.data.user.role);
       localStorage.setItem("userName", response.data.user.name || "");
       localStorage.setItem("userEmail", response.data.user.email || "");
+      if (response.data.user.avatar) {
+          localStorage.setItem("userAvatar", response.data.user.avatar);
+      } else {
+          localStorage.removeItem("userAvatar");
+      }
 
       setIsLoading(false);
 
@@ -44,6 +49,11 @@ const Login = () => {
           localStorage.setItem("userRole", retry.data.user.role);
           localStorage.setItem("userName", retry.data.user.name || "");
           localStorage.setItem("userEmail", retry.data.user.email || "");
+          if (retry.data.user.avatar) {
+              localStorage.setItem("userAvatar", retry.data.user.avatar);
+          } else {
+              localStorage.removeItem("userAvatar");
+          }
           setIsLoading(false);
           navigate("/dashboard");
           return;

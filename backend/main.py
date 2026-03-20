@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from database import engine, Base
+import os
 
 # -------- Import Models --------
 from models.user import User
@@ -20,6 +22,7 @@ from models.academic_saas import (
     Role, Permission, RolePermission, StructureVersion, Batch
 )
 from models.settings import SystemSettings
+from models.task_comment import TaskComment
 
 # -------- Import Routers --------
 from routers.auth import router as auth_router
@@ -41,6 +44,7 @@ from routers.audit import router as audit_router
 from routers.academic import router as academic_router
 from routers.academic_structure_v1 import router as academic_structure_v1_router
 from routers.admin_v1 import router as admin_v1_router
+from routers.user import router as user_router
 
 # -------- Create App --------
 app = FastAPI(
@@ -65,6 +69,32 @@ app.add_middleware(
 # -------- Create Tables --------
 Base.metadata.create_all(bind=engine)
 
+from sqlalchemy import text
+try:
+    with engine.begin() as conn:
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[notifications]') AND name = 'title') ALTER TABLE notifications ADD title NVARCHAR(200) NULL;"))
+        # New campus_events columns
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'image_url') ALTER TABLE campus_events ADD image_url NVARCHAR(500) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'location') ALTER TABLE campus_events ADD location NVARCHAR(300) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'organizer') ALTER TABLE campus_events ADD organizer NVARCHAR(200) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'contact_info') ALTER TABLE campus_events ADD contact_info NVARCHAR(300) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'tags') ALTER TABLE campus_events ADD tags NVARCHAR(500) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'max_participants') ALTER TABLE campus_events ADD max_participants INT NULL;"))
+        # New users columns
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[users]') AND name = 'avatar') ALTER TABLE users ADD avatar NVARCHAR(MAX) NULL;"))
+        # New campus_news columns
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'category') ALTER TABLE campus_news ADD category NVARCHAR(60) NULL DEFAULT 'general';"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'cover_image_url') ALTER TABLE campus_news ADD cover_image_url NVARCHAR(500) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'tags') ALTER TABLE campus_news ADD tags NVARCHAR(400) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'is_featured') ALTER TABLE campus_news ADD is_featured BIT NULL DEFAULT 0;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'source') ALTER TABLE campus_news ADD source NVARCHAR(200) NULL DEFAULT 'internal';"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'external_url') ALTER TABLE campus_news ADD external_url NVARCHAR(500) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'read_time_mins') ALTER TABLE campus_news ADD read_time_mins INT NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'updated_at') ALTER TABLE campus_news ADD updated_at DATETIME NULL;"))
+except Exception as e:
+    print(f"Auto-migration error: {e}")
+
+
 # -------- Include Routers (ONLY PREFIX HERE) --------
 app.include_router(auth_router, prefix="/api/auth")
 app.include_router(test_router, prefix="/api/test")
@@ -86,6 +116,12 @@ app.include_router(academic_router, prefix="/api/academic")
 app.include_router(academic_structure_v1_router, prefix="/api/v1/academic-structure")
 app.include_router(academic_structure_v1_router, prefix="/api/v1/academic_structure")
 app.include_router(admin_v1_router, prefix="/api/v1/admin")
+app.include_router(user_router, prefix="/api/users")
+
+# -------- Static Files (uploads) --------
+uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 # -------- Root --------
 @app.get("/")

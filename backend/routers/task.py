@@ -5,13 +5,14 @@ from typing import Optional
 from database import get_db
 
 from models.task import Task
+from models.project import Project
 from models.project_faculty import ProjectFaculty
 from models.user import User
 from models.group import ProjectGroup, GroupMember
 from models.task_submission import TaskSubmission
 from models.student_performance import StudentPerformance
 
-from schemas.task import TaskCreateRequest, TaskReviewRequest
+from schemas.task import TaskCreateRequest, TaskReviewRequest, TaskUpdateRequest
 from schemas.submission import TaskSubmitRequest
 from schemas.task_submission_response import TaskSubmissionResponse
 from schemas.task_response import TaskResponse
@@ -20,6 +21,7 @@ from typing import List
 from utils.security import get_current_user, FACULTY, STUDENT, ADMIN
 from models.audit_log import AuditLog
 from datetime import datetime
+from routers.notification import add_notification
 
 router = APIRouter(
     tags=["Tasks"]
@@ -34,17 +36,19 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    if current_user["role"] != FACULTY:
-        raise HTTPException(403, "Only faculty can create tasks")
+    role = current_user["role"].lower()
+    if role not in [FACULTY.lower(), ADMIN.lower()]:
+        raise HTTPException(403, "Only faculty or admin can create tasks")
 
-    # Verify Faculty Assignment to Project
-    assignment = db.query(ProjectFaculty).filter(
-        ProjectFaculty.project_id == data.project_id,
-        ProjectFaculty.faculty_id == current_user["user_id"]
-    ).first()
+    # Verify Faculty Assignment to Project (Skip for Admin)
+    if role != ADMIN.lower():
+        assignment = db.query(ProjectFaculty).filter(
+            ProjectFaculty.project_id == data.project_id,
+            ProjectFaculty.faculty_id == current_user["user_id"]
+        ).first()
 
-    if not assignment:
-        raise HTTPException(403, "You are not assigned to this project")
+        if not assignment:
+            raise HTTPException(403, "You are not assigned to this project")
 
     # Validate Targets
     if data.task_type == "individual":
@@ -54,15 +58,7 @@ def create_task(
         if not data.group_id:
             raise HTTPException(400, "group_id is required for group tasks")
             
-    # Default status is 'assigned' (Published) or we could have a 'Draft' status
-    # For now, let's assume direct publish as per previous logic, or add 'draft' support
-    # The requirement says "If created -> draft". Let's support that.
-    
-    # We'll use a query param or a field in data if we want explicit Draft vs Publish
-    # For now, let's default to "Active" (Published) for simplicity unless requested otherwise
-    # properly. The user asked for "If created -> draft".
-    
-    initial_status = "draft" 
+    initial_status = "published" 
 
     task = Task(
         title=data.title,
@@ -84,7 +80,28 @@ def create_task(
     db.commit()
     db.refresh(task)
 
-    return {"message": "Task created as Draft", "task_id": task.id}
+    # Notify Target (Student or Group)
+    if task.student_id:
+        add_notification(
+            db, 
+            user_id=task.student_id, 
+            title="New Mission Deployed", 
+            message=f"A new academic mission '{task.title}' has been assigned to you.",
+            type="task"
+        )
+    elif task.group_id:
+        from models.group import GroupMember
+        members = db.query(GroupMember).filter(GroupMember.group_id == task.group_id).all()
+        for m in members:
+            add_notification(
+                db, 
+                user_id=m.student_id, 
+                title="Squad Mission Deployed", 
+                message=f"A new squad mission '{task.title}' has been deployed for your unit.",
+                type="task"
+            )
+
+    return {"message": "Mission deployed successfully", "task_id": task.id}
 
 @router.put("/{task_id}/publish")
 def publish_task(
@@ -92,12 +109,16 @@ def publish_task(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    if current_user["role"] != FACULTY:
-        raise HTTPException(403, "Faculty only")
+    role = current_user["role"].lower()
+    if role not in [FACULTY.lower(), ADMIN.lower()]:
+        raise HTTPException(403, "Faculty or Admin only")
         
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(404, "Task not found")
+
+    if role == FACULTY.lower() and task.faculty_id != current_user["user_id"]:
+        raise HTTPException(403, "Not your task")
         
     task.status = "published"
     task.published_at = datetime.utcnow()
@@ -107,6 +128,34 @@ def publish_task(
     # create_notification(...)
     
     return {"message": "Task published successfully"}
+
+# =========================
+# UPDATE TASK (FACULTY)
+# =========================
+@router.put("/{task_id}")
+def update_task(
+    task_id: int,
+    data: TaskUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    role = current_user["role"].lower()
+    if role not in [FACULTY.lower(), ADMIN.lower()]:
+        raise HTTPException(403, "Faculty or Admin only")
+        
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+
+    if role == FACULTY.lower() and task.faculty_id != current_user["user_id"]:
+        raise HTTPException(403, "Not your task")
+        
+    update_data = data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(task, key, value)
+        
+    db.commit()
+    return {"message": "Task updated successfully"}
 
 # =========================
 # SUBMIT TASK (STUDENT)
@@ -172,7 +221,143 @@ def submit_task(
     # task.status = "submitted" # Only for individual really
     
     db.commit()
+    
+    # Notify Faculty
+    add_notification(
+        db,
+        user_id=task.faculty_id,
+        title="Mission Submission Received",
+        message=f"Operative has submitted evidence for mission '{task.title}'.",
+        type="task"
+    )
+
     return {"message": "Task submitted", "is_late": is_late}
+
+# =========================
+# COMMENTS
+# =========================
+class CommentCreateRequest(BaseModel):
+    comment_text: str
+
+@router.get("/{task_id}/comments")
+def get_task_comments(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        from models.task_comment import TaskComment
+        from models.user import User
+        # Ensure they have access
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if not task:
+            raise HTTPException(404, "Task not found")
+
+        comments = db.query(TaskComment).filter(TaskComment.task_id == task_id).order_by(TaskComment.created_at.asc()).all()
+        
+        res = []
+        for c in comments:
+            user = db.query(User).filter(User.id == c.user_id).first()
+            res.append({
+                "id": c.id,
+                "comment_text": c.comment_text,
+                "created_at": c.created_at,
+                "user_id": c.user_id,
+                "user_name": user.name if user else "Unknown",
+                "role": c.user_role
+            })
+        return res
+    except Exception as e:
+        import traceback
+        with open("comments_err.txt", "w") as f:
+            f.write(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{task_id}/comments")
+def add_task_comment(
+    task_id: int,
+    data: CommentCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    from models.task_comment import TaskComment
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+
+    # Access control could be refined (e.g. only assigned student or faculty can comment)
+    if current_user["role"] == STUDENT:
+        if task.task_type == "individual" and task.student_id != current_user["user_id"]:
+            raise HTTPException(403, "Not your task")
+        # In a real app we'd also check group tasks. Simplified here.
+
+    comment = TaskComment(
+        task_id=task_id,
+        user_id=current_user["user_id"],
+        user_role=current_user["role"],
+        comment_text=data.comment_text
+    )
+    db.add(comment)
+    db.commit()
+    
+    # 🔔 Notifications for Comments
+    if current_user["role"] == FACULTY:
+        # Notify student(s)
+        if task.student_id:
+            add_notification(db, user_id=task.student_id, title="New Faculty Feedback", message=f"Faculty has commented on mission '{task.title}'", type="task")
+        elif task.group_id:
+            from models.group import GroupMember
+            members = db.query(GroupMember).filter(GroupMember.group_id == task.group_id).all()
+            for m in members:
+                add_notification(db, user_id=m.student_id, title="Squad Intel Briefing", message=f"Faculty has added a directive to squad mission '{task.title}'", type="task")
+    elif current_user["role"] == STUDENT:
+        # Notify faculty
+        add_notification(db, user_id=task.faculty_id, title="Operative Broadcast", message=f"Operative has commented on mission '{task.title}'", type="task")
+        # Notify group members 
+        if task.group_id:
+            from models.group import GroupMember
+            others = db.query(GroupMember).filter(GroupMember.group_id == task.group_id, GroupMember.student_id != current_user["user_id"]).all()
+            for o in others:
+                add_notification(db, user_id=o.student_id, title="Squad Communication", message=f"A teammate shared intel on mission '{task.title}'", type="task")
+    
+    return {"message": "Comment added"}
+
+@router.put("/comments/{comment_id}")
+def update_task_comment(
+    comment_id: int,
+    data: CommentCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    from models.task_comment import TaskComment
+    comment = db.query(TaskComment).filter(TaskComment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(404, "Comment not found")
+        
+    if comment.user_id != current_user["user_id"] and current_user["role"] != ADMIN:
+        raise HTTPException(403, "You can't edit others' comments")
+        
+    comment.comment_text = data.comment_text
+    db.commit()
+    return {"message": "Comment updated"}
+
+@router.delete("/comments/{comment_id}")
+def delete_task_comment(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    from models.task_comment import TaskComment
+    comment = db.query(TaskComment).filter(TaskComment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(404, "Comment not found")
+        
+    if comment.user_id != current_user["user_id"] and current_user["role"] != ADMIN:
+        raise HTTPException(403, "You can't delete others' comments")
+        
+    db.delete(comment)
+    db.commit()
+    return {"message": "Comment deleted"}
 
 # =========================
 # VIEW TASKS (FOR CURRENT USER)
@@ -184,34 +369,23 @@ def get_my_tasks(
 ):
     try:
         user_id = current_user["user_id"]
-        role = current_user["role"]
+        role = current_user["role"].lower()
         
-        if role == STUDENT:
-            # Get individual tasks AND group tasks where student is member
-            # And status is NOT draft
-            
-            individual_tasks = db.query(Task).filter(
-                Task.student_id == user_id,
-                Task.status != "draft"
+        if role == STUDENT.lower():
+            # GET ACTIVE/PROGRESS TASKS (EXCLUDE PUBLISHED/DRAFT)
+            tasks = db.query(Task).filter(
+                (Task.student_id == user_id) |
+                (Task.group_id.in_(db.query(GroupMember.group_id).filter(GroupMember.student_id == user_id))),
+                Task.status.in_(["in_progress", "submitted", "graded", "returned"])
             ).all()
             
-            group_ids = db.query(GroupMember.group_id).filter(GroupMember.student_id == user_id).all()
-            group_ids = [g[0] for g in group_ids]
-            
-            group_tasks = db.query(Task).filter(
-                Task.group_id.in_(group_ids),
-                Task.status != "draft"
-            ).all()
-            
-            tasks = individual_tasks + group_tasks
-            
-            # Calculate dynamic status (Overdue)
             res = []
             now = datetime.utcnow()
             for t in tasks:
                 status = t.status
-                if status == "published" and now > t.deadline:
-                    status = "overdue"
+                # If in_progress but past deadline -> overdue (Progress still tracked)
+                if status == "in_progress" and now > t.deadline:
+                    status = "overdue (in-progress)"
                 
                 # Check if submitted
                 sub = db.query(TaskSubmission).filter(
@@ -219,9 +393,8 @@ def get_my_tasks(
                     TaskSubmission.student_id == user_id
                 ).first()
                 if sub:
-                    status = sub.status # submitted / graded / late?
+                    status = sub.status 
                     
-                # Manual serialization to avoid SQLAlchemy state issues
                 t_data = {
                     "id": t.id,
                     "title": t.title,
@@ -234,16 +407,25 @@ def get_my_tasks(
                     "status": t.status,
                     "file_url": t.file_url,
                     "created_at": t.created_at,
+                    "started_at": t.started_at,  # CRITICAL FOR TIMER
                     "dynamic_status": status
                 }
                 res.append(t_data)
-                
             return res
 
-        elif role == FACULTY:
-            tasks = db.query(Task).filter(Task.faculty_id == user_id).order_by(Task.created_at.desc()).all()
+        elif role in [FACULTY.lower(), ADMIN.lower()]:
+            # For FACULTY, show their tasks. For ADMIN, show all tasks.
+            query = db.query(Task)
+            if role == FACULTY.lower():
+                query = query.filter(Task.faculty_id == user_id)
+            
+            tasks = query.order_by(Task.created_at.desc()).all()
             res = []
             for t in tasks:
+                proj = db.query(Project).filter(Project.id == t.project_id).first()
+                std = db.query(User).filter(User.id == t.student_id).first() if t.student_id else None
+                grp = db.query(ProjectGroup).filter(ProjectGroup.id == t.group_id).first() if t.group_id else None
+                
                 t_data = {
                     "id": t.id,
                     "title": t.title,
@@ -253,19 +435,145 @@ def get_my_tasks(
                     "max_marks": t.max_marks,
                     "task_type": t.task_type,
                     "project_id": t.project_id,
+                    "project_title": proj.title if proj else "Unknown Track",
+                    "student_id": t.student_id,
+                    "student_name": std.name if std else None,
+                    "group_id": t.group_id,
+                    "group_name": grp.name if grp else None,
                     "status": t.status,
                     "file_url": t.file_url,
                     "created_at": t.created_at,
-                    "dynamic_status": t.status # No submissions check needed for faculty listing usually
+                    "started_at": t.started_at,  # LOG VISIBLE TO FACULTY
+                    "dynamic_status": t.status
                 }
                 res.append(t_data)
             return res
         else:
-            return db.query(Task).all()
+            return []
     except Exception as e:
         import traceback
-        traceback.print_exc()
+        err_msg = traceback.format_exc()
+        with open("task_error_log.txt", "w") as f:
+            f.write(err_msg)
+        print(err_msg)
         raise HTTPException(status_code=500, detail=f"My-Tasks Error: {str(e)}")
+
+# =========================
+# GET ASSIGNED BUT NOT STARTED (FOR TODO PAGE)
+# =========================
+@router.get("/assigned")
+def get_assigned_tasks(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user["role"] != STUDENT:
+        return []
+    
+    user_id = current_user["user_id"]
+    
+    # Get individual tasks AND group tasks where student is member
+    group_ids_query = db.query(GroupMember.group_id).filter(GroupMember.student_id == user_id)
+    
+    tasks = db.query(Task).filter(
+        (Task.student_id == user_id) |
+        (Task.group_id.in_(group_ids_query)),
+        Task.status.in_(["published", "draft", "assigned"])
+    ).all()
+    
+    res = []
+    for t in tasks:
+        is_leader = True # Default for individual tasks
+        
+        task_type_clean = (t.task_type or "").lower()
+        if task_type_clean == "group":
+            member_record = db.query(GroupMember).filter(
+                GroupMember.group_id == t.group_id,
+                GroupMember.student_id == user_id
+            ).first()
+            # Explicit integer check for SQL Server BIT/INT compatibility
+            is_leader = bool(member_record and int(member_record.is_leader or 0) == 1)
+        
+        res.append({
+            "id": t.id,
+            "title": t.title,
+            "description": t.description,
+            "priority": t.priority,
+            "deadline": t.deadline,
+            "max_marks": t.max_marks,
+            "task_type": t.task_type,
+            "project_id": t.project_id,
+            "status": t.status,
+            "created_at": t.created_at,
+            "is_leader": is_leader
+        })
+    return res
+
+# =========================
+# ACCEPT TASK (START TIMER)
+# =========================
+@router.patch("/{task_id}/accept")
+def accept_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    # Verify role (case-insensitive)
+    role = (current_user.get("role") or "").lower()
+    if role != STUDENT.lower():
+        raise HTTPException(403, "Sector authorization restricted to active student personnel.")
+
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(404, "Mission identifier not found in database.")
+    
+    if task.status.lower() not in ["published", "draft", "assigned"]:
+         raise HTTPException(400, f"Mission state '{task.status}' prohibits activation protocols.")
+
+    # Verify authorization
+    is_allowed = False
+    error_msg = f"Sector Authorization Denied for Personnel-ID {current_user['user_id']}"
+
+    task_type_clean = (task.task_type or "individual").lower()
+
+    if task_type_clean == "group":
+        # Must be in the group AND be the leader
+        if not task.group_id:
+             raise HTTPException(400, "Corrupted Mission Intel: Squad identifier missing.")
+             
+        member = db.query(GroupMember).filter(
+            GroupMember.group_id == task.group_id,
+            GroupMember.student_id == current_user["user_id"]
+        ).first()
+        
+        if not member:
+            is_allowed = False
+            error_msg = f"Critical: Personnel-ID {current_user['user_id']} is not recognized as a member of Squad-ID {task.group_id}."
+        elif int(member.is_leader or 0) != 1:
+            is_allowed = False
+            error_msg = "Only the commissioned Squad Leader can initialize this mission protocol."
+        else:
+            is_allowed = True
+    else:
+        # Individual Task - check either student_id match or group membership if relevant
+        if task.student_id == current_user["user_id"]:
+            is_allowed = True
+        elif task.group_id:
+             # Fallback for old tasks that might be group but type is 'individual'
+             member = db.query(GroupMember).filter(
+                 GroupMember.group_id == task.group_id,
+                 GroupMember.student_id == current_user["user_id"]
+             ).first()
+             if member:
+                  is_allowed = True
+            
+    if not is_allowed:
+        raise HTTPException(403, error_msg)
+
+    task.status = "in_progress"
+    task.started_at = datetime.utcnow()
+    db.commit()
+    
+    return {"message": "Mission accepted. Timer activated.", "started_at": task.started_at}
 
 # =========================
 # GRADE SUBMISSION (FACULTY)
@@ -361,6 +669,15 @@ def grade_submission(
         perf.faculty_id = faculty_id # ensure faculty is set
         
     db.commit()
+
+    # Notify student
+    add_notification(
+        db, 
+        user_id=student_id, 
+        title="Mission Evaluation Complete", 
+        message=f"Faculty evaluator has graded mission '{task.title}'. Grade: {data.grade}", 
+        type="task"
+    )
     
     return {"message": "Graded successfully and performance updated"}
 
@@ -397,7 +714,8 @@ def get_task_submissions(
             "file_url": s.file_url,
             "marks": s.marks_obtained,
             "grade": s.grade,
-            "feedback": s.feedback
+            "feedback": s.feedback,
+            "task_started_at": task.started_at # OVERLAY INTEL
         }
         for s in submissions
     ]
@@ -408,11 +726,15 @@ def delete_faculty_task(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    role = current_user["role"].lower()
+    if role not in [FACULTY.lower(), ADMIN.lower()]:
+        raise HTTPException(403, "Only faculty or admin can delete tasks")
+
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(404, "Task not found")
         
-    if current_user["role"] == FACULTY and task.faculty_id != current_user["user_id"]:
+    if role == FACULTY.lower() and task.faculty_id != current_user["user_id"]:
         raise HTTPException(403, "Not your task")
 
     db.delete(task)
