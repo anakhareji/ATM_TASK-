@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Bell, FileText, Newspaper, Activity,
     Calendar, LogOut, Briefcase, Layers, CheckSquare, Shield,
-    GraduationCap, ClipboardList, Award, Trophy, ListTodo, User
+    GraduationCap, ClipboardList, ChevronDown, ChevronUp, Award, User, Trophy, ListTodo
 } from 'lucide-react';
 import API from '../../api/axios';
 
@@ -41,63 +41,63 @@ const ADMIN_NAV = [
 
 const FACULTY_NAV = [
     {
-        label: 'Classroom',
+        label: 'Overview',
         items: [
-            { name: 'Briefing Room', path: '/dashboard', icon: LayoutDashboard },
-            { name: 'Personnel', path: '/dashboard/students', icon: Users },
+            { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         ]
     },
     {
-        label: 'Operations',
+        label: 'Management',
         items: [
-            { name: 'Active Tracks', path: '/dashboard/projects', icon: Briefcase },
-            { name: 'Assignment Hub', path: '/dashboard/tasks', icon: CheckSquare },
-            { name: 'Squad Management', path: '/dashboard/groups', icon: Layers },
+            { name: 'Students', path: '/dashboard/students', icon: Users },
+            { name: 'Groups', path: '/dashboard/groups', icon: Layers },
         ]
     },
     {
-        label: 'Execution',
+        label: 'Academic Activity',
         items: [
-            { name: 'Operational Intel', path: '/dashboard/submissions', icon: FileText },
-            { name: 'Academic Planner',  path: '/dashboard/planner',     icon: ListTodo },
-            { name: 'Evaluate Students', path: '/dashboard/evaluate',    icon: GraduationCap },
+            { name: 'Projects', path: '/dashboard/projects', icon: Briefcase },
+            { name: 'Tasks', path: '/dashboard/tasks', icon: CheckSquare },
+            { name: 'Submissions', path: '/dashboard/submissions', icon: FileText },
+        ]
+    },
+    {
+        label: 'Other',
+        items: [
+            { name: 'Academic Planner', path: '/dashboard/planner', icon: ListTodo },
+            { name: 'News & Events', path: '/dashboard/news-events', icon: Newspaper },
+            { name: 'Notifications', path: '/dashboard/notifications', icon: Bell },
         ]
     }
 ];
 
 const STUDENT_NAV = [
     {
-        label: 'Mission Control',
+        label: 'Overview',
         items: [
-            { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
-            { name: 'My Tasks', path: '/dashboard/tasks', icon: CheckSquare },
+            { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
         ]
     },
     {
-        label: 'Squad & Intel',
+        label: 'My Activities',
         items: [
+            { name: 'My Tasks', path: '/dashboard/my-tasks', icon: CheckSquare },
+            { name: 'My To-Do', path: '/dashboard/todo', icon: ListTodo },
             { name: 'My Groups', path: '/dashboard/my-groups', icon: Layers },
-            { name: 'To-Do List', path: '/dashboard/todo', icon: ListTodo },
         ]
     },
     {
-        label: 'Campus Intel',
+        label: 'Progress',
         items: [
-            { name: 'Campus Pulse', path: '/dashboard/news-events', icon: Newspaper },
+            { name: 'Grades', path: '/dashboard/grades', icon: Award },
+            { name: 'Leaderboard', path: '/dashboard/leaderboard', icon: Trophy },
+        ]
+    },
+    {
+        label: 'Other',
+        items: [
+            { name: 'Timetable', path: '/dashboard/timetable', icon: Calendar },
             { name: 'Notifications', path: '/dashboard/notifications', icon: Bell },
-        ]
-    },
-    {
-        label: 'performance',
-        items: [
-            { name: 'Hall of Fame', path: '/dashboard/leaderboard', icon: Trophy },
-            { name: 'Service Record', path: '/dashboard/grades', icon: Award },
-        ]
-    },
-    {
-        label: 'briefings',
-        items: [
-            { name: 'Schedule', path: '/dashboard/timetable', icon: Calendar },
         ]
     }
 ];
