@@ -1,0 +1,491 @@
+Table users {
+  id INTEGER [primary key, not null]
+  name VARCHAR(100) [not null]
+  email VARCHAR(100) [not null, unique]
+  password VARCHAR(255) [not null]
+  role VARCHAR(20) [not null]
+  status VARCHAR(20)
+  created_by_faculty_id INTEGER
+  department_id INTEGER
+  program_id INTEGER
+  course_id INTEGER
+  batch VARCHAR(20)
+  current_semester INTEGER
+  created_at DATETIME
+  updated_at DATETIME
+}
+
+Ref: users.course_id > courses_v1.id
+Ref: users.department_id > departments_v1.id
+Ref: users.program_id > programs.id
+Ref: users.created_by_faculty_id > users.id
+
+Table projects {
+  id INTEGER [primary key, not null]
+  title VARCHAR(150) [not null]
+  description VARCHAR(500)
+  department_id INTEGER
+  course_id INTEGER
+  semester VARCHAR(50)
+  lead_faculty_id INTEGER
+  academic_year VARCHAR(20)
+  start_date DATE
+  end_date DATE
+  status VARCHAR(20)
+  visibility VARCHAR(50)
+  allow_tasks BOOLEAN
+  is_deleted BOOLEAN
+  created_by INTEGER
+  created_at DATETIME
+  updated_at DATETIME
+}
+
+Ref: projects.created_by > users.id
+Ref: projects.course_id > courses_v1.id
+Ref: projects.department_id > departments_v1.id
+Ref: projects.lead_faculty_id > users.id
+
+Table project_faculty {
+  id INTEGER [primary key, not null]
+  project_id INTEGER [not null]
+  faculty_id INTEGER [not null]
+  assigned_at DATETIME
+}
+
+Ref: project_faculty.project_id > projects.id
+Ref: project_faculty.faculty_id > users.id
+
+Table task_submissions {
+  id INTEGER [primary key, not null]
+  task_id INTEGER [not null]
+  student_id INTEGER [not null]
+  submission_text VARCHAR(1000) [not null]
+  submitted_at DATETIME
+  status VARCHAR(30)
+  file_url VARCHAR(500)
+  is_late BOOLEAN
+  marks_obtained INTEGER
+  grade VARCHAR(5)
+  feedback TEXT
+}
+
+Ref: task_submissions.student_id > users.id
+Ref: task_submissions.task_id > tasks.id
+
+Table student_performance {
+  id INTEGER [primary key, not null]
+  student_id INTEGER [not null]
+  faculty_id INTEGER [not null]
+  project_id INTEGER [not null]
+  score FLOAT
+  system_score FLOAT
+  final_score FLOAT
+  grade VARCHAR(5)
+  semester VARCHAR(20)
+  is_locked BOOLEAN [not null]
+  remarks VARCHAR(1000)
+  recommendation_level VARCHAR(50)
+  submitted_to_admin BOOLEAN
+  created_at DATETIME [not null]
+}
+
+Ref: student_performance.project_id > projects.id
+Ref: student_performance.faculty_id > users.id
+Ref: student_performance.student_id > users.id
+
+Table academic_planner {
+  id INTEGER [primary key, not null]
+  title VARCHAR(200) [not null]
+  description VARCHAR(500)
+  start_date DATETIME [not null]
+  end_date DATETIME [not null]
+  project_id INTEGER
+  created_by INTEGER
+  created_at DATETIME
+}
+
+Ref: academic_planner.created_by > users.id
+Ref: academic_planner.project_id > projects.id
+
+Table todos {
+  id INTEGER [primary key, not null]
+  title VARCHAR(200) [not null]
+  description VARCHAR(500)
+  due_date DATETIME [not null]
+  student_id INTEGER [not null]
+  planner_id INTEGER
+  task_id INTEGER
+  status VARCHAR(20)
+  created_at DATETIME
+}
+
+Ref: todos.task_id > tasks.id
+Ref: todos.planner_id > academic_planner.id
+Ref: todos.student_id > users.id
+
+Table project_groups {
+  id INTEGER [primary key, not null]
+  project_id INTEGER [not null]
+  name VARCHAR(100)
+  status VARCHAR(20)
+  is_locked INTEGER
+  created_at VARCHAR(50)
+}
+
+Ref: project_groups.project_id > projects.id
+
+Table group_members {
+  id INTEGER [primary key, not null]
+  group_id INTEGER
+  student_id INTEGER
+  is_leader INTEGER
+}
+
+Ref: group_members.student_id > users.id
+Ref: group_members.group_id > project_groups.id
+
+Table contribution_logs {
+  id INTEGER [primary key, not null]
+  group_id INTEGER
+  student_id INTEGER
+  task_id INTEGER
+  contribution_weight FLOAT [not null]
+  contribution_score FLOAT
+  participation_score FLOAT
+  collaboration_score FLOAT
+  remarks VARCHAR(500)
+}
+
+Ref: contribution_logs.task_id > tasks.id
+Ref: contribution_logs.student_id > users.id
+Ref: contribution_logs.group_id > project_groups.id
+
+Table audit_logs {
+  id INTEGER [primary key, not null]
+  user_id INTEGER
+  action VARCHAR(100)
+  entity_type VARCHAR(50)
+  entity_id INTEGER
+  timestamp DATETIME
+}
+
+Ref: audit_logs.user_id > users.id
+
+Table notifications {
+  id INTEGER [primary key, not null]
+  user_id INTEGER [not null]
+  message VARCHAR(500) [not null]
+  type VARCHAR(50)
+  is_read BOOLEAN
+  created_at DATETIME
+}
+
+Ref: notifications.user_id > users.id
+
+Table student_recommendations {
+  id INTEGER [primary key, not null]
+  name VARCHAR(100) [not null]
+  email VARCHAR(100) [not null]
+  department VARCHAR(50) [not null]
+  semester VARCHAR(20) [not null]
+  remarks TEXT
+  status VARCHAR(20)
+  faculty_id INTEGER [not null]
+  created_at DATETIME
+  updated_at DATETIME
+}
+
+Ref: student_recommendations.faculty_id > users.id
+
+Table organizations {
+  id INTEGER [primary key, not null]
+  name VARCHAR(100) [not null, unique]
+  code VARCHAR(50) [not null, unique]
+  is_active BOOLEAN
+  created_at DATETIME
+  updated_at DATETIME
+}
+
+
+Table departments_v1 {
+  id INTEGER [primary key, not null]
+  organization_id INTEGER [not null]
+  academic_year_id INTEGER
+  name VARCHAR(100) [not null]
+  code VARCHAR(20) [not null]
+  description VARCHAR(255)
+  batch VARCHAR(20)
+  is_active BOOLEAN
+  is_archived BOOLEAN
+  version INTEGER
+  created_at DATETIME
+  updated_at DATETIME
+}
+
+Ref: departments_v1.academic_year_id > academic_years.id
+Ref: departments_v1.organization_id > organizations.id
+
+Table programs {
+  id INTEGER [primary key, not null]
+  organization_id INTEGER [not null]
+  department_id INTEGER [not null]
+  name VARCHAR(100) [not null]
+  type VARCHAR(20)
+  duration_years INTEGER
+  intake_capacity INTEGER
+  is_active BOOLEAN
+  version INTEGER
+  created_at DATETIME
+  updated_at DATETIME
+}
+
+Ref: programs.department_id > departments_v1.id
+Ref: programs.organization_id > organizations.id
+
+Table courses_v1 {
+  id INTEGER [primary key, not null]
+  organization_id INTEGER [not null]
+  program_id INTEGER [not null]
+  code VARCHAR(50)
+  title VARCHAR(200)
+  name VARCHAR(200)
+  batch VARCHAR(50)
+  credits INTEGER
+  is_active BOOLEAN
+  version INTEGER
+  created_at DATETIME
+  updated_at DATETIME
+}
+
+Ref: courses_v1.program_id > programs.id
+Ref: courses_v1.organization_id > organizations.id
+
+Table academic_years {
+  id INTEGER [primary key, not null]
+  organization_id INTEGER [not null]
+  name VARCHAR(50) [not null]
+  locked BOOLEAN
+  is_active BOOLEAN
+  created_at DATETIME
+  updated_at DATETIME
+}
+
+Ref: academic_years.organization_id > organizations.id
+
+Table semesters_v1 {
+  id INTEGER [primary key, not null]
+  organization_id INTEGER [not null]
+  program_id INTEGER
+  course_id INTEGER
+  academic_year_id INTEGER [not null]
+  number INTEGER [not null]
+  status VARCHAR(20)
+  is_active BOOLEAN
+  version INTEGER
+  created_at DATETIME
+  updated_at DATETIME
+}
+
+Ref: semesters_v1.academic_year_id > academic_years.id
+Ref: semesters_v1.course_id > courses_v1.id
+Ref: semesters_v1.program_id > programs.id
+Ref: semesters_v1.organization_id > organizations.id
+
+Table sections {
+  id INTEGER [primary key, not null]
+  organization_id INTEGER [not null]
+  semester_id INTEGER [not null]
+  name VARCHAR(10) [not null]
+  capacity INTEGER
+  is_active BOOLEAN
+  version INTEGER
+  created_at DATETIME
+  updated_at DATETIME
+}
+
+Ref: sections.semester_id > semesters_v1.id
+Ref: sections.organization_id > organizations.id
+
+Table batches {
+  id INTEGER [primary key, not null]
+  organization_id INTEGER [not null]
+  program_id INTEGER [not null]
+  start_year INTEGER [not null]
+  end_year INTEGER [not null]
+  label VARCHAR(50) [not null]
+  is_active BOOLEAN
+  created_at DATETIME
+  updated_at DATETIME
+}
+
+Ref: batches.program_id > programs.id
+Ref: batches.organization_id > organizations.id
+
+Table structure_versions {
+  id INTEGER [primary key, not null]
+  organization_id INTEGER [not null]
+  entity_type VARCHAR(50) [not null]
+  entity_id INTEGER [not null]
+  version INTEGER [not null]
+  data VARCHAR
+  changed_by INTEGER
+  changed_at DATETIME
+}
+
+Ref: structure_versions.changed_by > users.id
+Ref: structure_versions.organization_id > organizations.id
+
+Table roles {
+  id INTEGER [primary key, not null]
+  organization_id INTEGER
+  name VARCHAR(50) [not null]
+  is_active BOOLEAN
+}
+
+
+Table permissions {
+  id INTEGER [primary key, not null]
+  code VARCHAR(100) [not null, unique]
+  description VARCHAR(255)
+}
+
+
+Table role_permissions {
+  id INTEGER [primary key, not null]
+  role_id INTEGER [not null]
+  permission_id INTEGER [not null]
+  organization_id INTEGER
+}
+
+Ref: role_permissions.permission_id > permissions.id
+Ref: role_permissions.role_id > roles.id
+
+Table faculty_allocations {
+  id INTEGER [primary key, not null]
+  organization_id INTEGER [not null]
+  faculty_id INTEGER [not null]
+  academic_year_id INTEGER [not null]
+  program_id INTEGER
+  course_id INTEGER
+  semester_id INTEGER
+  created_at DATETIME
+}
+
+Ref: faculty_allocations.organization_id > organizations.id
+Ref: faculty_allocations.semester_id > semesters_v1.id
+Ref: faculty_allocations.program_id > programs.id
+Ref: faculty_allocations.faculty_id > users.id
+Ref: faculty_allocations.course_id > courses_v1.id
+Ref: faculty_allocations.academic_year_id > academic_years.id
+
+Table system_settings {
+  id INTEGER [primary key, not null]
+  key VARCHAR(100) [unique]
+  value JSON
+}
+
+
+Table task_comments {
+  id INTEGER [primary key, not null]
+  task_id INTEGER [not null]
+  user_id INTEGER [not null]
+  user_role VARCHAR(20) [not null]
+  comment_text TEXT [not null]
+  created_at DATETIME
+}
+
+Ref: task_comments.task_id > tasks.id
+Ref: task_comments.user_id > users.id
+
+Table tasks {
+  id INTEGER [primary key, not null]
+  title VARCHAR(200) [not null]
+  description VARCHAR(500)
+  priority VARCHAR(20)
+  deadline DATETIME [not null]
+  max_marks INTEGER
+  task_type VARCHAR(20)
+  project_id INTEGER [not null]
+  faculty_id INTEGER [not null]
+  student_id INTEGER
+  group_id INTEGER
+  status VARCHAR(30)
+  started_at DATETIME
+  submitted_at DATETIME
+  submission_content TEXT
+  faculty_feedback TEXT
+  marks INTEGER
+  created_at DATETIME
+  published_at DATETIME
+  file_url VARCHAR(500)
+  late_penalty FLOAT
+}
+
+Ref: tasks.group_id > project_groups.id
+Ref: tasks.student_id > users.id
+Ref: tasks.faculty_id > users.id
+Ref: tasks.project_id > projects.id
+
+Table campus_news {
+  id INTEGER [primary key, not null]
+  title VARCHAR(200) [not null]
+  content VARCHAR(2000) [not null]
+  created_by INTEGER [not null]
+  published BOOLEAN
+  created_at DATETIME
+}
+
+Ref: campus_news.created_by > users.id
+
+Table campus_events {
+  id INTEGER [primary key, not null]
+  title VARCHAR(200) [not null]
+  description VARCHAR(2000) [not null]
+  event_date DATETIME [not null]
+  status VARCHAR(20)
+  host_student_id INTEGER
+  created_at DATETIME
+}
+
+Ref: campus_events.host_student_id > users.id
+
+Table event_participation {
+  id INTEGER [primary key, not null]
+  student_id INTEGER [not null]
+  event_id INTEGER [not null]
+  role VARCHAR(50)
+  participation_status VARCHAR(20)
+  score INTEGER
+  created_at DATETIME
+}
+
+Ref: event_participation.event_id > campus_events.id
+Ref: event_participation.student_id > users.id
+
+Table certifications {
+  id INTEGER [primary key, not null]
+  student_id INTEGER [not null]
+  academic_year_id INTEGER
+  badge_type VARCHAR(50) [not null]
+  performance_score FLOAT
+  issued_by INTEGER [not null]
+  issue_date DATETIME
+  is_revoked BOOLEAN
+  status VARCHAR(20)
+}
+
+Ref: certifications.student_id > users.id
+Ref: certifications.issued_by > users.id
+Ref: certifications.academic_year_id > academic_years.id
+
+Table student_recognitions {
+  id INTEGER [primary key, not null]
+  student_id INTEGER [not null]
+  award_type VARCHAR(50) [not null]
+  title VARCHAR(200) [not null]
+  awarded_by INTEGER [not null]
+  created_at DATETIME
+}
+
+Ref: student_recognitions.awarded_by > users.id
+Ref: student_recognitions.student_id > users.id

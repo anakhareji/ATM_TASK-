@@ -1,78 +1,63 @@
-from database import SessionLocal
+from database import SessionLocal, engine, Base
+import models.student_performance
 from models.user import User
-from models.student_performance import StudentPerformance
 from models.project import Project
-import random
+from models.student_performance import StudentPerformance
+from datetime import datetime, timedelta
 
-def seed():
+def seed_performance():
+    Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     
-    # 1. Check if we have students, if not add some
-    students = db.query(User).filter(User.role == "student").all()
-    if len(students) < 5:
-        names = ["Suresh Raina", "Mithali Raj", "Virat Kohli", "Smriti Mandhana", "Rohit Sharma"]
-        for name in names:
-            email = name.lower().replace(" ", ".") + "@example.com"
-            if not db.query(User).filter(User.email == email).first():
-                new_student = User(
-                    name=name,
-                    email=email,
-                    password="password123", # Placeholder
-                    role="student",
-                    status="active"
-                )
-                db.add(new_student)
-        db.commit()
-        students = db.query(User).filter(User.role == "student").all()
-
-    # 2. Check for projects
+    student = db.query(User).filter(User.role == "student", User.email == "student@atm.com").first()
+    if not student:
+        print("Student 'student@atm.com' not found. Run seed_users.py first.")
+        return
+        
     project = db.query(Project).first()
     if not project:
-        project = Project(
-            title="Advanced AI Research",
-            description="A research project on AI",
-            department="CS",
-            semester="S7",
-            created_by=1
-        )
-        db.add(project)
-        db.commit()
-        db.refresh(project)
-
-    # 3. Seed Performance Data
-    semesters = ["S1", "S2", "S3", "S4", "S5", "S6"]
-    faculty_id = 2 # DR.Anil Kumar
+        print("No projects exist! Make sure to create at least one project.")
+        project_id = 1
+    else:
+        project_id = project.id
+        
+    print(f"Adding performance records for Student ID {student.id}...")
     
-    # Clear existing to re-seed clean
-    db.query(StudentPerformance).delete()
-    db.commit()
+    # 3 Semesters of Data
+    records = [
+        {"semester": "SEM S4", "score": 75.0, "system_score": 80.0, "final_score": 77.5, "grade": "B", "offset": 180},
+        {"semester": "SEM S5", "score": 82.0, "system_score": 86.0, "final_score": 84.0, "grade": "B+", "offset": 90},
+        {"semester": "SEM S6", "score": 88.0, "system_score": 92.0, "final_score": 90.0, "grade": "A", "offset": 5},
+    ]
 
-    for student in students:
-        for sem in semesters:
-            score = random.uniform(65, 98)
-            if score >= 90: grade = "A+"
-            elif score >= 80: grade = "A"
-            elif score >= 70: grade = "B"
-            elif score >= 60: grade = "C"
-            else: grade = "D"
-            
+    for rec in records:
+        existing = db.query(StudentPerformance).filter(
+            StudentPerformance.student_id == student.id,
+            StudentPerformance.semester == rec["semester"]
+        ).first()
+
+        if existing:
+            print(f"Record for {rec['semester']} already exists.")
+        else:
             perf = StudentPerformance(
                 student_id=student.id,
-                faculty_id=faculty_id,
-                project_id=project.id,
-                score=score * 0.3,
-                system_score=score * 0.7,
-                final_score=round(score, 2),
-                grade=grade,
-                semester=sem,
-                remarks="Consistent performance.",
-                is_locked=True
+                project_id=project_id,
+                faculty_id=2,  # Assuming Faculty has ID 2
+                semester=rec["semester"],
+                score=rec["score"],
+                system_score=rec["system_score"],
+                final_score=rec["final_score"],
+                grade=rec["grade"],
+                remarks=f"Good performance during {rec['semester']}",
+                created_at=datetime.utcnow() - timedelta(days=rec["offset"]),
+                updated_at=datetime.utcnow() - timedelta(days=rec["offset"])
             )
             db.add(perf)
-    
+            print(f"Added {rec['semester']} with score {rec['final_score']}")
+
     db.commit()
-    print("Database seeded with mock performance data!")
     db.close()
+    print("Seeding complete.")
 
 if __name__ == "__main__":
-    seed()
+    seed_performance()

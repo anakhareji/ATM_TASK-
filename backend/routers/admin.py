@@ -12,8 +12,8 @@ from models.project import Project
 from models.project_faculty import ProjectFaculty
 from models.student_performance import StudentPerformance
 from models.task_submission import TaskSubmission
-from schemas.user_schemas import ChangeRoleRequest, UserCreateRequest
-from models.academic_saas import DepartmentV1 as Department, CourseV1 as Course
+from schemas.user_schemas import ChangeRoleRequest, UserCreateRequest, UserUpdateRequest
+from models.academic_saas import DepartmentV1 as Department, CourseV1 as Course, Program as Program
 from utils.security import admin_required, hash_password
 from sqlalchemy import func, desc
 
@@ -126,9 +126,12 @@ def list_users(
             # Academic Structure
             "department_id": u.department_id,
             "course_id": u.course_id,
+            "program_id": u.program_id,
+            "batch": u.batch,
             "current_semester": u.current_semester,
             "department_name": db.query(Department.name).filter(Department.id == u.department_id).scalar() if u.department_id else None,
-            "course_name": db.query(Course.name).filter(Course.id == u.course_id).scalar() if u.course_id else None
+            "course_name": db.query(Course.name).filter(Course.id == u.course_id).scalar() if u.course_id else None,
+            "program_name": db.query(Program.name).filter(Program.id == u.program_id).scalar() if u.program_id else None
         }
         for u in items
     ]
@@ -195,9 +198,7 @@ def change_role(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    if data.role != "student":
-        raise HTTPException(status_code=403, detail="Admin cannot set role other than student")
-    user.role = "student"
+    user.role = data.role
     db.commit()
 
     db.add(AuditLog(
@@ -368,6 +369,23 @@ def list_recommendations(db: Session = Depends(get_db)):
             "faculty_name": "System",
             "created_at": f.created_at
         })
+
+    # Add pending student self-registrations
+    pending_students = db.query(User).filter(User.role == "student", User.status == "inactive").all()
+    for s in pending_students:
+        data.append({
+            "id": f"selfregstudent_{s.id}",
+            "type": "student",
+            "name": s.name,
+            "email": s.email,
+            "department": "Self-Registered",
+            "semester": "Unknown",
+            "remarks": "Self-registered student account requiring assignment",
+            "status": "pending",
+            "faculty_name": "Student Themselves",
+            "created_at": s.created_at
+        })
+
     return data
 
 @router.post("/recommendations/{rec_id}/approve")
@@ -382,17 +400,35 @@ def approve_recommendation(rec_id: str, db: Session = Depends(get_db), current_a
         db.commit()
         return {"message": "Faculty approved and account activated"}
 
-    # Student workflow
+    if rec_id.startswith("selfregstudent_"):
+        user_id = int(rec_id.split("_")[1])
+        user = db.query(User).filter(User.id == user_id, User.role == "student").first()
+        if not user: raise HTTPException(404, "Student not found")
+        user.status = "active"
+        db.commit()
+        db.add(AuditLog(user_id=current_admin["user_id"], action="approve_self_reg", entity_type="user", entity_id=user_id))
+        db.commit()
+        return {"message": "Student account activated"}
+
+    # Student workflow (Recommendation approach)
     rec = db.query(StudentRecommendation).filter(StudentRecommendation.id == int(rec_id)).first()
     if not rec: raise HTTPException(404, "Not found")
     
+    # Look up department ID if a department string was specified
+    dept_id = None
+    if rec.department:
+        dept = db.query(Department).filter(Department.name == rec.department).first()
+        if dept: dept_id = dept.id
+
     # Create the user
     new_user = User(
         name=rec.name,
         email=rec.email,
         password=hash_password("Welcome@123"), # Default password
         role="student",
-        status="active"
+        status="active",
+        department_id=dept_id,
+        created_by_faculty_id=rec.faculty_id
     )
     db.add(new_user)
     rec.status = "approved"
@@ -418,6 +454,16 @@ def reject_recommendation(rec_id: str, data: dict = None, db: Session = Depends(
         db.add(AuditLog(user_id=current_admin["user_id"], action="reject_faculty", entity_type="user", entity_id=user_id))
         db.commit()
         return {"message": "Faculty application rejected"}
+
+    if rec_id.startswith("selfregstudent_"):
+        user_id = int(rec_id.split("_")[1])
+        user = db.query(User).filter(User.id == user_id, User.role == "student").first()
+        if not user: raise HTTPException(404, "Student not found")
+        user.status = "rejected"
+        db.commit()
+        db.add(AuditLog(user_id=current_admin["user_id"], action="reject_self_reg", entity_type="user", entity_id=user_id))
+        db.commit()
+        return {"message": "Student application rejected"}
 
     rec = db.query(StudentRecommendation).filter(StudentRecommendation.id == int(rec_id)).first()
     if not rec: raise HTTPException(404, "Not found")
@@ -458,18 +504,34 @@ def update_settings(data: dict, db: Session = Depends(get_db)):
 def create_user(data: UserCreateRequest, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == data.email).first()
     if existing: raise HTTPException(400, "Email already exists")
-    if hasattr(data, "role") and data.role != "student":
-        raise HTTPException(status_code=403, detail="Admin can only create student accounts")
+    
     new_user = User(
         name=data.name,
         email=data.email,
         password=hash_password(data.password),
-        role="student",
-        status="active"
+        role=data.role,
+        status="active",
+        department_id=data.department_id,
+        program_id=data.program_id,
+        course_id=data.course_id,
+        batch=data.batch,
+        current_semester=data.current_semester
     )
     db.add(new_user)
     db.commit()
     return {"message": "User created successfully", "id": new_user.id}
+
+@router.put("/users/{user_id}")
+def update_user(user_id: int, data: UserUpdateRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user: raise HTTPException(404, "User not found")
+    
+    update_data = data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(user, key, value)
+        
+    db.commit()
+    return {"message": "User updated successfully"}
 
 # ======================
 # GLOBAL PROJECT MONITORING
@@ -482,6 +544,8 @@ def list_all_projects(
     db: Session = Depends(get_db)
 ):
     query = db.query(Project)
+    if status:
+        query = query.filter(Project.status == status)
     if department_id:
         query = query.filter(Project.department_id == department_id)
     if q:
@@ -556,9 +620,7 @@ def create_project_admin(data: dict, db: Session = Depends(get_db), current_admi
         # Also maintain ProjectFaculty mapping for compatibility with older components
         pf = ProjectFaculty(
             project_id=p.id,
-            faculty_id=lead_faculty_id,
-            role="Lead",
-            assigned_by=current_admin["user_id"]
+            faculty_id=lead_faculty_id
         )
         db.add(pf)
 
@@ -583,6 +645,7 @@ def update_project_admin(project_id: int, data: dict, db: Session = Depends(get_
 def publish_project_admin(project_id: int, db: Session = Depends(get_db), current_admin: dict = Depends(admin_required)):
     p = db.query(Project).filter(Project.id == project_id).first()
     if not p: raise HTTPException(404, "Project not found")
+    p.status = "Published"
     db.add(AuditLog(user_id=current_admin["user_id"], action="publish_project", entity_type="project", entity_id=p.id))
     db.commit()
     return {"status": "Published"}
@@ -591,6 +654,7 @@ def publish_project_admin(project_id: int, db: Session = Depends(get_db), curren
 def archive_project_admin(project_id: int, db: Session = Depends(get_db), current_admin: dict = Depends(admin_required)):
     p = db.query(Project).filter(Project.id == project_id).first()
     if not p: raise HTTPException(404, "Project not found")
+    p.status = "Archived"
     db.add(AuditLog(user_id=current_admin["user_id"], action="archive_project", entity_type="project", entity_id=p.id))
     db.commit()
     return {"status": "Archived"}

@@ -6,6 +6,7 @@ import models.project
 import models.task
 import models.events
 import models.group
+import models.task_comment
 from models.user import User
 from utils.security import hash_password
 

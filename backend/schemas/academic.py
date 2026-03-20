@@ -6,6 +6,7 @@ class DepartmentBase(BaseModel):
     name: str
     code: str
     description: Optional[str] = None
+    batch: Optional[str] = None
     status: Optional[str] = "active"
 
 class DepartmentCreate(DepartmentBase):

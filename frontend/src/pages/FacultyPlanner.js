@@ -166,8 +166,8 @@ const FacultyPlanner = () => {
                                             <div className="space-y-3 flex-1">
                                                 <div className="flex items-center gap-3">
                                                     <h3 className="text-2xl font-black text-gray-800 tracking-tight">{milestone.title}</h3>
-                                                    <span className="px-3 py-1 bg-gray-50 text-gray-400 rounded-full text-[10px] font-black tracking-widest uppercase">
-                                                        Track #{milestone.project_id}
+                                                    <span className="px-3 py-1 bg-rose-50 text-rose-600 rounded-full text-[10px] font-black tracking-widest uppercase">
+                                                        {milestone.project_title || `Track #${milestone.project_id}`}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-4 text-xs font-black text-gray-400">
@@ -176,7 +176,7 @@ const FacultyPlanner = () => {
                                                     <span className="flex items-center gap-1.5 text-rose-600 italic tracking-widest uppercase">{new Date(milestone.end_date).toLocaleDateString()}</span>
                                                 </div>
                                                 <p className="text-sm text-gray-500 font-medium leading-relaxed max-w-xl">
-                                                    Success path for <span className="text-gray-800 font-black">Recipient #{milestone.student_id}</span> focused on achieving defined completion criteria.
+                                                    Success path for <span className="text-gray-800 font-black">{milestone.student_name || `Recipient #${milestone.student_id}`}</span> focused on achieving defined completion criteria.
                                                 </p>
                                             </div>
                                         </div>

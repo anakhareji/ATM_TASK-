@@ -32,21 +32,22 @@ export const staggerContainer = {
 
 // 3. Card Entrance Animation
 export const cardEntrance = {
-    hidden: { opacity: 0, y: 15, scale: 0.99 },
+    hidden: { opacity: 0, y: 15, scale: 0.96 },
     visible: {
         opacity: 1,
         y: 0,
         scale: 1,
         transition: {
-            duration: 0.4,
-            ease: "easeOut"
+            type: "spring",
+            stiffness: 300,
+            damping: 24
         }
     },
     hover: {
-        y: -4,
-        scale: 1.03,
+        y: -2,
+        scale: 1.02,
         boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-        transition: { duration: 0.3 }
+        transition: { type: "spring", stiffness: 400, damping: 10 }
     }
 };
 

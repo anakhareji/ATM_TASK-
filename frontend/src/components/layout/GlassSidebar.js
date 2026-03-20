@@ -1,17 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Bell, FileText, Newspaper, Activity,
     Calendar, LogOut, Briefcase, Layers, CheckSquare, Shield,
-    GraduationCap, ClipboardList, ChevronDown, ChevronUp, Award
+    GraduationCap, ClipboardList, Award, Trophy, ListTodo, User
 } from 'lucide-react';
+import API from '../../api/axios';
 
-const NAV_SECTIONS = [
+const ADMIN_NAV = [
     {
         label: 'Overview',
-        items: [
-            { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        ]
+        items: [{ name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard }]
     },
     {
         label: 'People & Access',
@@ -21,26 +20,84 @@ const NAV_SECTIONS = [
         ]
     },
     {
-        label: 'Academic Structure',
-        items: [
-            { name: 'Departments & Courses', path: '/dashboard/academic-structure', icon: Layers },
-        ]
-    },
-    {
         label: 'Academic Activity',
         items: [
-            { name: 'Global Projects', path: '/dashboard/projects-global', icon: Briefcase },
-            { name: 'Global Submissions', path: '/dashboard/submissions-global', icon: ClipboardList },
-            { name: 'Performance Analytics', path: '/dashboard/performance', icon: Activity },
+            { name: 'Global Projects',        path: '/dashboard/projects-global',    icon: Briefcase     },
+            { name: 'Global Submissions',     path: '/dashboard/submissions-global', icon: ClipboardList },
+            { name: 'Performance Analytics',  path: '/dashboard/performance',        icon: Activity      },
+            { name: 'Evaluate Students',      path: '/dashboard/evaluate',           icon: GraduationCap },
         ]
     },
     {
         label: 'Administration',
         items: [
+            { name: 'Campus Pulse', path: '/dashboard/campus-pulse', icon: Newspaper },
+            { name: 'Academic Structure', path: '/dashboard/academic-structure', icon: Layers },
             { name: 'Audit Logs', path: '/dashboard/audit', icon: Shield },
-            { name: 'News & Events', path: '/dashboard/news', icon: Newspaper },
-            { name: 'Notifications', path: '/dashboard/notifications', icon: Bell },
             { name: 'Achievement & Recognition', path: '/dashboard/recognition', icon: Award },
+        ]
+    }
+];
+
+const FACULTY_NAV = [
+    {
+        label: 'Classroom',
+        items: [
+            { name: 'Briefing Room', path: '/dashboard', icon: LayoutDashboard },
+            { name: 'Personnel', path: '/dashboard/students', icon: Users },
+        ]
+    },
+    {
+        label: 'Operations',
+        items: [
+            { name: 'Active Tracks', path: '/dashboard/projects', icon: Briefcase },
+            { name: 'Assignment Hub', path: '/dashboard/tasks', icon: CheckSquare },
+            { name: 'Squad Management', path: '/dashboard/groups', icon: Layers },
+        ]
+    },
+    {
+        label: 'Execution',
+        items: [
+            { name: 'Operational Intel', path: '/dashboard/submissions', icon: FileText },
+            { name: 'Academic Planner',  path: '/dashboard/planner',     icon: ListTodo },
+            { name: 'Evaluate Students', path: '/dashboard/evaluate',    icon: GraduationCap },
+        ]
+    }
+];
+
+const STUDENT_NAV = [
+    {
+        label: 'Mission Control',
+        items: [
+            { name: 'Overview', path: '/dashboard', icon: LayoutDashboard },
+            { name: 'My Tasks', path: '/dashboard/tasks', icon: CheckSquare },
+        ]
+    },
+    {
+        label: 'Squad & Intel',
+        items: [
+            { name: 'My Groups', path: '/dashboard/my-groups', icon: Layers },
+            { name: 'To-Do List', path: '/dashboard/todo', icon: ListTodo },
+        ]
+    },
+    {
+        label: 'Campus Intel',
+        items: [
+            { name: 'Campus Pulse', path: '/dashboard/news-events', icon: Newspaper },
+            { name: 'Notifications', path: '/dashboard/notifications', icon: Bell },
+        ]
+    },
+    {
+        label: 'performance',
+        items: [
+            { name: 'Hall of Fame', path: '/dashboard/leaderboard', icon: Trophy },
+            { name: 'Service Record', path: '/dashboard/grades', icon: Award },
+        ]
+    },
+    {
+        label: 'briefings',
+        items: [
+            { name: 'Schedule', path: '/dashboard/timetable', icon: Calendar },
         ]
     }
 ];

@@ -20,6 +20,7 @@ class DepartmentV1(Base):
     name = Column(String(100), nullable=False)
     code = Column(String(20), nullable=False)
     description = Column(String(255))
+    batch = Column(String(20))
     is_active = Column(Boolean, default=True)
     is_archived = Column(Boolean, default=False)
     version = Column(Integer, default=1)

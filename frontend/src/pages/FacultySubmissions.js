@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
     CheckCircle2, AlertCircle, MessageSquare,
-    FileText, Search, Download, Info, Star, StarHalf, X
+    FileText, Search, Download, Info, Star, StarHalf, X, Clock, Send
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
@@ -206,10 +206,27 @@ const FacultySubmissions = () => {
                                             {sub.is_late && <span className="bg-rose-100 text-rose-600 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest">Late</span>}
                                         </div>
                                         <p className="text-sm text-gray-500 font-medium italic line-clamp-1">" {sub.submission_text || "No descriptive text provided in transmission."} "</p>
-                                        <div className="flex items-center gap-4 mt-3">
-                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Received: {new Date(sub.submitted_at).toLocaleString()}</p>
+                                        <div className="flex flex-wrap items-center gap-6 mt-4 pt-4 border-t border-gray-100">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1 bg-emerald-100 text-emerald-600 rounded-lg"><Clock size={12} /></div>
+                                                <div>
+                                                    <p className="text-[7px] font-black uppercase text-gray-400 tracking-widest">Intake</p>
+                                                    <p className="text-[10px] font-bold text-gray-600">
+                                                        {sub.task_started_at ? new Date(sub.task_started_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'N/A'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1 bg-blue-100 text-blue-600 rounded-lg"><Send size={12} /></div>
+                                                <div>
+                                                    <p className="text-[7px] font-black uppercase text-gray-400 tracking-widest">Transmission</p>
+                                                    <p className="text-[10px] font-bold text-gray-600">
+                                                        {new Date(sub.submitted_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                                    </p>
+                                                </div>
+                                            </div>
                                             {sub.file_url && (
-                                                <a href={sub.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:underline">
+                                                <a href={sub.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:underline ml-auto">
                                                     <Download size={14} /> View Payload
                                                 </a>
                                             )}

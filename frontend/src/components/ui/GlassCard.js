@@ -18,7 +18,7 @@ const GlassCard = ({ children, className = '', hoverEffect = false, variants, ..
 
             {...props}
 
-            className={`bg-white border border-gray-100 shadow-sm hover:shadow-md rounded-2xl p-6 relative overflow-hidden text-gray-900 font-sans transition-all duration-300 ${className}`}
+            className={`bg-white border border-gray-100 shadow-sm hover:shadow-md rounded-3xl p-6 relative overflow-hidden text-gray-900 font-sans transition-all duration-300 ${className}`}
         >
             {/* Content Container */}
             <div className="relative z-10">

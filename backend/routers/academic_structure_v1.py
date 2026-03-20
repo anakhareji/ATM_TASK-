@@ -127,6 +127,7 @@ def create_department(dep: dict, org_id: int = Depends(get_org_id), db: Session 
         name=name,
         code=code,
         description=dep.get("description"),
+        batch=dep.get("batch"),
         is_active=True
     )
     db.add(new_dep)
@@ -214,6 +215,38 @@ def create_program(program: dict, org_id: int = Depends(get_org_id), db: Session
     db.add(AuditLog(user_id=None, action=f"Program created: {name}", entity_type="Program", entity_id=new_program.id))
     db.commit()
     return new_program
+
+@router.put("/programs/{id}", dependencies=[Depends(require_permission("create_program"))])
+def update_program(id: int, program: dict, org_id: int = Depends(get_org_id), db: Session = Depends(get_db)):
+    ensure_unlocked(org_id, db, None)
+    prog = db.query(Program).filter(
+        Program.id == id,
+        Program.organization_id == org_id
+    ).first()
+    if not prog:
+        raise HTTPException(status_code=404, detail="Program not found")
+        
+    dept_id = program.get("department_id")
+    if dept_id:
+        dept = db.query(DepartmentV1).filter(
+            DepartmentV1.id == dept_id,
+            DepartmentV1.organization_id == org_id,
+            DepartmentV1.is_active == True
+        ).first()
+        if not dept:
+            raise HTTPException(status_code=404, detail="Department not found in organization")
+        prog.department_id = dept_id
+
+    if program.get("name"): prog.name = program.get("name")
+    if program.get("type"): prog.type = program.get("type")
+    if program.get("duration_years"): prog.duration_years = int(program.get("duration_years"))
+    if program.get("intake_capacity"): prog.intake_capacity = int(program.get("intake_capacity"))
+
+    db.commit()
+    db.refresh(prog)
+    db.add(AuditLog(user_id=None, action=f"Program updated: {prog.name}", entity_type="Program", entity_id=prog.id))
+    db.commit()
+    return prog
 
 @router.delete("/programs/{id}", dependencies=[Depends(require_permission("archive_program"))])
 def archive_program(id: int, org_id: int = Depends(get_org_id), db: Session = Depends(get_db)):
@@ -400,16 +433,14 @@ def allocate_faculty(data: dict, org_id: int = Depends(get_org_id), db: Session 
 @router.get("/overview")
 def overview(org_id: int = Depends(get_org_id), db: Session = Depends(get_db)):
     depts = db.query(func.count(DepartmentV1.id)).filter(DepartmentV1.organization_id == org_id, DepartmentV1.is_active == True).scalar() or 0
+    programs = db.query(func.count(Program.id)).filter(Program.organization_id == org_id, Program.is_active == True).scalar() or 0
     courses = db.query(func.count(CourseV1.id)).filter(CourseV1.organization_id == org_id, CourseV1.is_active == True).scalar() or 0
     faculty = db.query(func.count(User.id)).filter(User.role == "faculty").scalar() or 0
-    try:
-        from models.academic_saas import StudentEnrollment
-        enrollments = db.query(func.count(StudentEnrollment.id)).filter(StudentEnrollment.organization_id == org_id).scalar() or 0
-    except Exception:
-        enrollments = 0
+    
     return {
         "total_departments": depts,
-        "active_courses": courses,
+        "total_programs": programs,
+        "active_courses": courses, # This represents batches/courses
         "faculty_count": faculty,
-        "enrollment_count": enrollments
+        "enrollment_count": 0
     }

@@ -30,10 +30,19 @@ def list_my_notifications(
 from typing import Optional
 
 class NotificationCreate(BaseModel):
+    title: Optional[str] = "System Alert"
     message: str
+    type: Optional[str] = "system"
     target_type: str = "user"  # "all", "role", "user"
     role: Optional[str] = None
     user_id: Optional[int] = None
+
+# Utility function to create notifications easily
+def add_notification(db: Session, user_id: int, title: str, message: str, type: str = "system"):
+    notif = Notification(user_id=user_id, title=title, message=message, type=type)
+    db.add(notif)
+    db.commit()
+    return notif
 
 # ADMIN: Send Notification
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -61,13 +70,18 @@ def send_notification(
 
     notifications = []
     for u in users_to_notify:
-        notif = Notification(user_id=u.id, message=data.message, type="system")
+        notif = Notification(
+            user_id=u.id, 
+            title=data.title, 
+            message=data.message, 
+            type=data.type or "system"
+        )
         db.add(notif)
         notifications.append(notif)
     
     db.commit()
     
-    # Audit log (log once for the action)
+    # Audit log
     db.add(AuditLog(
         user_id=current_admin["user_id"],
         action=f"notification.create.{data.target_type}",
