@@ -1,0 +1,5 @@
+in crew management group created but not displayed- faculty
+need to refresh twice at assignment hub -Faculty
+nothing is popuped into notifications -faculty 
+need to set priority for task 
+report generation must be implemented in fcaulty side based on students task completion and event then this report must be given to admin  
