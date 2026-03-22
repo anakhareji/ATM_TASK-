@@ -3,7 +3,7 @@ import API from '../api/axios';
 import PageHeader from '../components/ui/PageHeader';
 import Button from '../components/ui/Button';
 import GlassCard from '../components/ui/GlassCard';
-import { Briefcase, User, Trash2, Calendar, FileText, Search, Zap, Filter } from 'lucide-react';
+import { Briefcase, User, Trash2, Edit3, Calendar, FileText, Search, Zap, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -15,6 +15,7 @@ const AdminProjects = () => {
     const [deptFilter, setDeptFilter] = useState('');
     const [departments, setDepartments] = useState([]);
     const [createOpen, setCreateOpen] = useState(false);
+    const [editId, setEditId] = useState(null);
     const [saving, setSaving] = useState(false);
     const [faculties, setFaculties] = useState([]);
     const [form, setForm] = useState({
@@ -86,6 +87,24 @@ const AdminProjects = () => {
 
     const filtered = projects;
 
+    const handleEdit = (proj) => {
+        setForm({
+            title: proj.title || '',
+            description: proj.description || '',
+            department_id: proj.department_id || '',
+            course_id: proj.course_id || '',
+            lead_faculty_id: proj.lead_faculty_id || '',
+            academic_year: proj.academic_year || '',
+            start_date: proj.start_date || '',
+            end_date: proj.end_date || '',
+            status: proj.status || 'Draft',
+            visibility: proj.visibility || 'Department Only',
+            allow_tasks: proj.allow_tasks || false,
+        });
+        setEditId(proj.id);
+        setCreateOpen(true);
+    };
+
     const handleCreate = async (e) => {
         e.preventDefault();
         if (!form.title) {
@@ -94,14 +113,21 @@ const AdminProjects = () => {
         }
         setSaving(true);
         try {
-            await API.post('/admin/projects', {
+            const payload = {
                 ...form,
                 department_id: form.department_id ? parseInt(form.department_id) : null,
                 course_id: form.course_id ? parseInt(form.course_id) : null,
                 lead_faculty_id: form.lead_faculty_id ? parseInt(form.lead_faculty_id) : null,
-            });
-            toast.success("Project created successfully");
+            };
+            if (editId) {
+                await API.put(`/admin/projects/${editId}`, payload);
+                toast.success("Project updated successfully");
+            } else {
+                await API.post('/admin/projects', payload);
+                toast.success("Project created successfully");
+            }
             setCreateOpen(false);
+            setEditId(null);
             setForm({
                 title: '',
                 description: '',
@@ -117,7 +143,7 @@ const AdminProjects = () => {
             });
             fetchProjects();
         } catch (err) {
-            toast.error("Failed to create project");
+            toast.error("Failed to save project");
         } finally {
             setSaving(false);
         }
@@ -177,7 +203,16 @@ const AdminProjects = () => {
                     </select>
                     <Button
                         className="bg-green-600 hover:bg-green-500 text-white rounded-2xl px-6 font-black"
-                        onClick={() => setCreateOpen(true)}
+                        onClick={() => {
+                            setEditId(null);
+                            setForm({
+                                title: '', description: '', department_id: '',
+                                course_id: '', lead_faculty_id: '', academic_year: '',
+                                start_date: '', end_date: '', status: 'Draft',
+                                visibility: 'Department Only', allow_tasks: false
+                            });
+                            setCreateOpen(true);
+                        }}
                     >
                         + Create Project
                     </Button>
@@ -209,11 +244,21 @@ const AdminProjects = () => {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: idx * 0.05 }}
                             >
-                                <GlassCard className="flex flex-col h-full group hover:border-emerald-200 transition-colors relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <GlassCard 
+                                    className="flex flex-col h-full group hover:border-emerald-200 transition-colors relative overflow-hidden cursor-pointer shadow-sm hover:shadow-xl"
+                                    onClick={() => handleEdit(proj)}
+                                >
+                                    <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                                         <button
-                                            onClick={() => handleDelete(proj.id)}
-                                            className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                            onClick={(e) => { e.stopPropagation(); handleEdit(proj); }}
+                                            className="p-2.5 bg-blue-50 text-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition-all shadow-sm z-10"
+                                            title="Edit Project"
+                                        >
+                                            <Edit3 size={18} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDelete(proj.id); }}
+                                            className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm z-10"
                                             title="Purge Project"
                                         >
                                             <Trash2 size={18} />
@@ -268,12 +313,12 @@ const AdminProjects = () => {
                                         </div>
                                         <div className="flex items-center justify-end gap-2 mt-3">
                                             {proj.status !== 'Published' && (
-                                                <Button size="sm" variant="ghost" className="px-3 py-1 text-xs font-bold text-emerald-600" onClick={() => handleStatusAction(proj, 'publish')}>
+                                                <Button size="sm" variant="ghost" className="px-3 py-1 text-xs font-bold text-emerald-600" onClick={(e) => { e.stopPropagation(); handleStatusAction(proj, 'publish'); }}>
                                                     Publish
                                                 </Button>
                                             )}
                                             {proj.status !== 'Archived' && (
-                                                <Button size="sm" variant="ghost" className="px-3 py-1 text-xs font-bold text-gray-500" onClick={() => handleStatusAction(proj, 'archive')}>
+                                                <Button size="sm" variant="ghost" className="px-3 py-1 text-xs font-bold text-gray-500" onClick={(e) => { e.stopPropagation(); handleStatusAction(proj, 'archive'); }}>
                                                     Archive
                                                 </Button>
                                             )}
@@ -290,7 +335,7 @@ const AdminProjects = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setCreateOpen(false)} />
                     <div className="relative bg-white rounded-3xl border border-gray-100 w-full max-w-2xl p-6">
-                        <h2 className="text-xl font-black text-gray-900 mb-4">Create Project</h2>
+                        <h2 className="text-xl font-black text-gray-900 mb-4">{editId ? 'Edit Project' : 'Create Project'}</h2>
                         <form onSubmit={handleCreate} className="space-y-4">
                             <div>
                                 <label className="text-xs font-black text-gray-500 uppercase tracking-widest">Project Title</label>
@@ -409,7 +454,7 @@ const AdminProjects = () => {
                             <div className="flex justify-end gap-3 mt-4">
                                 <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>Cancel</Button>
                                 <Button type="submit" className="bg-green-600 hover:bg-green-500" disabled={saving}>
-                                    {saving ? 'Creating...' : 'Create Project'}
+                                    {saving ? (editId ? 'Updating...' : 'Creating...') : (editId ? 'Update Project' : 'Create Project')}
                                 </Button>
                             </div>
                         </form>

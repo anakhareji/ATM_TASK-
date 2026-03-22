@@ -8,7 +8,7 @@ class Project(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(150), nullable=False)
-    description = Column(String(500))
+    description = Column(String(None))
     
     department_id = Column(Integer, ForeignKey("departments_v1.id"))
     course_id = Column(Integer, ForeignKey("courses_v1.id"))

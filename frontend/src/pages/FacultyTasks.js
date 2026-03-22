@@ -402,6 +402,14 @@ const FacultyTasks = () => {
 
     useEffect(() => {
         fetchInitialData();
+        const action = searchParams.get('action');
+        const projectId = searchParams.get('project_id');
+        if (action === 'create' && projectId && projectId !== "undefined") {
+            setShowCreateModal(true);
+            API.get(`/groups/project/${projectId}`)
+                .then(res => setGroups(res.data || []))
+                .catch(() => toast.error("Group data for this track is unavailable."));
+        }
     }, []);
 
     // Body Scroll Lock
