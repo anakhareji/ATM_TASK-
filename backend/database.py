@@ -1,8 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-import urllib
+import urllib.parse
 
-SERVER = "DESKTOP-LJJB1MB\SQLEXPRESS"
+SERVER = r"DESKTOP-LJJB1MB\SQLEXPRESS"
 DATABASE = "ATM_DB"
 
 params = urllib.parse.quote_plus(

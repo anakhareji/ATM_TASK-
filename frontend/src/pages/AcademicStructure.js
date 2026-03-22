@@ -6,7 +6,7 @@ import {
     RefreshCw, Building2, BookMarked, TrendingUp, MoreHorizontal, AlertCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import AdminGlassLayout from '../components/layout/AdminGlassLayout';
+
 import API from '../api/axios';
 
 /* ─────────────────────────────────────────────
@@ -383,7 +383,6 @@ const AcademicStructure = () => {
     ];
 
     return (
-        <AdminGlassLayout>
             <div className="pb-20 space-y-8">
 
                 {/* ── Page Header ── */}
@@ -802,8 +801,7 @@ const AcademicStructure = () => {
 
                     </AnimatePresence>
                 )}
-            </div>
-
+            
             {showArchived && departmentsV1.filter(d => d.is_archived).length > 0 && (
                 <div className="mt-8">
                     <div className="flex items-center justify-between mb-3">
@@ -1519,7 +1517,7 @@ const AcademicStructure = () => {
                     </Modal>
                 )}
             </AnimatePresence>
-        </AdminGlassLayout>
+        </div>
     );
 };
 

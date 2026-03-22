@@ -113,8 +113,8 @@ const Leaderboard = () => {
               {top3[1] && (
                 <motion.div variants={cardEntrance} className="flex flex-col items-center gap-4 pt-10">
                   <div className="relative">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center text-white text-3xl font-black italic shadow-xl shadow-gray-500/20">
-                      {top3[1].student_name.charAt(0).toUpperCase()}
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center text-white text-3xl font-black italic shadow-xl shadow-gray-500/20 overflow-hidden">
+                      {top3[1].student_avatar ? <img src={top3[1].student_avatar} alt="User" className="w-full h-full object-cover" /> : top3[1].student_name.charAt(0).toUpperCase()}
                     </div>
                     <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center shadow">
                       <Medal size={16} className="text-gray-500"/>
@@ -136,9 +136,9 @@ const Leaderboard = () => {
                 <motion.div variants={cardEntrance} className="flex flex-col items-center gap-4">
                   <Crown size={28} className="text-yellow-400 animate-pulse"/>
                   <div className="relative">
-                    <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-white text-4xl font-black italic shadow-2xl shadow-yellow-500/30">
-                      {top3[0].student_name.charAt(0).toUpperCase()}
-                      <div className="absolute inset-0 bg-white/20 animate-pulse rounded-2xl"/>
+                    <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-white text-4xl font-black italic shadow-2xl shadow-yellow-500/30 overflow-hidden relative">
+                      {top3[0].student_avatar ? <img src={top3[0].student_avatar} alt="User" className="w-full h-full object-cover z-10" /> : <span className="z-10">{top3[0].student_name.charAt(0).toUpperCase()}</span>}
+                      <div className="absolute inset-0 bg-white/20 animate-pulse rounded-2xl z-0"/>
                     </div>
                     <div className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-yellow-400 border-2 border-white flex items-center justify-center shadow-lg shadow-yellow-500/30">
                       <Trophy size={16} className="text-white"/>
@@ -160,8 +160,8 @@ const Leaderboard = () => {
               {top3[2] && (
                 <motion.div variants={cardEntrance} className="flex flex-col items-center gap-4 pt-16">
                   <div className="relative">
-                    <div className="w-18 h-18 w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-700 flex items-center justify-center text-white text-2xl font-black italic shadow-xl shadow-orange-500/20">
-                      {top3[2].student_name.charAt(0).toUpperCase()}
+                    <div className="w-18 h-18 w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-700 flex items-center justify-center text-white text-2xl font-black italic shadow-xl shadow-orange-500/20 overflow-hidden">
+                      {top3[2].student_avatar ? <img src={top3[2].student_avatar} alt="User" className="w-full h-full object-cover" /> : top3[2].student_name.charAt(0).toUpperCase()}
                     </div>
                     <div className="absolute -top-3 -right-3 w-7 h-7 rounded-full bg-amber-100 border-2 border-white flex items-center justify-center shadow">
                       <Medal size={14} className="text-amber-600"/>
@@ -207,8 +207,8 @@ const Leaderboard = () => {
                           </td>
                           <td className="py-5 px-8">
                             <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg italic shadow-md shadow-emerald-500/15">
-                                {s.student_name.charAt(0).toUpperCase()}
+                              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white font-black text-lg italic shadow-md shadow-emerald-500/15 overflow-hidden">
+                                {s.student_avatar ? <img src={s.student_avatar} alt="User" className="w-full h-full object-cover" /> : s.student_name.charAt(0).toUpperCase()}
                               </div>
                               <div>
                                 <p className="font-black text-gray-800 uppercase italic group-hover:text-emerald-600 transition-colors">{s.student_name}</p>

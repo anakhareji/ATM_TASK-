@@ -41,7 +41,7 @@ def login(data: user_schemas.LoginRequest, db: Session = Depends(get_db)):
         "message": "Login successful",
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {"id": user.id, "name": user.name, "email": user.email, "role": user.role}
+        "user": {"id": user.id, "name": user.name, "email": user.email, "role": user.role, "avatar": user.avatar}
     }
 
 
@@ -112,6 +112,7 @@ def get_my_profile(
         "name":             user.name,
         "email":            user.email,
         "role":             user.role,
+        "avatar":           user.avatar,
         "status":           user.status,
         "batch":            user.batch,
         "current_semester": user.current_semester,

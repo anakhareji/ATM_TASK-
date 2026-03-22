@@ -6,7 +6,6 @@ import {
   MapPin, AlertCircle, RefreshCw, Image, Users, Phone, X,
   Star, StarOff, Eye, EyeOff, Tag as TagIcon, BookOpen
 } from 'lucide-react';
-import AdminGlassLayout from '../components/layout/AdminGlassLayout';
 import GlassCard from '../components/ui/GlassCard';
 import Modal from '../components/ui/Modal';
 import Toast from '../components/ui/Toast';
@@ -216,146 +215,146 @@ const AdminCampusPulse = () => {
   }, [events, searchTerm]);
 
   if (role !== 'admin') {
-    return <AdminGlassLayout><div className="flex items-center justify-center py-40"><p className="text-red-600 font-bold">Access Denied — Admins Only</p></div></AdminGlassLayout>;
+    return <div className="flex items-center justify-center py-40"><p className="text-red-600 font-bold">Access Denied — Admins Only</p></div>;
   }
 
   return (
-    <AdminGlassLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
 
-        {/* ── Header ── */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              {activeTab === 'news'
-                ? <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center"><Newspaper className="text-indigo-600" size={22} /></div>
-                : <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center"><Calendar className="text-emerald-600" size={22} /></div>}
-              <h1 className="text-2xl font-black text-gray-800 tracking-tight">Campus Pulse</h1>
-              <span className="ml-2 px-2.5 py-1 bg-gray-100 text-gray-500 rounded-full text-[10px] font-black uppercase tracking-widest border border-gray-200">Admin Control</span>
-            </div>
-            <p className="text-sm text-gray-400 font-medium">Full editorial control over news and campus events</p>
+      {/* ── Header ── */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            {activeTab === 'news'
+              ? <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center"><Newspaper className="text-indigo-600" size={22} /></div>
+              : <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center"><Calendar className="text-emerald-600" size={22} /></div>}
+            <h1 className="text-2xl font-black text-gray-800 tracking-tight">Campus Pulse</h1>
+            <span className="ml-2 px-2.5 py-1 bg-gray-100 text-gray-500 rounded-full text-[10px] font-black uppercase tracking-widest border border-gray-200">Admin Control</span>
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-stretch sm:items-center">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input type="text" placeholder={`Search ${activeTab}…`} value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                className="pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 w-full sm:w-56 font-medium" />
-            </div>
-            <div className="flex bg-gray-100 p-1 rounded-2xl">
-              {['news', 'events'].map(tab => (
-                <button key={tab} onClick={() => { setActiveTab(tab); setSearchTerm(''); }}
-                  className={`flex-1 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white shadow text-indigo-600' : 'text-gray-400 hover:text-gray-700'}`}>
-                  {tab}
-                </button>
-              ))}
-            </div>
-            <button onClick={() => activeTab === 'news' ? setAddNewsOpen(true) : setAddEventOpen(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-emerald-500 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 hover:opacity-90 transition-opacity whitespace-nowrap">
-              <Plus size={16} /> {activeTab === 'news' ? 'Add News' : 'Add Event'}
-            </button>
-            <button onClick={() => activeTab === 'news' ? fetchNews() : fetchEvents()}
-              className="p-2.5 rounded-xl bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors border border-gray-200" title="Refresh">
-              <RefreshCw size={16} />
-            </button>
-          </div>
+          <p className="text-sm text-gray-400 font-medium">Full editorial control over news and campus events</p>
         </div>
 
-        {/* ── Content ── */}
-        <AnimatePresence mode="wait">
-          {(activeTab === 'news' ? newsLoading : eventsLoading) ? (
-            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 animate-pulse">
-              {[...Array(6)].map((_, i) => <div key={i} className="h-56 bg-white rounded-2xl border border-gray-100" />)}
-            </motion.div>
-          ) : activeTab === 'news' ? (
-            <motion.div key="news-tab" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-              {filteredNews.length === 0
-                ? <EmptyState icon={<Newspaper size={48} className="text-gray-200" />} label="No news yet" sub="Create your first announcement." onCreate={() => setAddNewsOpen(true)} ctaLabel="Add News" />
-                : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredNews.map(item => (
-                      <NewsAdminCard key={item.id} item={item}
-                        onView={() => setDetailNews(item)}
-                        onEdit={() => openEditNews(item)}
-                        onDelete={() => setDeleteNews({ open: true, id: item.id })}
-                        onTogglePublish={() => handleTogglePublish(item.id)}
-                        onToggleFeatured={() => handleToggleFeatured(item.id)} />
-                    ))}
-                  </div>
-              }
-            </motion.div>
-          ) : (
-            <motion.div key="events-tab" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-              {filteredEvents.length === 0
-                ? <EmptyState icon={<Calendar size={48} className="text-gray-200" />} label="No events yet" sub="Create a new campus event." onCreate={() => setAddEventOpen(true)} ctaLabel="Add Event" />
-                : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredEvents.map(ev => (
-                      <EventAdminCard key={ev.id} ev={ev}
-                        onView={() => setDetailEvent(ev)}
-                        onEdit={() => { setEditEventModal({ open: true, id: ev.id, title: ev.title, description: ev.description, event_date: fromISOToLocal(ev.event_date), location: ev.location||'', organizer: ev.organizer||'', contact_info: ev.contact_info||'', tags: ev.tags||'', max_participants: ev.max_participants||'' }); setEditImagePreview(ev.image_url ? `${BACKEND}${ev.image_url}` : null); }}
-                        onDelete={() => setDeleteEvent({ open: true, id: ev.id })}
-                        onApprove={() => handleEventAction(ev.id, 'approve', 'Event approved')}
-                        onReject={()  => handleEventAction(ev.id, 'reject',  'Event rejected')}
-                        onHold={() => handleEventAction(ev.id, 'hold', 'Event placed on hold')}
-                        onUnhold={() => handleEventAction(ev.id, 'unhold', 'Event resumed')}
-                        onApproveEnd={() => handleEventAction(ev.id, 'approve-end', 'Event ended')} />
-                    ))}
-                  </div>
-              }
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── News Detail Modal ── */}
-        <AnimatePresence>
-          {detailNews && <NewsDetailModal item={detailNews} onClose={() => setDetailNews(null)} />}
-        </AnimatePresence>
-
-        {/* ── Event Detail Modal ── */}
-        <AnimatePresence>
-          {detailEvent && <EventDetailModal ev={detailEvent} onClose={() => setDetailEvent(null)} isAdmin />}
-        </AnimatePresence>
-
-        {/* ══ NEWS MODALS ══ */}
-        {/* Add News */}
-        <Modal open={addNewsOpen} title="Publish News Article" onClose={() => { setAddNewsOpen(false); setNewsImage(null); setNewsImagePreview(null); }} actions={<Button onClick={handleAddNews}>Publish</Button>}>
-          <NewsFormFields form={newsForm} setForm={setNewsForm} imagePreview={newsImagePreview}
-            onImageChange={e => handleImgChange(e, setNewsImage, setNewsImagePreview)}
-            onImageRemove={() => { setNewsImage(null); setNewsImagePreview(null); }} />
-        </Modal>
-
-        {/* Edit News */}
-        <Modal open={editNewsModal.open} title="Edit News Article" onClose={() => { setEditNewsModal({ open: false, id: null, ...NEWS_FORM_DEFAULT }); setEditNewsImage(null); setEditNewsImagePreview(null); }} actions={<Button onClick={handleUpdateNews}>Update</Button>}>
-          <NewsFormFields form={editNewsModal} setForm={v => setEditNewsModal(p => ({ ...p, ...v }))} imagePreview={editNewsImagePreview}
-            onImageChange={e => handleImgChange(e, setEditNewsImage, setEditNewsImagePreview)}
-            onImageRemove={() => { setEditNewsImage(null); setEditNewsImagePreview(null); }} />
-        </Modal>
-
-        {/* Delete News */}
-        <Modal open={deleteNews.open} title="Delete News" onClose={() => setDeleteNews({ open: false, id: null })} actions={<Button variant="danger" onClick={handleDeleteNews}>Yes, Delete</Button>}>
-          <p className="text-gray-600 text-sm">Permanently delete this news article?</p>
-        </Modal>
-
-        {/* ══ EVENT MODALS ══ */}
-        <Modal open={addEventOpen} title="Create Campus Event" onClose={() => { setAddEventOpen(false); setImageFile(null); setImagePreview(null); }} actions={<Button onClick={handleAddEvent}>Create Event</Button>}>
-          <EventFormFields form={eventForm} setForm={setEventForm} imagePreview={imagePreview}
-            onImageChange={e => handleImgChange(e, setImageFile, setImagePreview)}
-            onImageRemove={() => { setImageFile(null); setImagePreview(null); }} />
-        </Modal>
-
-        <Modal open={editEventModal.open} title="Edit Event" onClose={() => { setEditEventModal({ open: false, id: null, ...EVENT_FORM_DEFAULT }); setEditImageFile(null); setEditImagePreview(null); }} actions={<Button onClick={handleUpdateEvent}>Update Event</Button>}>
-          <EventFormFields form={editEventModal} setForm={v => setEditEventModal(p => ({ ...p, ...v }))} imagePreview={editImagePreview}
-            onImageChange={e => handleImgChange(e, setEditImageFile, setEditImagePreview)}
-            onImageRemove={() => { setEditImageFile(null); setEditImagePreview(null); }} />
-        </Modal>
-
-        <Modal open={deleteEvent.open} title="Delete Event" onClose={() => setDeleteEvent({ open: false, id: null })} actions={<Button variant="danger" onClick={handleDeleteEvent}>Yes, Delete</Button>}>
-          <p className="text-gray-600 text-sm">Permanently delete this event?</p>
-        </Modal>
-
-        <Toast open={toast.open} type={toast.type} message={toast.message} onClose={() => setToast({ ...toast, open: false })} />
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-stretch sm:items-center">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input type="text" placeholder={`Search ${activeTab}…`} value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+              className="pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-300 w-full sm:w-56 font-medium" />
+          </div>
+          <div className="flex bg-gray-100 p-1 rounded-2xl">
+            {['news', 'events'].map(tab => (
+              <button key={tab} onClick={() => { setActiveTab(tab); setSearchTerm(''); }}
+                className={`flex-1 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white shadow text-indigo-600' : 'text-gray-400 hover:text-gray-700'}`}>
+                {tab}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => activeTab === 'news' ? setAddNewsOpen(true) : setAddEventOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-emerald-500 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 hover:opacity-90 transition-opacity whitespace-nowrap">
+            <Plus size={16} /> {activeTab === 'news' ? 'Add News' : 'Add Event'}
+          </button>
+          <button onClick={() => activeTab === 'news' ? fetchNews() : fetchEvents()}
+            className="p-2.5 rounded-xl bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors border border-gray-200" title="Refresh">
+            <RefreshCw size={16} />
+          </button>
+        </div>
       </div>
-    </AdminGlassLayout>
+
+      {/* ── Content ── */}
+      <AnimatePresence mode="wait">
+        {(activeTab === 'news' ? newsLoading : eventsLoading) ? (
+          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 animate-pulse">
+            {[...Array(6)].map((_, i) => <div key={i} className="h-56 bg-white rounded-2xl border border-gray-100" />)}
+          </motion.div>
+        ) : activeTab === 'news' ? (
+          <motion.div key="news-tab" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+            {filteredNews.length === 0
+              ? <EmptyState icon={<Newspaper size={48} className="text-gray-200" />} label="No news yet" sub="Create your first announcement." onCreate={() => setAddNewsOpen(true)} ctaLabel="Add News" />
+              : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {filteredNews.map(item => (
+                    <NewsAdminCard key={item.id} item={item}
+                      onView={() => setDetailNews(item)}
+                      onEdit={() => openEditNews(item)}
+                      onDelete={() => setDeleteNews({ open: true, id: item.id })}
+                      onTogglePublish={() => handleTogglePublish(item.id)}
+                      onToggleFeatured={() => handleToggleFeatured(item.id)} />
+                  ))}
+                </div>
+            }
+          </motion.div>
+        ) : (
+          <motion.div key="events-tab" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+            {filteredEvents.length === 0
+              ? <EmptyState icon={<Calendar size={48} className="text-gray-200" />} label="No events yet" sub="Create a new campus event." onCreate={() => setAddEventOpen(true)} ctaLabel="Add Event" />
+              : <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {filteredEvents.map(ev => (
+                    <EventAdminCard key={ev.id} ev={ev}
+                      onView={() => setDetailEvent(ev)}
+                      onEdit={() => { setEditEventModal({ open: true, id: ev.id, title: ev.title, description: ev.description, event_date: fromISOToLocal(ev.event_date), location: ev.location||'', organizer: ev.organizer||'', contact_info: ev.contact_info||'', tags: ev.tags||'', max_participants: ev.max_participants||'' }); setEditImagePreview(ev.image_url ? `${BACKEND}${ev.image_url}` : null); }}
+                      onDelete={() => setDeleteEvent({ open: true, id: ev.id })}
+                      onApprove={() => handleEventAction(ev.id, 'approve', 'Event approved')}
+                      onReject={()  => handleEventAction(ev.id, 'reject',  'Event rejected')}
+                      onHold={() => handleEventAction(ev.id, 'hold', 'Event placed on hold')}
+                      onUnhold={() => handleEventAction(ev.id, 'unhold', 'Event resumed')}
+                      onApproveEnd={() => handleEventAction(ev.id, 'approve-end', 'Event ended')} />
+                  ))}
+                </div>
+            }
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── News Detail Modal ── */}
+      <AnimatePresence>
+        {detailNews && <NewsDetailModal item={detailNews} onClose={() => setDetailNews(null)} />}
+      </AnimatePresence>
+
+      {/* ── Event Detail Modal ── */}
+      <AnimatePresence>
+        {detailEvent && <EventDetailModal ev={detailEvent} onClose={() => setDetailEvent(null)} isAdmin />}
+      </AnimatePresence>
+
+      {/* ══ NEWS MODALS ══ */}
+      {/* Add News */}
+      <Modal open={addNewsOpen} title="Publish News Article" onClose={() => { setAddNewsOpen(false); setNewsImage(null); setNewsImagePreview(null); }} actions={<Button onClick={handleAddNews}>Publish</Button>}>
+        <NewsFormFields form={newsForm} setForm={setNewsForm} imagePreview={newsImagePreview}
+          onImageChange={e => handleImgChange(e, setNewsImage, setNewsImagePreview)}
+          onImageRemove={() => { setNewsImage(null); setNewsImagePreview(null); }} />
+      </Modal>
+
+      {/* Edit News */}
+      <Modal open={editNewsModal.open} title="Edit News Article" onClose={() => { setEditNewsModal({ open: false, id: null, ...NEWS_FORM_DEFAULT }); setEditNewsImage(null); setEditNewsImagePreview(null); }} actions={<Button onClick={handleUpdateNews}>Update</Button>}>
+        <NewsFormFields form={editNewsModal} setForm={v => setEditNewsModal(p => ({ ...p, ...v }))} imagePreview={editNewsImagePreview}
+          onImageChange={e => handleImgChange(e, setEditNewsImage, setEditNewsImagePreview)}
+          onImageRemove={() => { setEditNewsImage(null); setEditNewsImagePreview(null); }} />
+      </Modal>
+
+      {/* Delete News */}
+      <Modal open={deleteNews.open} title="Delete News" onClose={() => setDeleteNews({ open: false, id: null })} actions={<Button variant="danger" onClick={handleDeleteNews}>Yes, Delete</Button>}>
+        <p className="text-gray-600 text-sm">Permanently delete this news article?</p>
+      </Modal>
+
+      {/* ══ EVENT MODALS ══ */}
+      <Modal open={addEventOpen} title="Create Campus Event" onClose={() => { setAddEventOpen(false); setImageFile(null); setImagePreview(null); }} actions={<Button onClick={handleAddEvent}>Create Event</Button>}>
+        <EventFormFields form={eventForm} setForm={setEventForm} imagePreview={imagePreview}
+          onImageChange={e => handleImgChange(e, setImageFile, setImagePreview)}
+          onImageRemove={() => { setImageFile(null); setImagePreview(null); }} />
+      </Modal>
+
+      {/* Edit Event */}
+      <Modal open={editEventModal.open} title="Edit Event" onClose={() => { setEditEventModal({ open: false, id: null, ...EVENT_FORM_DEFAULT }); setEditImageFile(null); setEditImagePreview(null); }} actions={<Button onClick={handleUpdateEvent}>Update Event</Button>}>
+        <EventFormFields form={editEventModal} setForm={v => setEditEventModal(p => ({ ...p, ...v }))} imagePreview={editImagePreview}
+          onImageChange={e => handleImgChange(e, setEditImageFile, setEditImagePreview)}
+          onImageRemove={() => { setEditImageFile(null); setEditImagePreview(null); }} />
+      </Modal>
+
+      {/* Delete Event */}
+      <Modal open={deleteEvent.open} title="Delete Event" onClose={() => setDeleteEvent({ open: false, id: null })} actions={<Button variant="danger" onClick={handleDeleteEvent}>Yes, Delete</Button>}>
+        <p className="text-gray-600 text-sm">Permanently delete this event?</p>
+      </Modal>
+
+      <Toast open={toast.open} type={toast.type} message={toast.message} onClose={() => setToast({ ...toast, open: false })} />
+    </div>
   );
 };
 

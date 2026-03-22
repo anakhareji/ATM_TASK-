@@ -303,7 +303,7 @@ const FacultyDashboard = () => {
                         Task Activity Trend
                     </h3>
                     {chartData.taskTrend.some(d => d.tasks > 0) ? (
-                        <ResponsiveContainer width="100%" height={300}>
+                        <ResponsiveContainer width="100%" height={300} minWidth={0} minHeight={0}>
                             <LineChart data={chartData.taskTrend}>
                                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                                 <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} tickLine={false} />
@@ -325,7 +325,7 @@ const FacultyDashboard = () => {
                         <h3 className="text-lg font-bold text-gray-800 mb-4">Submission Status</h3>
                         <div className="h-[200px] flex justify-center">
                             {submissions.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                                     <PieChart>
                                         <Pie
                                             data={chartData.statusDist}
@@ -353,7 +353,7 @@ const FacultyDashboard = () => {
                     <GlassCard className="flex-1">
                         <h3 className="text-lg font-bold text-gray-800 mb-4">Grade Distribution</h3>
                         {grades.length > 0 ? (
-                            <ResponsiveContainer width="100%" height={150}>
+                            <ResponsiveContainer width="100%" height={150} minWidth={0} minHeight={0}>
                                 <BarChart data={chartData.gradeDist}>
                                     <XAxis dataKey="grade" axisLine={false} tickLine={false} />
                                     <RechartsTooltip cursor={{ fill: 'transparent' }} />

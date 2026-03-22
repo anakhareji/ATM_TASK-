@@ -129,7 +129,7 @@ const ReviewSubmissions = () => {
     const filteredSubmissions = useMemo(() => {
         return submissions.filter(s => {
             if (filter !== 'all' && s.status !== filter) return false;
-            if (search && !s.student_name.toLowerCase().includes(search.toLowerCase())) return false;
+            if (search && !(s.student_name || "").toLowerCase().includes(search.toLowerCase())) return false;
             return true;
         });
     }, [submissions, filter, search]);

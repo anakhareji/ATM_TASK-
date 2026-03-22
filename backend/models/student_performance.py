@@ -35,6 +35,7 @@ class StudentPerformance(Base):
     remarks = Column(String(1000), nullable=True)
     recommendation_level = Column(String(50), nullable=True)  # excellent / active / needs_improvement
     submitted_to_admin = Column(Boolean, default=False)
+    is_ranked = Column(Boolean, default=False)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

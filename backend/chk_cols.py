@@ -1,8 +1,8 @@
-import urllib
+import urllib.parse
 from sqlalchemy import create_engine, text
 
 # Configuration from database.py
-SERVER = "LAPTOP-GSUNUI31\SQLEXPRESS"
+SERVER = "DESKTOP-LJJB1MB\SQLEXPRESS"
 DATABASE = "ATM_DB"
 
 params = urllib.parse.quote_plus(

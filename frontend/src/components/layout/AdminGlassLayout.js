@@ -6,7 +6,7 @@ const AdminGlassLayout = ({ children }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <div className="h-screen flex flex-col bg-gray-50 font-sans text-gray-900">
+        <div className="h-screen flex flex-col bg-surface font-sans text-secondary">
             {/* Header */}
             <GlassNavbar isSidebarOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 

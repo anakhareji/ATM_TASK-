@@ -50,7 +50,7 @@ const FacultyStudents = () => {
             const param = status === "all" ? "" : `?status=${status}`;
             const [studentsRes, deptRes] = await Promise.all([
                 API.get(`/faculty/student-recommendations${param}`),
-                API.get('/admin/departments')
+                API.get('/faculty/departments')
             ]);
             setStudents(studentsRes.data || []);
             setDepartments(deptRes.data || []);
@@ -99,8 +99,8 @@ const FacultyStudents = () => {
     const filteredStudents = useMemo(() => {
         return students.filter((s) => {
             const matchesStatus = statusFilter === "all" ? true : s.status === statusFilter;
-            const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                s.email.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesSearch = (s.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (s.email || "").toLowerCase().includes(searchQuery.toLowerCase());
             return matchesStatus && matchesSearch;
         });
     }, [students, statusFilter, searchQuery]);

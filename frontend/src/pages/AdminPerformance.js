@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Download, Users, Star, TrendingUp, Search, Plus, X, BookOpen, CheckCircle, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import AdminGlassLayout from '../components/layout/AdminGlassLayout';
 import GradeChart from '../components/dashboard/GradeChart';
 import Leaderboard from '../components/dashboard/Leaderboard';
 import SemesterChart from '../components/dashboard/SemesterChart';
@@ -54,11 +53,13 @@ const AdminPerformance = () => {
   const [loading, setLoading]   = useState(false);
   const [stats, setStats]       = useState({ avg: 0, total: 0, passRate: 0 });
 
+  const [submittedReports, setSubmittedReports] = useState([]);
+
   // Computed grade preview while admin types
   const previewGrade = scoreToGrade(form.score);
 
   // ── fetch helpers ──────────────────────────────────────────────────────────
-  const fetchDropdowns = async () => {
+  const fetchDropdowns = useCallback(async () => {
     try {
       const [usersRes, projRes] = await Promise.all([
         API.get('/admin/users'),
@@ -69,9 +70,9 @@ const AdminPerformance = () => {
     } catch {
       /* dropdowns are optional — fail silently */
     }
-  };
+  }, []);
 
-  const fetchRange = async () => {
+  const fetchRange = useCallback(async () => {
     setLoading(true);
     try {
       const res = await API.get('/performance/score-range', {
@@ -86,9 +87,9 @@ const AdminPerformance = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [minScore, maxScore]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const overview     = await API.get('/performance/semester-overview');
       const data         = overview.data || [];
@@ -101,7 +102,23 @@ const AdminPerformance = () => {
         total:    (leaderboard.data || []).length,
         passRate: data.length ? '94%' : '—',
       });
+
+      // Fetch submitted reports
+      const subRes = await API.get('/performance/submitted');
+      setSubmittedReports(subRes.data || []);
     } catch { /* ignore */ }
+  }, []);
+
+  const handleRankStudent = async (performanceId) => {
+    const tid = toast.loading('Officially Ranking Student...');
+    try {
+      await API.post(`/performance/${performanceId}/rank`);
+      toast.success('Student Ranked on Leaderboard!', { id: tid });
+      fetchStats();
+      fetchRange();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Ranking failed', { id: tid });
+    }
   };
 
   const handleExport = async () => {
@@ -123,7 +140,7 @@ const AdminPerformance = () => {
     fetchRange();
     fetchStats();
     fetchDropdowns();
-  }, []);
+  }, [fetchRange, fetchStats, fetchDropdowns]);
 
   // ── Submit grade ───────────────────────────────────────────────────────────
   const handleSubmitGrade = async (e) => {
@@ -156,19 +173,16 @@ const AdminPerformance = () => {
 
   if (role !== 'admin') {
     return (
-      <AdminGlassLayout>
         <div className="p-6 flex items-center justify-center min-h-[60vh]">
           <div className="text-center p-8 bg-white/50 backdrop-blur-md rounded-3xl border border-red-100 shadow-xl">
             <p className="text-red-600 font-bold text-xl mb-2">Access Denied</p>
             <p className="text-gray-500">Only authorized administrators can view this module.</p>
           </div>
         </div>
-      </AdminGlassLayout>
     );
   }
 
   return (
-    <AdminGlassLayout>
       <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-8">
 
         {/* ── Page Header ── */}
@@ -221,69 +235,125 @@ const AdminPerformance = () => {
         </div>
         <motion.div variants={cardEntrance}><SemesterChart/></motion.div>
 
+        {/* ── Pending Submissions from Faculty ── */}
+        <motion.div variants={cardEntrance}>
+          <GlassCard className="bg-indigo-50/20 border-indigo-100">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                 <h3 className="text-lg font-black text-gray-800 flex items-center gap-2 uppercase tracking-tight">
+                   <Sparkles size={20} className="text-indigo-500 animate-pulse"/> Submitted for Ranking
+                 </h3>
+                 <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-0.5">Evaluations validated by faculty • Currently on Leaderboard</p>
+              </div>
+              <div className="px-5 py-2 bg-indigo-600 text-white rounded-2xl text-xl font-black italic shadow-lg shadow-indigo-500/20">
+                {submittedReports.length}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {submittedReports.length === 0 ? (
+                <div className="col-span-full py-12 text-center text-gray-400 font-bold bg-white/50 rounded-3xl border-2 border-dashed">
+                  Awaiting faculty validations...
+                </div>
+              ) : (
+                submittedReports.map((r) => (
+                  <div key={r.id} className="bg-white p-6 rounded-[2rem] border border-indigo-100 shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
+                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                       <CheckCircle size={80} className="text-indigo-600"/>
+                    </div>
+                    <div className="flex justify-between items-start mb-4 relative z-10">
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Scholar</p>
+                        <h4 className="text-lg font-black text-gray-800 uppercase italic truncate max-w-[150px]">{r.student_name}</h4>
+                      </div>
+                      <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase border ${gColor(r.grade)}`}>
+                        {r.grade}
+                      </span>
+                    </div>
+                    <div className="space-y-2 relative z-10">
+                       <p className="text-[10px] text-gray-400 font-bold uppercase">Evaluated by: <span className="text-indigo-600">{r.faculty_name}</span></p>
+                       <div className="flex items-center gap-4">
+                          <div className="text-3xl font-black text-gray-800 italic">{r.final_score.toFixed(1)} <span className="text-xs text-gray-300 ml-1">XP</span></div>
+                          <div className="h-8 w-px bg-gray-100"/>
+                          <p className="text-[9px] text-gray-400 font-black uppercase leading-tight truncate">{r.project_title}</p>
+                       </div>
+                       
+                       <button 
+                         onClick={() => handleRankStudent(r.id)}
+                         className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
+                         <Star size={14}/> Rank Operative
+                       </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </GlassCard>
+        </motion.div>
+
         {/* ── Registry Table ── */}
         <motion.div variants={cardEntrance}>
           <GlassCard className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-secondary flex items-center gap-2">
                   <Search size={20} className="text-emerald-500"/> Performance Registry
                 </h3>
-                <p className="text-xs text-gray-500 font-medium">Detailed audit of student evaluations across all projects</p>
+                <p className="text-xs text-secondary-muted font-medium">Detailed audit of student evaluations across all projects</p>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-200">
+                <div className="flex bg-surface p-1 rounded-xl border border-border">
                   <input type="number" value={minScore} onChange={e => setMinScore(e.target.value)} placeholder="Min"
-                    className="w-20 px-3 py-1.5 bg-transparent text-sm focus:outline-none placeholder:text-gray-400 font-medium"/>
-                  <div className="w-px h-6 bg-gray-200 self-center mx-1"/>
+                    className="w-20 px-3 py-1.5 bg-transparent text-sm focus:outline-none placeholder:text-secondary-muted text-secondary font-medium"/>
+                  <div className="w-px h-6 bg-border self-center mx-1"/>
                   <input type="number" value={maxScore} onChange={e => setMaxScore(e.target.value)} placeholder="Max"
-                    className="w-20 px-3 py-1.5 bg-transparent text-sm focus:outline-none placeholder:text-gray-400 font-medium"/>
+                    className="w-20 px-3 py-1.5 bg-transparent text-sm focus:outline-none placeholder:text-secondary-muted text-secondary font-medium"/>
                 </div>
-                <Button onClick={fetchRange} className="rounded-xl shadow-lg shadow-emerald-200">Filter</Button>
+                <Button onClick={fetchRange} className="rounded-xl shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20">Filter</Button>
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white/30">
+            <div className="overflow-hidden rounded-2xl border border-border bg-card/30">
               {loading ? (
                 <div className="p-12 text-center">
                   <div className="inline-block w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"/>
-                  <p className="mt-4 text-gray-500 font-medium">Loading records...</p>
+                  <p className="mt-4 text-secondary-muted font-medium">Loading records...</p>
                 </div>
               ) : filtered.length === 0 ? (
-                <div className="p-12 text-center bg-gray-50/50">
-                  <Users size={48} className="mx-auto text-gray-300 mb-4"/>
-                  <p className="text-gray-500 font-bold mb-1">No Records Found</p>
-                  <p className="text-xs text-gray-400">Click "Enter Grade" above to add the first record.</p>
+                <div className="p-12 text-center bg-surface/50">
+                  <Users size={48} className="mx-auto text-secondary-muted/50 mb-4"/>
+                  <p className="text-secondary-muted font-bold mb-1">No Records Found</p>
+                  <p className="text-xs text-secondary-muted/80">Click "Enter Grade" above to add the first record.</p>
                 </div>
               ) : (
-                <table className="min-w-full divide-y divide-gray-100">
+                <table className="min-w-full divide-y divide-border">
                   <thead>
-                    <tr className="bg-gray-50/80">
+                    <tr className="bg-surface/80">
                       {['Student', 'Semester', 'Score', 'Grade', 'Project'].map(h => (
-                        <th key={h} className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">{h}</th>
+                        <th key={h} className="px-6 py-4 text-left text-xs font-bold text-secondary-muted uppercase tracking-widest">{h}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 bg-white/50">
+                  <tbody className="divide-y divide-border bg-card/50">
                     {filtered.map((r, idx) => (
                       <motion.tr key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04 }}
-                        className="hover:bg-emerald-50/20 transition-colors">
+                        className="hover:bg-surface/50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-700 font-bold text-xs">
-                              {(r.student_name || '?').charAt(0).toUpperCase()}
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-700 font-bold text-xs overflow-hidden">
+                              {r.student_avatar ? <img src={r.student_avatar} alt="User" className="w-full h-full object-cover" /> : (r.student_name || '?').charAt(0).toUpperCase()}
                             </div>
-                            <span className="font-bold text-gray-700">{r.student_name || `Student #${r.student_id}`}</span>
+                            <span className="font-bold text-secondary">{r.student_name || `Student #${r.student_id}`}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm font-bold text-gray-500">{r.semester || '—'}</td>
-                        <td className="px-6 py-4 font-black text-emerald-600">{r.final_score}</td>
+                        <td className="px-6 py-4 text-sm font-bold text-secondary-muted">{r.semester || '—'}</td>
+                        <td className="px-6 py-4 font-black text-emerald-500">{r.final_score}</td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest border ${gColor(r.grade)}`}>
                             {r.grade || '—'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-400">#{r.project_id}</td>
+                        <td className="px-6 py-4 text-sm text-secondary-muted/60">#{r.project_id}</td>
                       </motion.tr>
                     ))}
                   </tbody>
@@ -415,7 +485,6 @@ const AdminPerformance = () => {
         </AnimatePresence>
 
       </motion.div>
-    </AdminGlassLayout>
   );
 };
 

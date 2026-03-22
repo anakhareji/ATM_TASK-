@@ -220,8 +220,12 @@ const TaskActivity = ({ taskId }) => {
                 <div className="space-y-6">
                     {/* Add Comment Section */}
                     <div className="flex gap-4 group">
-                        <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-100 shrink-0 uppercase">
-                            {localStorage.getItem('userName')?.charAt(0) || 'U'}
+                        <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-lg shadow-indigo-100 shrink-0 uppercase overflow-hidden">
+                            {localStorage.getItem('userAvatar') ? (
+                                <img src={localStorage.getItem('userAvatar')} alt="User" className="w-full h-full object-cover" />
+                            ) : (
+                                localStorage.getItem('userName')?.charAt(0) || 'U'
+                            )}
                         </div>
                         <div className="flex-1 space-y-3">
                             {!isInputFocused ? (
@@ -256,10 +260,14 @@ const TaskActivity = ({ taskId }) => {
                         ) : (
                             comments.map(c => (
                                 <div key={c.id} className="relative group/msg">
-                                    <div className={`absolute -left-[65px] top-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-[10px] shadow-sm z-10 transition-transform group-hover/msg:scale-110 uppercase ${
+                                    <div className={`absolute -left-[65px] top-0 w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-[10px] shadow-sm z-10 transition-transform group-hover/msg:scale-110 uppercase overflow-hidden ${
                                         c.role === 'student' ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-gray-100 text-gray-400'
                                     }`}>
-                                        {c.user_name?.charAt(0) || '?'}
+                                        {c.user_avatar ? (
+                                            <img src={c.user_avatar} alt="User" className="w-full h-full object-cover" />
+                                        ) : (
+                                            c.user_name?.charAt(0) || '?'
+                                        )}
                                     </div>
                                     
                                     {editingId === c.id ? (
@@ -394,6 +402,14 @@ const FacultyTasks = () => {
 
     useEffect(() => {
         fetchInitialData();
+        const action = searchParams.get('action');
+        const projectId = searchParams.get('project_id');
+        if (action === 'create' && projectId && projectId !== "undefined") {
+            setShowCreateModal(true);
+            API.get(`/groups/project/${projectId}`)
+                .then(res => setGroups(res.data || []))
+                .catch(() => toast.error("Group data for this track is unavailable."));
+        }
     }, []);
 
     // Body Scroll Lock
@@ -428,14 +444,30 @@ const FacultyTasks = () => {
         const errors = {};
         if (!formData.title.trim()) errors.title = "Project objective title is required";
         if (!formData.project_id) errors.project_id = "Assigned academic track is required";
-        if (!formData.deadline) errors.deadline = "Completion deadline is mandatory";
+        
+        if (!formData.deadline) {
+            errors.deadline = "Completion deadline is mandatory";
+        } else {
+            const selected = new Date(formData.deadline);
+            const today = new Date();
+            // Allow past creation only if editing an older task, but generally enforce forward direction
+            if (!isEditing && selected <= today) {
+                errors.deadline = "Deadline must be scheduled for a future date/time";
+            }
+        }
+        
         if (formData.max_marks <= 0) errors.max_marks = "Max marks must be a positive integer";
+        
+        const parsedPenalty = parseFloat(formData.late_penalty || 0);
+        if (parsedPenalty < 0 || parsedPenalty > 100) {
+            errors.late_penalty = "Penalty percentage must be bound between 0% and 100%";
+        }
 
         if (formData.task_type === 'individual' && (!formData.selected_students || formData.selected_students.length === 0)) {
-            errors.student_id = "At least one individual recipient must be added";
+            errors.student_id = "At least one individual recipient must be specified";
         }
         if (formData.task_type === 'group' && !formData.group_id) {
-            errors.group_id = "Assigned squad must be selected";
+            errors.group_id = "Assigned deployment squad must be selected";
         }
 
         setFormErrors(errors);
@@ -639,8 +671,8 @@ const FacultyTasks = () => {
     const filteredTasks = useMemo(() => {
         return tasks.filter(t => {
             const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
-            const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                t.description?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = (t.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (t.description || "").toLowerCase().includes(searchTerm.toLowerCase());
             return matchesStatus && matchesSearch;
         }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }, [tasks, statusFilter, searchTerm]);
@@ -743,7 +775,7 @@ const FacultyTasks = () => {
 const TaskCard = ({ task, onPublish, onDelete, onEdit, onViewSubmissions, isActiveActivity, toggleActivity }) => {
     const isOverdue = new Date(task.deadline) < new Date();
     return (
-        <motion.div layout variants={cardEntrance}>
+        <motion.div layout variants={cardEntrance} initial="hidden" animate="visible" exit="hidden">
             <GlassCard className="group p-0 overflow-hidden border-l-8 border-l-transparent hover:border-l-emerald-500 transition-all duration-300 rounded-[2rem] shadow-sm hover:shadow-2xl">
                 <div className="p-8">
                     <div className="flex justify-between items-start mb-6">
@@ -1087,8 +1119,8 @@ const SubmissionsModal = ({ isOpen, onClose, task, submissions, gradeData, setGr
                         <div key={sub.id} className="group p-8 bg-gray-50/50 rounded-[2.5rem] border border-gray-100 flex flex-col xl:flex-row gap-10 hover:bg-white hover:border-emerald-100 transition-all duration-500 shadow-sm hover:shadow-xl">
                             <div className="flex-1">
                                 <div className="flex items-center gap-4 mb-6">
-                                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center font-black text-lg text-emerald-600 shadow-sm">
-                                        {sub.student_name?.charAt(0) || '?'}
+                                    <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center font-black text-lg text-emerald-600 shadow-sm overflow-hidden">
+                                        {sub.student_avatar ? <img src={sub.student_avatar} alt="User" className="w-full h-full object-cover" /> : (sub.student_name?.charAt(0) || '?')}
                                     </div>
                                     <div>
                                         <p className="text-xl font-black text-gray-800">{sub.student_name}</p>
@@ -1126,7 +1158,7 @@ const SubmissionsModal = ({ isOpen, onClose, task, submissions, gradeData, setGr
                                         </div>
                                     </div>
                                     {sub.file_url && (
-                                        <a href={sub.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-3 px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all ml-auto">
+                                        <a href={`http://localhost:8000${sub.file_url}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-3 px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all ml-auto">
                                             <Download size={16} /> Open Payload
                                         </a>
                                     )}

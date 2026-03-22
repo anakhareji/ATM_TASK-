@@ -44,6 +44,7 @@ from routers.audit import router as audit_router
 from routers.academic import router as academic_router
 from routers.academic_structure_v1 import router as academic_structure_v1_router
 from routers.admin_v1 import router as admin_v1_router
+from routers.user import router as user_router
 
 # -------- Create App --------
 app = FastAPI(
@@ -124,6 +125,7 @@ app.include_router(academic_router, prefix="/api/academic")
 app.include_router(academic_structure_v1_router, prefix="/api/v1/academic-structure")
 app.include_router(academic_structure_v1_router, prefix="/api/v1/academic_structure")
 app.include_router(admin_v1_router, prefix="/api/v1/admin")
+app.include_router(user_router, prefix="/api/users")
 
 # -------- Static Files (uploads) --------
 uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")

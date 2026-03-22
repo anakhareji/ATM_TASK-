@@ -211,8 +211,8 @@ const TaskComments = ({ taskId }) => {
                 <div className="space-y-6">
                     {/* Add Comment Section */}
                     <div className="flex gap-3 group">
-                        <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-[10px] shadow-md shrink-0 uppercase">
-                            {localStorage.getItem('userName')?.charAt(0) || 'U'}
+                        <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-[10px] shadow-md shrink-0 uppercase overflow-hidden">
+                            {localStorage.getItem('userAvatar') ? <img src={localStorage.getItem('userAvatar')} alt="User" className="w-full h-full object-cover" /> : (localStorage.getItem('userName')?.charAt(0) || 'U')}
                         </div>
                         <div className="flex-1 space-y-3">
                             {!isInputFocused ? (
@@ -248,8 +248,8 @@ const TaskComments = ({ taskId }) => {
                             comments.map(c => (
                                 <div key={c.id} className="relative">
                                     <div className="flex gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 font-bold text-[10px] shrink-0 uppercase">
-                                            {c.user_name?.charAt(0) || '?'}
+                                        <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 font-bold text-[10px] shrink-0 uppercase overflow-hidden">
+                                            {c.user_avatar ? <img src={c.user_avatar} alt="User" className="w-full h-full object-cover" /> : (c.user_name?.charAt(0) || '?')}
                                         </div>
                                         <div className="flex-1 space-y-1">
                                             {editingId === c.id ? (
@@ -324,13 +324,14 @@ const MissionTimer = ({ startedAt }) => {
       let diff = now - start;
       if (diff < 0) diff = 0;
 
-      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const totalHours = Math.floor(diff / (1000 * 60 * 60));
+      const days = Math.floor(totalHours / 24);
+      const hours = totalHours % 24;
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      setElapsed(
-        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-      );
+      const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      setElapsed(days > 0 ? `${days}d, ${timeStr}` : timeStr);
     };
 
     calculateElapsed();
@@ -357,6 +358,7 @@ const StudentTasks = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(null);
   const [submissionText, setSubmissionText] = useState('');
+  const [submissionFile, setSubmissionFile] = useState(null);
   const [activeCommentTask, setActiveCommentTask] = useState(null);
   
   // Filters
@@ -386,10 +388,17 @@ const StudentTasks = () => {
     setSubmitting(true);
     const loadToast = toast.loading("Uploading mission evidence...");
     try {
-      await API.post(`/tasks/${showSubmitModal.id}/submit`, { submission_text: submissionText });
+      const formData = new FormData();
+      formData.append('submission_text', submissionText);
+      if (submissionFile) {
+        formData.append('file', submissionFile);
+      }
+
+      await API.post(`/tasks/${showSubmitModal.id}/submit`, formData);
       toast.success("Transmission Received.", { id: loadToast });
       setShowSubmitModal(null);
       setSubmissionText('');
+      setSubmissionFile(null);
       fetchTasks();
     } catch (err) {
       toast.error('Broadcast Interrupted. Retry.', { id: loadToast });
@@ -635,13 +644,29 @@ const StudentTasks = () => {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Submission Details</label>
                   <textarea
-                    rows={6}
+                    rows={4}
                     required
                     placeholder="Provide a link to your repository, Google Drive, or enter text directly..."
                     value={submissionText}
                     onChange={(e) => setSubmissionText(e.target.value)}
                     className="w-full px-4 py-3 bg-white border border-gray-300 hover:border-gray-400 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-sm transition-all shadow-sm resize-y"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Evidence Attachment</label>
+                  <div className="flex items-center justify-center w-full">
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                              <Paperclip className="w-8 h-8 mb-3 text-gray-400" />
+                              <p className="mb-2 text-sm text-gray-500 font-semibold truncate max-w-sm">
+                                  {submissionFile ? submissionFile.name : <><span className="text-indigo-600">Click to upload</span> or drag and drop</>}
+                              </p>
+                              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">PDF (MAX. 10MB)</p>
+                          </div>
+                          <input type="file" className="hidden" accept=".pdf" onChange={(e) => setSubmissionFile(e.target.files[0])} />
+                      </label>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 justify-end pt-2">

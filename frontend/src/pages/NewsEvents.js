@@ -20,6 +20,8 @@ const NewsEvents = () => {
   const userStr = localStorage.getItem('user');
   const user    = userStr ? JSON.parse(userStr) : null;
   const userId  = user?.id || user?.user_id;
+  const role    = (localStorage.getItem('userRole') || '').toLowerCase();
+  const isFaculty = role === 'faculty';
 
   const [news,     setNews]     = useState([]);
   const [events,   setEvents]   = useState([]);
@@ -148,7 +150,7 @@ const NewsEvents = () => {
               className="w-full pl-11 pr-5 py-3 bg-white border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-400 font-semibold text-sm"
               value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
-          {activeTab === 'events' && (
+          {activeTab === 'events' && !isFaculty && (
             <button onClick={() => setAddOpen(true)}
               className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:opacity-90 transition-opacity whitespace-nowrap">
               <Plus size={16} /> Host Event
@@ -179,7 +181,7 @@ const NewsEvents = () => {
               <p className="text-gray-300 font-medium max-w-sm mt-2">
                 {searchTerm ? `No ${activeTab} match your search.` : activeTab === 'events' ? 'No approved events yet. Request to host one!' : 'No news announcements yet.'}
               </p>
-              {activeTab === 'events' && !searchTerm && (
+              {activeTab === 'events' && !searchTerm && !isFaculty && (
                 <button onClick={() => setAddOpen(true)} className="mt-6 flex items-center gap-2 px-5 py-3 rounded-2xl bg-emerald-500 text-white text-xs font-black uppercase tracking-widest shadow hover:bg-emerald-600 transition-colors">
                   <Plus size={14} /> Host an Event
                 </button>

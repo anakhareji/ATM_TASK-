@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import AdminGlassLayout from '../components/layout/AdminGlassLayout';
 import API from '../api/axios';
 import PageHeader from '../components/ui/PageHeader';
 import Button from '../components/ui/Button';
@@ -65,7 +64,7 @@ const StudentApproval = () => {
     );
 
     return (
-        <AdminGlassLayout>
+        <>
             <div className="space-y-8 pb-10">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-gray-100 pb-6">
                     <PageHeader
@@ -225,7 +224,7 @@ const StudentApproval = () => {
                     </div>
                 )}
             </AnimatePresence>
-        </AdminGlassLayout>
+        </>
     );
 };
 

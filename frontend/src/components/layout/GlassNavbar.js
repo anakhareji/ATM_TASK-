@@ -1,9 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Bell, Search, User, Menu, Briefcase, LogOut, X,
-         Mail, Shield, BookOpen, GraduationCap, Layers, CalendarDays,
-         Hash, CheckCircle, ChevronRight } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useState, useMemo } from 'react';
+import { 
+  Bell, Search, Menu, Calendar, X, User, Mail, Shield, 
+  Layers, BookOpen, GraduationCap, CalendarDays, ChevronRight, 
+  LogOut, Hash, ExternalLink 
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../api/axios';
 
 // ─────────────────────────────────────────────
@@ -19,7 +21,7 @@ const roleColors = (r) => ROLE_COLORS[(r||'').toLowerCase()] || ROLE_COLORS.stud
 // ─────────────────────────────────────────────
 // Profile Panel
 // ─────────────────────────────────────────────
-const ProfilePanel = ({ user, profile, onClose }) => {
+const ProfilePanel = ({ user, profile, onClose, onEditProfile }) => {
   const navigate = useNavigate();
   const rc = roleColors(user.role);
 
@@ -59,8 +61,12 @@ const ProfilePanel = ({ user, profile, onClose }) => {
           <X size={13} className="text-white"/>
         </button>
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-white text-2xl font-black shadow-lg">
-            {(user.name || 'U').charAt(0).toUpperCase()}
+          <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-white text-2xl font-black shadow-lg overflow-hidden shrink-0">
+            {profile?.avatar || user?.avatar ? (
+                <img src={profile?.avatar || user?.avatar} alt="User" className="w-full h-full object-cover" />
+            ) : (
+                <User size={32} className="text-white opacity-90" />
+            )}
           </div>
           <div>
             <h3 className="text-lg font-black text-white leading-tight">{user.name || 'Unknown User'}</h3>
@@ -72,7 +78,7 @@ const ProfilePanel = ({ user, profile, onClose }) => {
       </div>
 
       {/* Status chip — overlaps header */}
-      <div className="px-6 -mt-5">
+      <div className="px-6 -mt-5 relative z-10">
         <div className="flex items-center gap-2 bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-2.5">
           <div className={`w-2 h-2 rounded-full ${profile?.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'}`}/>
           <span className="text-xs font-black text-gray-600 uppercase tracking-widest">
@@ -116,6 +122,14 @@ const ProfilePanel = ({ user, profile, onClose }) => {
 
       {/* Footer actions */}
       <div className="px-4 pb-4 space-y-2 border-t border-gray-50 pt-3">
+        <button onClick={() => { onEditProfile(); onClose(); }}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-gray-700 hover:bg-gray-50 transition-all group">
+          <div className="flex items-center gap-3">
+            <User size={16}/>
+            <span className="text-sm font-black uppercase tracking-widest">Edit Profile</span>
+          </div>
+          <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all"/>
+        </button>
         <button onClick={handleLogout}
           className="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-red-500 hover:bg-red-50 hover:text-red-600 transition-all group">
           <div className="flex items-center gap-3">
@@ -130,214 +144,177 @@ const ProfilePanel = ({ user, profile, onClose }) => {
 };
 
 // ─────────────────────────────────────────────
+// Search Index
+// ─────────────────────────────────────────────
+const SEARCH_INDEX = [
+    // Admin Routes
+    { title: 'Dashboard', subtitle: 'Admin Overview', path: '/dashboard', type: 'page', roles: ['admin'] },
+    { title: 'Identity Governance', subtitle: 'Manage Users & Roles', path: '/dashboard/users', type: 'page', roles: ['admin'] },
+    { title: 'Student Approvals', subtitle: 'Pending Registrations', path: '/dashboard/approvals', type: 'page', roles: ['admin'] },
+    { title: 'Global Projects', subtitle: 'Academic Activity', path: '/dashboard/projects-global', type: 'page', roles: ['admin'] },
+    { title: 'Global Submissions', subtitle: 'Academic Activity', path: '/dashboard/submissions-global', type: 'page', roles: ['admin'] },
+    { title: 'Performance Analytics', subtitle: 'Academic Activity', path: '/dashboard/performance', type: 'page', roles: ['admin'] },
+    { title: 'Campus Pulse', subtitle: 'Administration', path: '/dashboard/campus-pulse', type: 'page', roles: ['admin'] },
+    { title: 'Academic Structure', subtitle: 'Administration', path: '/dashboard/academic-structure', type: 'page', roles: ['admin'] },
+    { title: 'Audit Logs', subtitle: 'System Logs', path: '/dashboard/audit', type: 'page', roles: ['admin'] },
+    { title: 'Achievement & Recognition', subtitle: 'Administration', path: '/dashboard/recognition', type: 'page', roles: ['admin'] },
+
+    // Faculty Routes
+    { title: 'Briefing Room', subtitle: 'Faculty Overview', path: '/dashboard', type: 'page', roles: ['faculty'] },
+    { title: 'Personnel', subtitle: 'Manage Students', path: '/dashboard/students', type: 'page', roles: ['faculty'] },
+    { title: 'Active Tracks', subtitle: 'Projects', path: '/dashboard/projects', type: 'page', roles: ['faculty'] },
+    { title: 'Assignment Hub', subtitle: 'Tasks & Assignments', path: '/dashboard/tasks', type: 'page', roles: ['faculty'] },
+    { title: 'Squad Management', subtitle: 'Groups', path: '/dashboard/groups', type: 'page', roles: ['faculty'] },
+    { title: 'Operational Intel', subtitle: 'Submissions', path: '/dashboard/submissions', type: 'page', roles: ['faculty'] },
+    { title: 'Academic Planner', subtitle: 'Planning', path: '/dashboard/planner', type: 'page', roles: ['faculty'] },
+    { title: 'Evaluate Students', subtitle: 'Grading', path: '/dashboard/evaluate', type: 'page', roles: ['admin', 'faculty'] },
+
+    // Student Routes
+    { title: 'Mission Control', subtitle: 'Overview', path: '/dashboard', type: 'page', roles: ['student'] },
+    { title: 'My Tasks', subtitle: 'Assignments', path: '/dashboard/tasks', type: 'page', roles: ['student'] },
+    { title: 'My Groups', subtitle: 'Squad & Intel', path: '/dashboard/my-groups', type: 'page', roles: ['student'] },
+    { title: 'To-Do List', subtitle: 'Personal Tasks', path: '/dashboard/todo', type: 'page', roles: ['student'] },
+    { title: 'Campus Pulse', subtitle: 'News & Events', path: '/dashboard/news-events', type: 'page', roles: ['student'] },
+    { title: 'Notifications', subtitle: 'Alerts', path: '/dashboard/notifications', type: 'page', roles: ['student', 'faculty', 'admin'] },
+    { title: 'Hall of Fame', subtitle: 'Leaderboard', path: '/dashboard/leaderboard', type: 'page', roles: ['student'] },
+    { title: 'Service Record', subtitle: 'Grades & Performance', path: '/dashboard/grades', type: 'page', roles: ['student'] },
+    { title: 'Schedule', subtitle: 'Timetable', path: '/dashboard/timetable', type: 'page', roles: ['student'] },
+    
+    // Additional helpful quick links for all
+    { title: 'Profile Settings', subtitle: 'Account', path: '/dashboard/profile', type: 'user', roles: ['admin', 'faculty', 'student'] }
+];
+
+// ─────────────────────────────────────────────
 // Main Navbar
 // ─────────────────────────────────────────────
 const GlassNavbar = ({ isSidebarOpen, setIsOpen }) => {
-    const [profileOpen, setProfileOpen]   = useState(false);
-    const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [unreadCount, setUnreadCount]   = useState(0);
-    const [recent, setRecent]             = useState([]);
-    const [searchQuery, setSearchQuery]   = useState('');
-    const [searchResults, setSearchResults] = useState([]);
-    const [isSearching, setIsSearching]   = useState(false);
-    const [profile, setProfile]           = useState(null);
+    const navigate = useNavigate();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [unreadCount, setUnreadCount] = useState(0);
+    const currentDate = new Date().toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
 
-    const profileRef = useRef(null);
-    const navigate   = useNavigate();
-    const role       = localStorage.getItem('userRole');
-    const user       = JSON.parse(localStorage.getItem('user') || '{}');
-    const rc         = roleColors(role);
-
-    // Close profile panel when clicking outside
-    useEffect(() => {
-      const handler = (e) => {
-        if (profileRef.current && !profileRef.current.contains(e.target)) {
-          setProfileOpen(false);
-        }
-      };
-      document.addEventListener('mousedown', handler);
-      return () => document.removeEventListener('mousedown', handler);
-    }, []);
-
-    // Fetch full profile on open
-    const fetchProfile = async () => {
-      if (profile) return; // already loaded
-      try {
-        const res = await API.get('/auth/me');
-        setProfile(res.data);
-      } catch {
-        // fallback to localStorage data
-        setProfile({ ...user, role, status: 'active' });
-      }
-    };
-
-    const handleProfileToggle = () => {
-      if (!profileOpen) fetchProfile();
-      setProfileOpen(o => !o);
-      setDropdownOpen(false);
-    };
-
-    // Debounced search
-    useEffect(() => {
-        const fn = setTimeout(async () => {
-            if (searchQuery.length > 1) {
-                setIsSearching(true);
-                try {
-                    const res = await API.get(`/admin/search?q=${searchQuery}`);
-                    setSearchResults(res.data);
-                } catch {
-                    setSearchResults([]);
-                } finally {
-                    setIsSearching(false);
-                }
-            } else {
-                setSearchResults([]);
-            }
-        }, 300);
-        return () => clearTimeout(fn);
-    }, [searchQuery]);
-
-    const fetchUnread = async () => {
-        try {
-            const res = await API.get('/notifications/unread-count');
-            setUnreadCount(res.data?.unread || 0);
-        } catch { setUnreadCount(0); }
-    };
-
-    const fetchRecent = async () => {
-        try {
-            const res = await API.get('/notifications');
-            setRecent((res.data || []).slice(0, 5));
-        } catch { setRecent([]); }
-    };
+    const [showProfile, setShowProfile] = useState(false);
+    const [profile, setProfile] = useState(null);
+    const user = useMemo(() => JSON.parse(localStorage.getItem('user') || '{}'), []);
 
     useEffect(() => {
+        const fetchUnread = async () => {
+            try {
+                const res = await API.get('/notifications/unread-count');
+                setUnreadCount(res.data?.unread || 0);
+            } catch { setUnreadCount(0); }
+        };
+        const fetchProfile = async () => {
+            try {
+                const res = await API.get('/auth/me');
+                setProfile(res.data);
+            } catch { }
+        };
         fetchUnread();
-        fetchRecent();
-        const poll = setInterval(fetchUnread, 30000);
-        return () => clearInterval(poll);
+        fetchProfile();
     }, []);
+
+    const searchResults = useMemo(() => {
+        if (!searchQuery.trim()) return [];
+        const q = searchQuery.toLowerCase();
+        return SEARCH_INDEX.filter(item => {
+            const matchesRole = user.role && item.roles.includes(user.role);
+            const matchesText = item.title.toLowerCase().includes(q) || 
+                              item.subtitle.toLowerCase().includes(q);
+            return matchesRole && matchesText;
+        }).slice(0, 6);
+    }, [searchQuery, user.role]);
+
+    const handleSearchSelect = (path) => {
+        setSearchQuery('');
+        navigate(path);
+    };
 
     return (
-        <motion.header
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="sticky top-0 z-50 h-20 px-4 md:px-8 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-gray-200/50 shadow-sm"
-        >
-            {/* Left: Brand */}
+        <header className="h-20 px-8 flex items-center justify-between bg-surface border-b border-gray-100 relative z-30">
+            {/* Left: Page Title */}
             <div className="flex items-center gap-4">
-                <button onClick={() => setIsOpen(!isSidebarOpen)} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 md:hidden transition-colors">
-                    <Menu size={24}/>
+                <button onClick={() => setIsOpen(!isSidebarOpen)} className="p-2 rounded-xl bg-white border border-gray-100 text-secondary md:hidden shadow-sm transition-all active:scale-95">
+                    <Menu size={20}/>
                 </button>
-                <div className="hidden md:block">
-                    <h1 className="text-lg font-bold text-gray-800 tracking-tight">Academic Oversight</h1>
-                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest leading-none">Management Console</p>
-                </div>
+                <h2 className="text-2xl font-black text-secondary tracking-tight hidden md:block">
+                    Dashboard
+                </h2>
             </div>
 
-            {/* Center: Search */}
-            <div className="flex-1 max-w-xl mx-8 relative hidden md:block">
-                <div className="relative group">
-                    <input type="text" placeholder="Search students, projects, or users..."
-                        value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-gray-100/50 border border-transparent rounded-2xl px-5 py-2.5 pl-12 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:bg-white focus:border-emerald-500/30 transition-all duration-300 text-gray-800 placeholder-gray-400"/>
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 group-focus-within:text-emerald-500 transition-colors"/>
-                    {isSearching && (
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                            <div className="w-4 h-4 border-2 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"/>
-                        </div>
-                    )}
-                </div>
-                <AnimatePresence>
-                    {searchResults.length > 0 && (
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                            className="absolute mt-2 w-full bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 overflow-hidden">
-                            {searchResults.map((res, i) => (
-                                <button key={i} onClick={() => { navigate(res.link); setSearchQuery(''); }}
-                                    className="w-full flex items-center gap-4 p-3 hover:bg-emerald-50/50 rounded-xl transition-colors text-left group">
-                                    <div className="p-2 bg-gray-50 rounded-lg group-hover:bg-white transition-colors">
-                                        {res.type === 'user' ? <User size={16} className="text-blue-500"/> : <Briefcase size={16} className="text-emerald-500"/>}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-gray-800">{res.title}</p>
-                                        <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">{res.subtitle}</p>
-                                    </div>
-                                </button>
-                            ))}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+            {/* Center: Date */}
+            <div className="absolute left-1/2 -translate-x-1/2 hidden lg:flex items-center gap-3 px-6 py-2 bg-white rounded-2xl border border-gray-100 shadow-sm transition-all hover:shadow-md cursor-default">
+                <Calendar size={18} className="text-primary" />
+                <span className="text-sm font-black text-secondary tracking-tight">{currentDate}</span>
             </div>
 
             {/* Right: Actions */}
-            <div className="flex items-center gap-3">
-
-                {/* Bell */}
-                <div className="relative">
-                    <button className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-200 group active:scale-95"
-                        onClick={() => { setDropdownOpen(o => !o); setProfileOpen(false); }}>
-                        <Bell className="w-5 h-5 text-gray-500 group-hover:text-indigo-600 transition-colors"/>
-                        {unreadCount > 0 && (
-                            <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
-                                {unreadCount > 99 ? '99+' : unreadCount}
-                            </span>
-                        )}
-                    </button>
+            <div className="flex items-center gap-4">
+                {/* Search */}
+                <div className="relative group hidden sm:block">
+                    <input 
+                        type="text" 
+                        placeholder="Search mission or page..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && searchResults.length > 0) {
+                                handleSearchSelect(searchResults[0].path);
+                            }
+                        }}
+                        className="w-64 bg-white border border-gray-200 rounded-2xl px-5 py-3 pl-12 text-sm focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all duration-300 text-secondary placeholder-secondary-muted"
+                    />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-muted w-5 h-5 group-focus-within:text-primary transition-colors"/>
+                    
+                    {/* Search Results Dropdown */}
                     <AnimatePresence>
-                        {dropdownOpen && (
-                            <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                className="absolute right-0 mt-3 w-80 bg-white border border-gray-100 rounded-2xl shadow-2xl p-4 ring-1 ring-black/5 z-50">
-                                <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-50">
-                                    <p className="font-bold text-gray-800">Notifications</p>
-                                    <button className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:text-indigo-800" onClick={() => navigate('/dashboard/notifications')}>View All</button>
-                                </div>
-                                <div className="space-y-3">
-                                    {recent.length === 0 ? (
-                                        <div className="py-8 text-center"><p className="text-xs text-gray-400">All caught up!</p></div>
-                                    ) : (
-                                        recent.map((n) => (
-                                            <div key={n.id} className="p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 cursor-pointer">
-                                                <p className="text-xs text-gray-700 leading-relaxed mb-1">{n.message}</p>
-                                                <p className="text-[10px] text-gray-400 font-medium">Recently</p>
+                        {searchQuery.trim() && (
+                            <motion.div 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 10 }}
+                                className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl overflow-hidden py-2"
+                            >
+                                {searchResults.length > 0 ? (
+                                    searchResults.map((res, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => handleSearchSelect(res.path)}
+                                            className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors text-left group"
+                                        >
+                                            <div>
+                                                <p className="text-sm font-black text-gray-800">{res.title}</p>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{res.subtitle}</p>
                                             </div>
-                                        ))
-                                    )}
-                                </div>
+                                            <ExternalLink size={14} className="text-gray-200 group-hover:text-primary transition-colors" />
+                                        </button>
+                                    ))
+                                ) : (
+                                    <div className="px-5 py-4 text-center">
+                                        <p className="text-xs font-bold text-gray-400 italic">No matches found</p>
+                                    </div>
+                                )}
                             </motion.div>
                         )}
                     </AnimatePresence>
                 </div>
 
-                <div className="h-8 w-px bg-gray-200 mx-1 hidden sm:block"/>
-
-                {/* Profile button + panel */}
-                <div className="relative" ref={profileRef}>
-                    <button onClick={handleProfileToggle}
-                        className={`flex items-center gap-3 pl-2 pr-1 py-1 rounded-2xl transition-all duration-200 ${profileOpen ? 'bg-gray-100' : 'hover:bg-gray-50'}`}>
-                        <div className="hidden sm:block text-right">
-                            <p className="text-xs font-bold text-gray-800 leading-none mb-1 capitalize">{user.name || 'User'}</p>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">{role}</p>
-                        </div>
-                        <div className="relative">
-                            <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${rc.bg} p-0.5 shadow-lg transition-transform duration-300 ${profileOpen ? 'rotate-6' : ''}`}>
-                                <div className="w-full h-full rounded-[14px] bg-white flex items-center justify-center font-bold text-sm"
-                                    style={{ color: 'var(--tw-gradient-to)' }}>
-                                    {(user.name || 'U').charAt(0).toUpperCase()}
-                                </div>
-                            </div>
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"/>
-                        </div>
-                    </button>
-
-                    <AnimatePresence>
-                        {profileOpen && (
-                            <ProfilePanel user={{ ...user, role }} profile={profile} onClose={() => setProfileOpen(false)}/>
-                        )}
-                    </AnimatePresence>
-                </div>
-
+                {/* Notifications */}
+                <button 
+                    onClick={() => navigate('/dashboard/notifications')}
+                    className="relative p-3 rounded-2xl bg-white border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all group shadow-sm active:scale-95"
+                >
+                    <Bell className="w-6 h-6 text-secondary-muted group-hover:text-primary transition-colors"/>
+                    {unreadCount > 0 && (
+                        <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-primary rounded-full ring-2 ring-white animate-pulse" />
+                    )}
+                </button>
             </div>
-        </motion.header>
+        </header>
     );
 };
 

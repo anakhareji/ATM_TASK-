@@ -543,7 +543,7 @@ def list_all_projects(
     q: str | None = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Project)
+    query = db.query(Project).filter(Project.is_deleted == False)
     if status:
         query = query.filter(Project.status == status)
     if department_id:
@@ -554,13 +554,19 @@ def list_all_projects(
     data = []
     for p in projects:
         # Determine project lead faculty:
-        # 1) Latest assigned faculty via ProjectFaculty
-        # 2) Fallback to creator (created_by)
-        pf = db.query(ProjectFaculty).filter(ProjectFaculty.project_id == p.id).order_by(desc(ProjectFaculty.assigned_at)).first()
-        if pf:
-            faculty = db.query(User).filter(User.id == pf.faculty_id).first()
-        else:
-            faculty = db.query(User).filter(User.id == getattr(p, "created_by", None)).first() if getattr(p, "created_by", None) else None
+        # 1) Primary Project relationship
+        # 2) Fallback to Legacy ProjectFaculty 
+        # 3) Fallback to creator (created_by)
+        faculty = None
+        if getattr(p, "lead_faculty_id", None):
+            faculty = db.query(User).filter(User.id == p.lead_faculty_id).first()
+            
+        if not faculty:
+            pf = db.query(ProjectFaculty).filter(ProjectFaculty.project_id == p.id).order_by(desc(ProjectFaculty.assigned_at)).first()
+            if pf:
+                faculty = db.query(User).filter(User.id == pf.faculty_id).first()
+            else:
+                faculty = db.query(User).filter(User.id == getattr(p, "created_by", None)).first() if getattr(p, "created_by", None) else None
         task_count = db.query(Task).filter(Task.project_id == p.id).count()
         data.append({
             "id": p.id,
@@ -572,7 +578,13 @@ def list_all_projects(
             "academic_year": p.academic_year,
             "created_at": p.created_at,
             "department_id": p.department_id,
-            "department_name": db.query(Department.name).filter(Department.id == p.department_id).scalar() if p.department_id else None
+            "department_name": db.query(Department.name).filter(Department.id == p.department_id).scalar() if p.department_id else None,
+            "course_id": p.course_id,
+            "lead_faculty_id": p.lead_faculty_id,
+            "start_date": p.start_date.isoformat() if p.start_date else None,
+            "end_date": p.end_date.isoformat() if p.end_date else None,
+            "visibility": p.visibility,
+            "allow_tasks": p.allow_tasks
         })
     return data
 
@@ -580,7 +592,10 @@ def list_all_projects(
 def delete_project_admin(project_id: int, db: Session = Depends(get_db), current_admin: dict = Depends(admin_required)):
     p = db.query(Project).filter(Project.id == project_id).first()
     if not p: raise HTTPException(404, "Project not found")
-    db.delete(p)
+    
+    # Soft delete to satisfy referential constraint integrity
+    p.is_deleted = True
+    p.status = "Archived"
     db.commit()
     db.add(AuditLog(
         user_id=current_admin["user_id"],
@@ -597,15 +612,37 @@ def create_project_admin(data: dict, db: Session = Depends(get_db), current_admi
     title = (data or {}).get("title")
     if not title:
         raise HTTPException(400, "Title is required")
+
+    def safe_int(val):
+        try:
+            return int(val) if val else None
+        except (ValueError, TypeError):
+            return None
+
+    def safe_date(val):
+        if not val:
+            return None
+        # Clean potential ISO timestamps to just YYYY-MM-DD
+        val = val.split('T')[0]
+        try:
+            # Handle YYYY-MM-DD
+            return datetime.strptime(val, "%Y-%m-%d").date()
+        except ValueError:
+            try:
+                # Handle DD-MM-YYYY fallback if submitted
+                return datetime.strptime(val, "%d-%m-%Y").date()
+            except ValueError:
+                return None
+
     p = Project(
         title=title,
         description=data.get("description"),
-        department_id=data.get("department_id"),
-        course_id=data.get("course_id"),
-        lead_faculty_id=data.get("lead_faculty_id"),
+        department_id=safe_int(data.get("department_id")),
+        course_id=safe_int(data.get("course_id")),
+        lead_faculty_id=safe_int(data.get("lead_faculty_id")),
         academic_year=data.get("academic_year"),
-        start_date=datetime.strptime(data.get("start_date"), "%Y-%m-%d").date() if data.get("start_date") else None,
-        end_date=datetime.strptime(data.get("end_date"), "%Y-%m-%d").date() if data.get("end_date") else None,
+        start_date=safe_date(data.get("start_date")),
+        end_date=safe_date(data.get("end_date")),
         status=data.get("status", "Draft"),
         visibility=data.get("visibility", "Department Only"),
         allow_tasks=data.get("allow_tasks", False),
@@ -631,15 +668,50 @@ def create_project_admin(data: dict, db: Session = Depends(get_db), current_admi
 # UPDATE PROJECT
 @router.put("/projects/{project_id}")
 def update_project_admin(project_id: int, data: dict, db: Session = Depends(get_db), current_admin: dict = Depends(admin_required)):
-    p = db.query(Project).filter(Project.id == project_id).first()
-    if not p: raise HTTPException(404, "Project not found")
-    for key in ["title","description","department_id","course_id","semester"]:
-        if key in data:
-            setattr(p, key, data[key])
-    db.commit()
-    db.add(AuditLog(user_id=current_admin["user_id"], action="update_project", entity_type="project", entity_id=p.id))
-    db.commit()
-    return {"updated": True}
+    try:
+        p = db.query(Project).filter(Project.id == project_id).first()
+        if not p: raise HTTPException(404, "Project not found")
+
+        def safe_int(val):
+            try: return int(val) if val else None
+            except: return None
+
+        def safe_date(val):
+            if not val: return None
+            val = str(val).split('T')[0]
+            try: return datetime.strptime(val, "%Y-%m-%d").date()
+            except: 
+                try: return datetime.strptime(val, "%d-%m-%Y").date()
+                except: return None
+
+        if "title" in data: p.title = data["title"]
+        if "description" in data: p.description = data["description"]
+        if "department_id" in data: p.department_id = safe_int(data["department_id"])
+        if "course_id" in data: p.course_id = safe_int(data["course_id"])
+        if "semester" in data: p.semester = data["semester"]
+        
+        if "lead_faculty_id" in data: 
+            new_lead_id = safe_int(data["lead_faculty_id"])
+            if new_lead_id != p.lead_faculty_id:
+                p.lead_faculty_id = new_lead_id
+                if new_lead_id:
+                    db.add(ProjectFaculty(project_id=p.id, faculty_id=new_lead_id))
+        if "academic_year" in data: p.academic_year = data["academic_year"]
+        if "start_date" in data: p.start_date = safe_date(data["start_date"])
+        if "end_date" in data: p.end_date = safe_date(data["end_date"])
+        if "status" in data: p.status = data["status"]
+        if "visibility" in data: p.visibility = data["visibility"]
+        if "allow_tasks" in data: p.allow_tasks = bool(data["allow_tasks"])
+
+        db.commit()
+        db.add(AuditLog(user_id=current_admin["user_id"], action="update_project", entity_type="project", entity_id=p.id))
+        db.commit()
+        return {"updated": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating project: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.patch("/projects/{project_id}/publish")
 def publish_project_admin(project_id: int, db: Session = Depends(get_db), current_admin: dict = Depends(admin_required)):

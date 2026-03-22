@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import AdminGlassLayout from '../components/layout/AdminGlassLayout';
 import API from '../api/axios';
 import PageHeader from '../components/ui/PageHeader';
 import GlassCard from '../components/ui/GlassCard';
@@ -29,8 +28,8 @@ const AdminSubmissions = () => {
     }, []);
 
     const filtered = submissions.filter(s =>
-        s.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.task_title.toLowerCase().includes(searchTerm.toLowerCase())
+        (s.student_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (s.task_title || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const getStatusStyle = (status) => {
@@ -41,8 +40,7 @@ const AdminSubmissions = () => {
     };
 
     return (
-        <AdminGlassLayout>
-            <div className="space-y-8 pb-12">
+        <div className="space-y-8 pb-12">
                 <PageHeader
                     title="Submission Archive"
                     subtitle="Universal surveillance of all task completions, evaluations, and academic milestones"
@@ -144,7 +142,6 @@ const AdminSubmissions = () => {
                     </div>
                 </GlassCard>
             </div>
-        </AdminGlassLayout>
     );
 };
 
