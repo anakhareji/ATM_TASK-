@@ -2,6 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from typing import Optional
+import os, shutil, uuid
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "submissions")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 from database import get_db
 import os, shutil, uuid
 
@@ -232,15 +236,12 @@ def submit_task(
         if not member:
             raise HTTPException(403, "Not allowed for this group task")
 
-    # Save file
-    file_url = None
+    # Read file data
+    file_content = None
+    file_mime = None
     if file:
-        ext = os.path.splitext(file.filename)[1] if file.filename else ".pdf"
-        filename = f"{uuid.uuid4().hex}{ext}"
-        path = os.path.join(UPLOAD_DIR, filename)
-        with open(path, "wb") as f:
-            shutil.copyfileobj(file.file, f)
-        file_url = f"/uploads/submissions/{filename}"
+        file_content = file.file.read()
+        file_mime = getattr(file, "content_type", "application/pdf")
 
     # Save Submission
     submission = db.query(TaskSubmission).filter(
@@ -250,8 +251,9 @@ def submit_task(
     
     if submission:
         submission.submission_text = submission_text
-        if file_url:
-            submission.file_url = file_url
+        if file_content:
+            submission.file_data = file_content
+            submission.file_mime = file_mime
         submission.submitted_at = datetime.utcnow()
         submission.is_late = is_late
         submission.status = "submitted"
@@ -260,16 +262,20 @@ def submit_task(
             task_id=task_id,
             student_id=current_user["user_id"],
             submission_text=submission_text,
-            file_url=file_url,
+            file_data=file_content,
+            file_mime=file_mime,
             is_late=is_late,
             status="submitted"
         )
         db.add(submission)
 
-    # Update Task Status (Global status might be complex for groups, keeping simple)
-    # task.status = "submitted" # Only for individual really
-    
     db.commit()
+    db.refresh(submission)
+
+    # Set new API endpoint url dynamically based on generated ID
+    if file_content:
+        submission.file_url = f"/api/tasks/{task_id}/submissions/{submission.id}/file"
+        db.commit()
     
     # Notify Faculty
     add_notification(
@@ -281,6 +287,20 @@ def submit_task(
     )
 
     return {"message": "Task submitted", "is_late": is_late}
+
+@router.get("/{task_id}/submissions/{submission_id}/file", tags=["Tasks"])
+def get_submission_file(
+    task_id: int,
+    submission_id: int,
+    db: Session = Depends(get_db)
+):
+    from fastapi.responses import Response
+    
+    sub = db.query(TaskSubmission).filter(TaskSubmission.id == submission_id, TaskSubmission.task_id == task_id).first()
+    if not sub or not sub.file_data:
+        raise HTTPException(404, "File not found")
+    
+    return Response(content=sub.file_data, media_type=sub.file_mime or "application/pdf")
 
 # =========================
 # COMMENTS
@@ -771,6 +791,7 @@ def get_task_submissions(
         db.add(TaskSubmission(
             task_id=task_id,
             student_id=sid,
+            submission_text="",
             status="pending_submission",
             is_late=False
         ))
@@ -788,6 +809,7 @@ def get_task_submissions(
             "status": s.status,
             "is_late": s.is_late or False,
             "file_url": s.file_url,
+            "submission_text": s.submission_text,
             "marks": s.marks_obtained,
             "grade": s.grade,
             "feedback": s.feedback,
@@ -817,14 +839,12 @@ def close_task(
         return {"message": "Task already closed", "closed_at": getattr(task, "closed_at", None)}
 
     task.status = "closed"
-    # Fallback to utcnow if column doesn't exist dynamically
     try:
         task.closed_at = datetime.utcnow()
     except Exception:
         pass
     db.commit()
     
-    # Notify students
     from models.group import GroupMember
     target_ids = []
     if task.student_id:
@@ -871,14 +891,12 @@ def get_task_report(
     }
     
     for s in submissions:
-        # Calculate time taken
         time_taken_seconds = 0
         end_time = s.submitted_at or getattr(task, "closed_at", None)
         
         if task.started_at and end_time:
             time_taken_seconds = int((end_time - task.started_at).total_seconds())
         elif task.started_at and not end_time and task.status != "closed":
-            # Still running
             time_taken_seconds = int((datetime.utcnow() - task.started_at).total_seconds())
 
         report_data["participants"].append({

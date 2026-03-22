@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Text
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Text, LargeBinary
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -16,7 +16,9 @@ class TaskSubmission(Base):
     status = Column(String(30), default="submitted")
 
     # Enhanced Submission Details
-    file_url = Column(String(500), nullable=True)
+    file_url = Column(String(500), nullable=True) # Will point to new API endpoint
+    file_data = Column(LargeBinary, nullable=True)
+    file_mime = Column(String(50), nullable=True)
     is_late = Column(Boolean, default=False)
     
     # Grading

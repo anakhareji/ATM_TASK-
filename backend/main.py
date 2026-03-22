@@ -84,6 +84,9 @@ try:
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[tasks]') AND name = 'task_code') ALTER TABLE tasks ADD task_code NVARCHAR(50) NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[tasks]') AND name = 'closed_at') ALTER TABLE tasks ADD closed_at DATETIME NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[tasks]') AND name = 'is_report_shared') ALTER TABLE tasks ADD is_report_shared BIT NULL DEFAULT 0;"))
+        # New task_submissions columns for BLOB storage
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[task_submissions]') AND name = 'file_data') ALTER TABLE task_submissions ADD file_data VARBINARY(MAX) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[task_submissions]') AND name = 'file_mime') ALTER TABLE task_submissions ADD file_mime NVARCHAR(50) NULL;"))
         # New student_performance columns
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[student_performance]') AND name = 'is_ranked') ALTER TABLE student_performance ADD is_ranked BIT NULL DEFAULT 0;"))
         # New users columns
