@@ -51,7 +51,7 @@ const FacultyProjects = () => {
             toast.error("Track ID identification failure: Invalid Project.");
             return;
         }
-        navigate(`/dashboard/tasks?project_id=${projectId}`);
+        navigate(`/dashboard/tasks?project_id=${projectId}&action=create`);
     };
 
     if (loading) return (
@@ -154,10 +154,10 @@ const FacultyProjects = () => {
                                                 Configure Groups <ArrowRight size={16} />
                                             </button>
                                             <button
-                                                className="p-2 text-gray-300 hover:text-emerald-500 transition-colors"
+                                                className="flex items-center gap-2 text-emerald-600 font-black text-sm uppercase tracking-wider hover:text-emerald-800 transition-colors"
                                                 onClick={() => handleManageTasks(p.id || p.project_id)}
                                             >
-                                                <Calendar size={18} />
+                                                Create Task <Calendar size={16} />
                                             </button>
                                         </div>
                                         <div className="h-1.5 w-full bg-emerald-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>

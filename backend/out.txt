@@ -1,0 +1,1 @@
+Foreign key associated with column 'projects.course_id' could not find table 'courses_v1' with which to generate a foreign key to target column 'id'

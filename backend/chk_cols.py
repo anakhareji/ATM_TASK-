@@ -1,4 +1,4 @@
-import urllib
+import urllib.parse
 from sqlalchemy import create_engine, text
 
 # Configuration from database.py

@@ -6,6 +6,7 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(Integer, primary_key=True, index=True)
+    task_code = Column(String(50), unique=True, index=True, nullable=True) # E.g. TASK_CS_001
 
     # Task details
     title = Column(String(200), nullable=False)

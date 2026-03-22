@@ -139,12 +139,12 @@ def view_assigned_projects_for_faculty(
         )
 
     if current_user["role"] == ADMIN:
-        projects = db.query(Project).all()
+        projects = db.query(Project).filter(Project.is_deleted == False).all()
     else:
         projects = (
             db.query(Project)
-            .join(ProjectFaculty, Project.id == ProjectFaculty.project_id)
-            .filter(ProjectFaculty.faculty_id == current_user["user_id"])
+            .filter(Project.lead_faculty_id == current_user["user_id"])
+            .filter(Project.is_deleted == False)
             .all()
         )
 

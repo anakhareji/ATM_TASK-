@@ -38,7 +38,7 @@ def create_task(
 ):
     role = current_user["role"].lower()
     if role not in [FACULTY.lower(), ADMIN.lower()]:
-        raise HTTPException(403, "Only faculty or admin can create tasks")
+        raise HTTPException(status_code=403, detail="Only faculty or admin can create tasks")
 
     # Verify Faculty Assignment to Project (Skip for Admin)
     if role != ADMIN.lower():
@@ -48,60 +48,92 @@ def create_task(
         ).first()
 
         if not assignment:
-            raise HTTPException(403, "You are not assigned to this project")
+            raise HTTPException(status_code=403, detail="You are not assigned to this project")
 
     # Validate Targets
     if data.task_type == "individual":
         if not data.student_id:
-            raise HTTPException(400, "student_id is required for individual tasks")
+            raise HTTPException(status_code=400, detail="student_id is required for individual tasks")
     elif data.task_type == "group":
         if not data.group_id:
-            raise HTTPException(400, "group_id is required for group tasks")
+            raise HTTPException(status_code=400, detail="group_id is required for group tasks")
             
     initial_status = "published" 
 
-    task = Task(
-        title=data.title,
-        description=data.description,
-        priority=data.priority,
-        deadline=data.deadline,
-        max_marks=data.max_marks,
-        task_type=data.task_type,
-        project_id=data.project_id,
-        faculty_id=current_user["user_id"],
-        student_id=data.student_id,
-        group_id=data.group_id,
-        status=initial_status,
-        file_url=data.file_url,
-        late_penalty=data.late_penalty
-    )
+    project = db.query(Project).filter(Project.id == data.project_id).first()
+    dept_code = "GEN"
+    if project and project.department_id:
+        from models.academic_saas import DepartmentV1
+        dept = db.query(DepartmentV1).filter(DepartmentV1.id == project.department_id).first()
+        if dept and getattr(dept, "code", None):
+            dept_code = str(dept.code).upper()
+            
+    prefix = f"TASK_{dept_code}_"
+    
+    last_task = db.query(Task).filter(Task.task_code.startswith(prefix)).order_by(Task.task_code.desc()).first()
+    current_max = 0
+    if last_task and last_task.task_code:
+        try:
+            current_max = int(last_task.task_code.replace(prefix, ""))
+        except ValueError:
+            pass
 
-    db.add(task)
-    db.commit()
-    db.refresh(task)
+    from sqlalchemy.exc import IntegrityError
+    
+    task = None
+    MAX_RETRIES = 10
+    for attempt in range(MAX_RETRIES):
+        task_code = f"{prefix}{current_max + 1 + attempt:03d}"
+
+        task = Task(
+            task_code=task_code,
+            title=data.title,
+            description=data.description,
+            priority=data.priority,
+            deadline=data.deadline,
+            max_marks=data.max_marks,
+            task_type=data.task_type,
+            project_id=data.project_id,
+            faculty_id=current_user["user_id"],
+            student_id=data.student_id,
+            group_id=data.group_id,
+            status=initial_status,
+            file_url=data.file_url,
+            late_penalty=data.late_penalty
+        )
+        db.add(task)
+        try:
+            db.commit()
+            db.refresh(task)
+            break
+        except IntegrityError:
+            db.rollback()
+            if attempt == MAX_RETRIES - 1:
+                raise HTTPException(status_code=500, detail="Database sequence generator timeout due to high concurrency. Retry later.")
+            continue
 
     # Notify Target (Student or Group)
-    if task.student_id:
+    if task and task.student_id:
         add_notification(
             db, 
-            user_id=task.student_id, 
+            user_id=int(task.student_id), 
             title="New Mission Deployed", 
             message=f"A new academic mission '{task.title}' has been assigned to you.",
             type="task"
         )
-    elif task.group_id:
+    elif task and task.group_id:
         from models.group import GroupMember
         members = db.query(GroupMember).filter(GroupMember.group_id == task.group_id).all()
         for m in members:
             add_notification(
                 db, 
-                user_id=m.student_id, 
+                user_id=int(m.student_id), 
                 title="Squad Mission Deployed", 
                 message=f"A new squad mission '{task.title}' has been deployed for your unit.",
                 type="task"
             )
 
-    return {"message": "Mission deployed successfully", "task_id": task.id}
+    return {"message": "Mission deployed successfully", "task_id": getattr(task, "id", None)}
 
 @router.put("/{task_id}/publish")
 def publish_task(
@@ -620,8 +652,8 @@ def grade_submission(
         TaskSubmission.status == "graded"
     ).all()
     
-    total_marks = 0
-    total_max = 0
+    total_marks: float = 0.0
+    total_max: float = 0.0
     
     for s in all_submissions:
         # We need to find the max marks for each task. 
@@ -630,11 +662,11 @@ def grade_submission(
         # Let's fetch the task for each submission to be safe or map it.
         t = db.query(Task).filter(Task.id == s.task_id).first()
         if t and s.marks_obtained is not None:
-            total_marks += s.marks_obtained
-            total_max += t.max_marks
+            total_marks += float(s.marks_obtained)
+            total_max += float(getattr(t, "max_marks", 100) or 100)
             
     # Calculate Percentage/Score
-    final_score = 0
+    final_score = 0.0
     if total_max > 0:
         final_score = (total_marks / total_max) * 100
         
