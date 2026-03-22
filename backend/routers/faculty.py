@@ -227,20 +227,24 @@ def get_faculty_grades_list(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if current_user["role"] != FACULTY:
-        raise HTTPException(status_code=403, detail="Faculty only")
-    grades = db.query(StudentPerformance).filter(StudentPerformance.faculty_id == current_user["user_id"]).all()
-    return [
-        {
-            "id": g.id,
-            "student_id": g.student_id,
-            "project_id": g.project_id,
-            "score": g.final_score or 0,
-            "grade": g.grade,
-            "created_at": g.created_at
-        }
-        for g in grades
-    ]
+    try:
+        if current_user["role"] != FACULTY:
+            raise HTTPException(status_code=403, detail="Faculty only")
+        grades = db.query(StudentPerformance).filter(StudentPerformance.faculty_id == current_user["user_id"]).all()
+        return [
+            {
+                "id": g.id,
+                "student_id": g.student_id,
+                "project_id": g.project_id,
+                "score": g.final_score or 0,
+                "grade": g.grade,
+                "created_at": str(g.created_at)
+            }
+            for g in grades
+        ]
+    except Exception as e:
+        import traceback
+        raise HTTPException(status_code=500, detail=traceback.format_exc())
 
 
 # =====================================================
@@ -248,6 +252,12 @@ def get_faculty_grades_list(
 # =====================================================
 from models.student_recommendation import StudentRecommendation
 from schemas.recommendation import RecommendationCreateRequest
+from models.academic_saas import DepartmentV1
+
+@router.get("/departments")
+def get_faculty_departments(db: Session = Depends(get_db)):
+    """Allow faculty to query departments for dropdown menus"""
+    return db.query(DepartmentV1).filter(DepartmentV1.is_active == True).all()
 
 @router.post("/student-recommendations", status_code=201)
 def recommend_student(
@@ -396,11 +406,15 @@ def get_student_progress(
             "todo_rate":       round((done_td / total_td * 100) if total_td else 0, 1),
             "overdue_todos":   sys_data.get("overdue_todos", 0),
             "system_score":    sys_data.get("system_score", 0),
+            "avg_task_score":  sys_data.get("avg_task_score", 0),
+            "events_hosted":   sys_data.get("events_hosted", 0),
+            "participation_bonus": sys_data.get("participation_bonus", 0),
             # Existing grade
             "has_record":      perf_record is not None,
             "latest_grade":    perf_record.grade if perf_record else None,
             "latest_score":    float(perf_record.final_score) if perf_record else None,
             "latest_semester": perf_record.semester if perf_record else None,
+            "submitted_to_admin": perf_record.submitted_to_admin if perf_record else False
         })
 
     return result

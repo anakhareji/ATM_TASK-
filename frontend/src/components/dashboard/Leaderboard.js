@@ -110,11 +110,18 @@ const Leaderboard = () => {
                                     {getRankIcon(index)}
                                 </div>
                                 <div>
-                                    <p className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors">
+                                    <div className="font-bold text-gray-800 text-sm group-hover:text-emerald-700 transition-colors flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-700 font-bold text-xs overflow-hidden shadow-sm border border-emerald-200">
+                                            {student.student_avatar ? (
+                                                <img src={student.student_avatar} alt={student.student_name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                (student.student_name || '?').charAt(0).toUpperCase()
+                                            )}
+                                        </div>
                                         {student.student_name || `Student #${student.student_id}`}
-                                    </p>
+                                    </div>
                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-1 ${student.grade === 'A' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                                        student.grade === 'B' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-gray-50 text-gray-700 border border-gray-200'
+                                        student.grade === 'B' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'bg-gray-50 text-gray-700 border border-gray-200'
                                         }`}>
                                         Grade {student.grade}
                                     </span>

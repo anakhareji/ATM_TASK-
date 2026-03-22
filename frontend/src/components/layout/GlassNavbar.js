@@ -1,8 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { Bell, Search, Menu, Calendar } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { 
+  Bell, Search, Menu, Calendar, X, User, Mail, Shield, 
+  Layers, BookOpen, GraduationCap, CalendarDays, ChevronRight, 
+  LogOut, Hash, ExternalLink 
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import API from '../../api/axios';
-import EditProfileModal from './EditProfileModal';
 
 // ─────────────────────────────────────────────
 // Role colour helpers
@@ -193,6 +197,10 @@ const GlassNavbar = ({ isSidebarOpen, setIsOpen }) => {
         year: 'numeric'
     });
 
+    const [showProfile, setShowProfile] = useState(false);
+    const [profile, setProfile] = useState(null);
+    const user = useMemo(() => JSON.parse(localStorage.getItem('user') || '{}'), []);
+
     useEffect(() => {
         const fetchUnread = async () => {
             try {
@@ -200,8 +208,31 @@ const GlassNavbar = ({ isSidebarOpen, setIsOpen }) => {
                 setUnreadCount(res.data?.unread || 0);
             } catch { setUnreadCount(0); }
         };
+        const fetchProfile = async () => {
+            try {
+                const res = await API.get('/auth/me');
+                setProfile(res.data);
+            } catch { }
+        };
         fetchUnread();
+        fetchProfile();
     }, []);
+
+    const searchResults = useMemo(() => {
+        if (!searchQuery.trim()) return [];
+        const q = searchQuery.toLowerCase();
+        return SEARCH_INDEX.filter(item => {
+            const matchesRole = user.role && item.roles.includes(user.role);
+            const matchesText = item.title.toLowerCase().includes(q) || 
+                              item.subtitle.toLowerCase().includes(q);
+            return matchesRole && matchesText;
+        }).slice(0, 6);
+    }, [searchQuery, user.role]);
+
+    const handleSearchSelect = (path) => {
+        setSearchQuery('');
+        navigate(path);
+    };
 
     return (
         <header className="h-20 px-8 flex items-center justify-between bg-surface border-b border-gray-100 relative z-30">
@@ -227,12 +258,49 @@ const GlassNavbar = ({ isSidebarOpen, setIsOpen }) => {
                 <div className="relative group hidden sm:block">
                     <input 
                         type="text" 
-                        placeholder="Search your task here..."
+                        placeholder="Search mission or page..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && searchResults.length > 0) {
+                                handleSearchSelect(searchResults[0].path);
+                            }
+                        }}
                         className="w-64 bg-white border border-gray-200 rounded-2xl px-5 py-3 pl-12 text-sm focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all duration-300 text-secondary placeholder-secondary-muted"
                     />
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-muted w-5 h-5 group-focus-within:text-primary transition-colors"/>
+                    
+                    {/* Search Results Dropdown */}
+                    <AnimatePresence>
+                        {searchQuery.trim() && (
+                            <motion.div 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 10 }}
+                                className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl overflow-hidden py-2"
+                            >
+                                {searchResults.length > 0 ? (
+                                    searchResults.map((res, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => handleSearchSelect(res.path)}
+                                            className="w-full flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors text-left group"
+                                        >
+                                            <div>
+                                                <p className="text-sm font-black text-gray-800">{res.title}</p>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{res.subtitle}</p>
+                                            </div>
+                                            <ExternalLink size={14} className="text-gray-200 group-hover:text-primary transition-colors" />
+                                        </button>
+                                    ))
+                                ) : (
+                                    <div className="px-5 py-4 text-center">
+                                        <p className="text-xs font-bold text-gray-400 italic">No matches found</p>
+                                    </div>
+                                )}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
                 {/* Notifications */}

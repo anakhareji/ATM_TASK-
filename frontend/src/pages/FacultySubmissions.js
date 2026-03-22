@@ -126,9 +126,14 @@ const FacultySubmissions = () => {
 
     const filteredSubmissions = useMemo(() => {
         return submissions.filter(s =>
-            s.student_name?.toLowerCase().includes(searchTerm.toLowerCase())
+            (s.student_name || `Recipient #${s.student_id}`).toLowerCase().includes((searchTerm || "").toLowerCase())
         );
     }, [submissions, searchTerm]);
+    
+    // Get the currently selected task explicitly for detail display
+    const currentActiveTask = useMemo(() => {
+        return tasks.find(t => String(t.id) === String(selectedTask));
+    }, [tasks, selectedTask]);
 
     if (loadingInitial) return (
         <div className="min-h-[60vh] flex flex-col items-center justify-center">
@@ -167,6 +172,32 @@ const FacultySubmissions = () => {
                     </select>
                 </div>
             </div>
+
+            {/* Active Task Details & History Preview */}
+            <AnimatePresence>
+                {currentActiveTask && (
+                    <motion.div 
+                        initial={{ opacity: 0, height: 0, y: -20 }} 
+                        animate={{ opacity: 1, height: 'auto', y: 0 }} 
+                        exit={{ opacity: 0, height: 0 }}
+                        className="px-8 py-6 bg-blue-50/50 rounded-3xl border border-blue-100 shadow-inner flex flex-col md:flex-row justify-between items-start gap-4 mb-6"
+                    >
+                        <div className="flex-1 space-y-2">
+                            <h2 className="text-xl font-black text-blue-900 drop-shadow-sm">{currentActiveTask.title}</h2>
+                            <p className="text-sm text-blue-700 font-medium leading-relaxed max-w-3xl">
+                                {currentActiveTask.description || "No specific instructions provided for this mission."}
+                            </p>
+                        </div>
+                        <div className="bg-white/80 p-4 rounded-xl border border-blue-100 shadow-sm min-w-48 text-right space-y-1">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Mission Parameters</p>
+                            <p className="text-sm font-bold text-blue-900">Max Points: <span className="text-blue-600 font-black">{currentActiveTask.max_marks || 0}</span></p>
+                            <p className="text-xs font-bold text-gray-500">
+                                Deadline: {currentActiveTask.due_date ? new Date(currentActiveTask.due_date).toLocaleDateString() : 'None'}
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Submissions List */}
             {!selectedTask ? (

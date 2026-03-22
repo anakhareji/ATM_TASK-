@@ -9,6 +9,7 @@ import NewsEvents from "../pages/NewsEvents";
 import Notifications from "../pages/Notifications";
 import ProtectedRoute from "../utils/ProtectedRoute";
 import AppGlassLayout from "../components/layout/AppGlassLayout";
+import AdminGlassLayout from "../components/layout/AdminGlassLayout";
 import AdminSaaSRoutes from "./AdminSaaSRoutes";
 import Users from "../pages/Users";
 import News from "../pages/News";
@@ -26,6 +27,8 @@ import AdminSubmissions from "../pages/AdminSubmissions";
 import AdminRecognition from "../pages/AdminRecognition";
 import AdminCampusPulse from "../pages/AdminCampusPulse";
 import StudentEvaluation from "../pages/StudentEvaluation";
+import Profile from "../pages/Profile";
+import Settings from "../pages/Settings";
 
 // Faculty Pages
 import FacultyProjects from "../pages/FacultyProjects";
@@ -37,17 +40,14 @@ import FacultyStudents from "../pages/FacultyStudents";
 
 const LayoutWrapper = () => {
   const role = (localStorage.getItem("userRole") || "").toLowerCase();
-
-  // Admin pages provide their own AdminGlassLayout as specified in their components
-  if (role === "admin") {
-    return <Outlet />;
-  }
-
-  // Both Faculty and Student now use the Premium Glass Layout
+  
+  // Both Admin, Faculty and Student now use their respective Premium Glass Layouts
+  const Layout = role === 'admin' ? AdminGlassLayout : AppGlassLayout;
+  
   return (
-    <AppGlassLayout>
+    <Layout>
       <Outlet />
-    </AppGlassLayout>
+    </Layout>
   );
 };
 
@@ -102,6 +102,8 @@ function AppRouter() {
             <Route path="/dashboard/recognition" element={<AdminRecognition />} />
             <Route path="/dashboard/campus-pulse" element={<AdminCampusPulse />} />
             <Route path="/dashboard/evaluate" element={<StudentEvaluation />} />
+            <Route path="/dashboard/profile" element={<Profile />} />
+            <Route path="/dashboard/settings" element={<Settings />} />
           </Route>
           <Route path="/admin/*" element={<AdminSaaSRoutes />} />
         </Route>

@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import AdminGlassLayout from '../components/layout/AdminGlassLayout';
 import GlassCard from '../components/ui/GlassCard';
 import Modal from '../components/ui/Modal';
 import Toast from '../components/ui/Toast';
@@ -151,160 +150,156 @@ const AdminEvents = () => {
 
   if (role !== 'admin') {
     return (
-      <AdminGlassLayout>
-        <div className="p-6">
-          <p className="text-red-600 font-semibold">Unauthorized</p>
-        </div>
-      </AdminGlassLayout>
+      <div className="p-6">
+        <p className="text-red-600 font-semibold">Unauthorized</p>
+      </div>
     );
   }
 
   return (
-    <AdminGlassLayout>
-      <div className="space-y-6">
-        <PageHeader title="Events Management" subtitle="Create and manage campus events">
-          <Button onClick={() => setAddOpen(true)}>Add Event</Button>
-        </PageHeader>
+    <div className="space-y-6">
+      <PageHeader title="Events Management" subtitle="Create and manage campus events">
+        <Button onClick={() => setAddOpen(true)}>Add Event</Button>
+      </PageHeader>
 
-        {loading ? (
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 animate-pulse">
-            {[...Array(6)].map((_, i) => (<div key={i} className="h-32 bg-white rounded-xl border border-gray-200"></div>))}
+      {loading ? (
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 animate-pulse">
+          {[...Array(6)].map((_, i) => (<div key={i} className="h-32 bg-white rounded-xl border border-gray-200"></div>))}
+        </div>
+      ) : error ? (
+        <div className="text-red-600">{error}</div>
+      ) : items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+          <div className="w-24 h-24 bg-emerald-50 border border-emerald-100 rounded-full mb-4"></div>
+          <h3 className="text-lg font-semibold text-gray-700">No events yet</h3>
+          <p className="text-sm text-gray-500">Create your first event</p>
+          <div className="mt-4">
+            <Button onClick={() => setAddOpen(true)}>Add Event</Button>
           </div>
-        ) : error ? (
-          <div className="text-red-600">{error}</div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-            <div className="w-24 h-24 bg-emerald-50 border border-emerald-100 rounded-full mb-4"></div>
-            <h3 className="text-lg font-semibold text-gray-700">No events yet</h3>
-            <p className="text-sm text-gray-500">Create your first event</p>
-            <div className="mt-4">
-              <Button onClick={() => setAddOpen(true)}>Add Event</Button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {items.map((ev) => {
-              const upcoming = new Date(ev.event_date) > new Date();
-              return (
-                <GlassCard key={ev.id}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-800">{ev.title}</h3>
-                      <p className="text-sm text-gray-600 mt-2">{ev.description}</p>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant={ev.status === 'pending' || ev.status === 'end_requested' ? 'warning' : ev.status === 'held' ? 'danger' : ev.status === 'ended' ? 'default' : upcoming ? 'primary' : 'default'}>{ev.status === 'pending' ? 'Pending' : ev.status === 'end_requested' ? 'End Requested' : ev.status === 'rejected' ? 'Rejected' : ev.status === 'held' ? 'On Hold' : ev.status === 'ended' ? 'Ended' : upcoming ? 'Upcoming' : 'Past'}</Badge>
-                      <p className="text-xs text-gray-500 mt-2">{new Date(ev.event_date).toLocaleString()}</p>
-                    </div>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {items.map((ev) => {
+            const upcoming = new Date(ev.event_date) > new Date();
+            return (
+              <GlassCard key={ev.id}>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-800">{ev.title}</h3>
+                    <p className="text-sm text-gray-600 mt-2">{ev.description}</p>
                   </div>
-                  <div className="mt-4 flex items-center justify-end gap-2">
-                    {ev.status === 'pending' && (
-                      <>
-                        <Button className="bg-emerald-600 hover:bg-emerald-500 text-white" size="sm" onClick={() => handleApprove(ev.id)}>Approve</Button>
-                        <Button className="bg-orange-500 hover:bg-orange-600 text-white" size="sm" onClick={() => handleReject(ev.id)}>Reject</Button>
-                      </>
-                    )}
-                    {ev.status === 'end_requested' && (
-                      <Button className="bg-purple-600 hover:bg-purple-500 text-white" size="sm" onClick={() => handleApproveEnd(ev.id)}>Approve End</Button>
-                    )}
-                    {ev.status === 'approved' && (
-                      <Button className="bg-yellow-500 hover:bg-yellow-600 text-white" size="sm" onClick={() => handleHold(ev.id)}>Hold</Button>
-                    )}
-                    {ev.status === 'held' && (
-                      <Button className="bg-emerald-600 hover:bg-emerald-500 text-white" size="sm" onClick={() => handleUnhold(ev.id)}>Unhold</Button>
-                    )}
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setEdit({ open: true, id: ev.id, title: ev.title, description: ev.description, event_date: fromISOToLocal(ev.event_date) })}
-                    >
-                      Edit
-                    </Button>
-                    <Button variant="danger" size="sm" onClick={() => setConfirmDelete({ open: true, id: ev.id })}>Delete</Button>
+                  <div className="text-right">
+                    <Badge variant={ev.status === 'pending' || ev.status === 'end_requested' ? 'warning' : ev.status === 'held' ? 'danger' : ev.status === 'ended' ? 'default' : upcoming ? 'primary' : 'default'}>{ev.status === 'pending' ? 'Pending' : ev.status === 'end_requested' ? 'End Requested' : ev.status === 'rejected' ? 'Rejected' : ev.status === 'held' ? 'On Hold' : ev.status === 'ended' ? 'Ended' : upcoming ? 'Upcoming' : 'Past'}</Badge>
+                    <p className="text-xs text-gray-500 mt-2">{new Date(ev.event_date).toLocaleString()}</p>
                   </div>
-                </GlassCard>
-              );
-            })}
-          </div>
-        )}
+                </div>
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  {ev.status === 'pending' && (
+                    <>
+                      <Button className="bg-emerald-600 hover:bg-emerald-500 text-white" size="sm" onClick={() => handleApprove(ev.id)}>Approve</Button>
+                      <Button className="bg-orange-500 hover:bg-orange-600 text-white" size="sm" onClick={() => handleReject(ev.id)}>Reject</Button>
+                    </>
+                  )}
+                  {ev.status === 'end_requested' && (
+                    <Button className="bg-purple-600 hover:bg-purple-500 text-white" size="sm" onClick={() => handleApproveEnd(ev.id)}>Approve End</Button>
+                  )}
+                  {ev.status === 'approved' && (
+                    <Button className="bg-yellow-500 hover:bg-yellow-600 text-white" size="sm" onClick={() => handleHold(ev.id)}>Hold</Button>
+                  )}
+                  {ev.status === 'held' && (
+                    <Button className="bg-emerald-600 hover:bg-emerald-500 text-white" size="sm" onClick={() => handleUnhold(ev.id)}>Unhold</Button>
+                  )}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setEdit({ open: true, id: ev.id, title: ev.title, description: ev.description, event_date: fromISOToLocal(ev.event_date) })}
+                  >
+                    Edit
+                  </Button>
+                  <Button variant="danger" size="sm" onClick={() => setConfirmDelete({ open: true, id: ev.id })}>Delete</Button>
+                </div>
+              </GlassCard>
+            );
+          })}
+        </div>
+      )}
 
-        <Modal
-          open={addOpen}
-          title="Add Event"
-          onClose={() => setAddOpen(false)}
-          actions={<Button onClick={handleAdd}>Save</Button>}
-        >
-          <div className="space-y-3">
-            <input
-              type="text"
-              placeholder="Title"
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
-            />
-            <textarea
-              placeholder="Description"
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
-              rows={3}
-            />
-            <input
-              type="datetime-local"
-              value={form.event_date}
-              onChange={(e) => setForm({ ...form, event_date: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-        </Modal>
+      <Modal
+        open={addOpen}
+        title="Add Event"
+        onClose={() => setAddOpen(false)}
+        actions={<Button onClick={handleAdd}>Save</Button>}
+      >
+        <div className="space-y-3">
+          <input
+            type="text"
+            placeholder="Title"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
+          />
+          <textarea
+            placeholder="Description"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
+            rows={3}
+          />
+          <input
+            type="datetime-local"
+            value={form.event_date}
+            onChange={(e) => setForm({ ...form, event_date: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+      </Modal>
 
-        <Modal
-          open={edit.open}
-          title="Edit Event"
-          onClose={() => setEdit({ open: false, id: null, title: '', description: '', event_date: '' })}
-          actions={<Button onClick={handleUpdate}>Update</Button>}
-        >
-          <div className="space-y-3">
-            <input
-              type="text"
-              placeholder="Title"
-              value={edit.title}
-              onChange={(e) => setEdit({ ...edit, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
-            />
-            <textarea
-              placeholder="Description"
-              value={edit.description}
-              onChange={(e) => setEdit({ ...edit, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
-              rows={3}
-            />
-            <input
-              type="datetime-local"
-              value={edit.event_date}
-              onChange={(e) => setEdit({ ...edit, event_date: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
-            />
-          </div>
-        </Modal>
+      <Modal
+        open={edit.open}
+        title="Edit Event"
+        onClose={() => setEdit({ open: false, id: null, title: '', description: '', event_date: '' })}
+        actions={<Button onClick={handleUpdate}>Update</Button>}
+      >
+        <div className="space-y-3">
+          <input
+            type="text"
+            placeholder="Title"
+            value={edit.title}
+            onChange={(e) => setEdit({ ...edit, title: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
+          />
+          <textarea
+            placeholder="Description"
+            value={edit.description}
+            onChange={(e) => setEdit({ ...edit, description: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
+            rows={3}
+          />
+          <input
+            type="datetime-local"
+            value={edit.event_date}
+            onChange={(e) => setEdit({ ...edit, event_date: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+      </Modal>
 
-        <Modal
-          open={confirmDelete.open}
-          title="Delete Event"
-          onClose={() => setConfirmDelete({ open: false, id: null })}
-          actions={<Button variant="danger" onClick={handleDelete}>Delete</Button>}
-        >
-          <p className="text-gray-700">Delete this event?</p>
-        </Modal>
+      <Modal
+        open={confirmDelete.open}
+        title="Delete Event"
+        onClose={() => setConfirmDelete({ open: false, id: null })}
+        actions={<Button variant="danger" onClick={handleDelete}>Delete</Button>}
+      >
+        <p className="text-gray-700">Delete this event?</p>
+      </Modal>
 
-        <Toast
-          open={toast.open}
-          type={toast.type}
-          message={toast.message}
-          onClose={() => setToast({ ...toast, open: false })}
-        />
-      </div>
-    </AdminGlassLayout>
+      <Toast
+        open={toast.open}
+        type={toast.type}
+        message={toast.message}
+        onClose={() => setToast({ ...toast, open: false })}
+      />
+    </div>
   );
 };
 
