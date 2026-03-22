@@ -71,7 +71,7 @@ def create_task(
     prefix = f"TASK_{dept_code}_"
     
     last_task = db.query(Task).filter(Task.task_code.startswith(prefix)).order_by(Task.task_code.desc()).first()
-    current_max = 0
+    current_max: int = 0
     if last_task and last_task.task_code:
         try:
             current_max = int(last_task.task_code.replace(prefix, ""))
@@ -83,7 +83,8 @@ def create_task(
     task = None
     MAX_RETRIES = 10
     for attempt in range(MAX_RETRIES):
-        task_code = f"{prefix}{current_max + 1 + attempt:03d}"
+        _val: int = int(current_max)
+        task_code = f"{prefix}{_val + 1 + attempt:03d}"
 
         task = Task(
             task_code=task_code,
@@ -652,8 +653,8 @@ def grade_submission(
         TaskSubmission.status == "graded"
     ).all()
     
-    total_marks: float = 0.0
-    total_max: float = 0.0
+    marks_list = []
+    max_list = []
     
     for s in all_submissions:
         # We need to find the max marks for each task. 
@@ -662,13 +663,18 @@ def grade_submission(
         # Let's fetch the task for each submission to be safe or map it.
         t = db.query(Task).filter(Task.id == s.task_id).first()
         if t and s.marks_obtained is not None:
-            total_marks += float(s.marks_obtained)
-            total_max += float(getattr(t, "max_marks", 100) or 100)
+            marks_list.append(float(s.marks_obtained))
+            max_list.append(float(getattr(t, "max_marks", 100) or 100))
+            
+    total_marks: float = sum(marks_list)
+    total_max: float = sum(max_list)
             
     # Calculate Percentage/Score
     final_score = 0.0
-    if total_max > 0:
-        final_score = (total_marks / total_max) * 100
+    _tmax = float(total_max)
+    _tmarks = float(total_marks)
+    if _tmax > 0.0:
+        final_score = (_tmarks / _tmax) * 100.0
         
     # Determine Grade
     final_grade = "F"
