@@ -10,9 +10,11 @@ class TaskSubmissionResponse(BaseModel):
     status: str
     is_late: bool
     file_url: Optional[str] = None
+    submission_text: Optional[str] = None
     marks: Optional[int] = None
     grade: Optional[str] = None
     feedback: Optional[str] = None
+    task_started_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

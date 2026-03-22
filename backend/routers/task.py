@@ -2,6 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 from typing import Optional
+import os, shutil, uuid
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads", "submissions")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 from database import get_db
 
 from models.task import Task
@@ -193,6 +197,13 @@ def submit_task(
         if not member:
             raise HTTPException(403, "Not allowed for this group task")
 
+    # Read file data
+    file_content = None
+    file_mime = None
+    if file:
+        file_content = file.file.read()
+        file_mime = getattr(file, "content_type", "application/pdf")
+
     # Save Submission
     # Check if existing submission to update or create new?
     submission = db.query(TaskSubmission).filter(
@@ -201,8 +212,10 @@ def submit_task(
     ).first()
     
     if submission:
-        submission.submission_text = data.submission_text
-        submission.file_url = data.file_url
+        submission.submission_text = submission_text
+        if file_content:
+            submission.file_data = file_content
+            submission.file_mime = file_mime
         submission.submitted_at = datetime.utcnow()
         submission.is_late = is_late
         submission.status = "submitted"
@@ -210,17 +223,21 @@ def submit_task(
         submission = TaskSubmission(
             task_id=task_id,
             student_id=current_user["user_id"],
-            submission_text=data.submission_text,
-            file_url=data.file_url,
+            submission_text=submission_text,
+            file_data=file_content,
+            file_mime=file_mime,
             is_late=is_late,
             status="submitted"
         )
         db.add(submission)
 
-    # Update Task Status (Global status might be complex for groups, keeping simple)
-    # task.status = "submitted" # Only for individual really
-    
     db.commit()
+    db.refresh(submission)
+
+    # Set new API endpoint url dynamically based on generated ID
+    if file_content:
+        submission.file_url = f"/api/tasks/{task_id}/submissions/{submission.id}/file"
+        db.commit()
     
     # Notify Faculty
     add_notification(
@@ -232,6 +249,20 @@ def submit_task(
     )
 
     return {"message": "Task submitted", "is_late": is_late}
+
+@router.get("/{task_id}/submissions/{submission_id}/file", tags=["Tasks"])
+def get_submission_file(
+    task_id: int,
+    submission_id: int,
+    db: Session = Depends(get_db)
+):
+    from fastapi.responses import Response
+    
+    sub = db.query(TaskSubmission).filter(TaskSubmission.id == submission_id, TaskSubmission.task_id == task_id).first()
+    if not sub or not sub.file_data:
+        raise HTTPException(404, "File not found")
+    
+    return Response(content=sub.file_data, media_type=sub.file_mime or "application/pdf")
 
 # =========================
 # COMMENTS
@@ -701,6 +732,30 @@ def get_task_submissions(
     if task.faculty_id != current_user["user_id"]:
         raise HTTPException(403, "Not your task")
 
+    # Discover target student IDs dynamically based on the mission context
+    from models.group import GroupMember
+    target_ids = []
+    if task.student_id:
+        target_ids.append(task.student_id)
+    elif task.group_id:
+        g_members = db.query(GroupMember).filter(GroupMember.group_id == task.group_id).all()
+        target_ids.extend([m.student_id for m in g_members])
+
+    # Instantiate missing submissions (stubbing) for offline evaluation workflows
+    existing_submissions = db.query(TaskSubmission.student_id).filter(TaskSubmission.task_id == task_id).all()
+    existing_ids = {s.student_id for s in existing_submissions}
+
+    for sid in set(target_ids) - existing_ids:
+        db.add(TaskSubmission(
+            task_id=task_id,
+            student_id=sid,
+            submission_text="",
+            status="pending_submission",
+            is_late=False
+        ))
+    if len(set(target_ids) - existing_ids) > 0:
+        db.commit()
+
     submissions = db.query(TaskSubmission).options(joinedload(TaskSubmission.student)).filter(TaskSubmission.task_id == task_id).all()
     
     return [
@@ -712,6 +767,7 @@ def get_task_submissions(
             "status": s.status,
             "is_late": s.is_late,
             "file_url": s.file_url,
+            "submission_text": s.submission_text,
             "marks": s.marks_obtained,
             "grade": s.grade,
             "feedback": s.feedback,
@@ -719,6 +775,120 @@ def get_task_submissions(
         }
         for s in submissions
     ]
+
+@router.post("/{task_id}/close")
+def close_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user["role"] != FACULTY:
+        raise HTTPException(403, "Faculty only")
+    
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+        
+    if task.faculty_id != current_user["user_id"]:
+        raise HTTPException(403, "Not your task")
+
+    if task.status == "closed":
+        return {"message": "Task already closed", "closed_at": getattr(task, "closed_at", None)}
+
+    task.status = "closed"
+    try:
+        task.closed_at = datetime.utcnow()
+    except Exception:
+        pass
+    db.commit()
+    
+    from models.group import GroupMember
+    target_ids = []
+    if task.student_id:
+        target_ids.append(task.student_id)
+    elif task.group_id:
+        g_members = db.query(GroupMember).filter(GroupMember.group_id == task.group_id).all()
+        target_ids.extend([m.student_id for m in g_members])
+        
+    for sid in set(target_ids):
+        add_notification(db, user_id=sid, title="Mission Closed", message=f"Faculty has formally closed mission '{task.title}'.", type="task")
+        
+    return {"message": "Task closed successfully", "closed_at": getattr(task, "closed_at", None)}
+
+@router.get("/{task_id}/report")
+def get_task_report(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    role = current_user["role"].lower()
+    if role not in [FACULTY.lower(), ADMIN.lower()]:
+        raise HTTPException(403, "Faculty and Admin only")
+        
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+        
+    if role == FACULTY.lower() and task.faculty_id != current_user["user_id"]:
+        raise HTTPException(403, "Not your task")
+
+    submissions = db.query(TaskSubmission).options(joinedload(TaskSubmission.student)).filter(TaskSubmission.task_id == task_id).all()
+    
+    report_data = {
+        "task_id": task.id,
+        "title": task.title,
+        "description": task.description,
+        "max_marks": getattr(task, "max_marks", 100),
+        "status": task.status,
+        "created_at": task.created_at,
+        "started_at": task.started_at,
+        "closed_at": getattr(task, "closed_at", None),
+        "is_shared": getattr(task, "is_report_shared", False),
+        "participants": []
+    }
+    
+    for s in submissions:
+        time_taken_seconds = 0
+        end_time = s.submitted_at or getattr(task, "closed_at", None)
+        
+        if task.started_at and end_time:
+            time_taken_seconds = int((end_time - task.started_at).total_seconds())
+        elif task.started_at and not end_time and task.status != "closed":
+            time_taken_seconds = int((datetime.utcnow() - task.started_at).total_seconds())
+
+        report_data["participants"].append({
+            "student_id": s.student_id,
+            "student_name": s.student.name if s.student else "Unknown",
+            "student_email": s.student.email if s.student else "N/A",
+            "status": s.status,
+            "submitted_at": s.submitted_at,
+            "marks": s.marks_obtained,
+            "grade": s.grade,
+            "time_taken_seconds": max(0, time_taken_seconds)
+        })
+        
+    return report_data
+
+@router.post("/{task_id}/share-report")
+def share_task_report(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user["role"] != FACULTY:
+        raise HTTPException(403, "Only faculty can share task reports")
+    
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+        
+    if task.faculty_id != current_user["user_id"]:
+        raise HTTPException(403, "Not authorized to share this task report")
+        
+    task.is_report_shared = True
+    db.commit()
+    
+    return {"message": "Report successfully shared with Administration"}
 
 @router.delete("/{task_id}")
 def delete_faculty_task(

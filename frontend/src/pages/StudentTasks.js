@@ -540,7 +540,7 @@ const StudentTasks = () => {
                     </button>
                     
                     <div className="flex items-center gap-3">
-                      {(task.dynamic_status.includes('in_progress') || task.dynamic_status.includes('overdue')) && (
+                      {(task.dynamic_status.includes('in_progress') || task.dynamic_status.includes('overdue') || task.dynamic_status === 'pending_submission') && (
                         <button
                           onClick={() => setShowSubmitModal(task)}
                           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors shadow-[0_2px_10px_rgb(79,70,229,0.2)]"
