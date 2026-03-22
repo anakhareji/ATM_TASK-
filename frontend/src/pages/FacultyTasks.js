@@ -775,7 +775,7 @@ const FacultyTasks = () => {
 const TaskCard = ({ task, onPublish, onDelete, onEdit, onViewSubmissions, isActiveActivity, toggleActivity }) => {
     const isOverdue = new Date(task.deadline) < new Date();
     return (
-        <motion.div layout variants={cardEntrance}>
+        <motion.div layout variants={cardEntrance} initial="hidden" animate="visible" exit="hidden">
             <GlassCard className="group p-0 overflow-hidden border-l-8 border-l-transparent hover:border-l-emerald-500 transition-all duration-300 rounded-[2rem] shadow-sm hover:shadow-2xl">
                 <div className="p-8">
                     <div className="flex justify-between items-start mb-6">
@@ -1158,7 +1158,7 @@ const SubmissionsModal = ({ isOpen, onClose, task, submissions, gradeData, setGr
                                         </div>
                                     </div>
                                     {sub.file_url && (
-                                        <a href={sub.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-3 px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all ml-auto">
+                                        <a href={`http://localhost:8000${sub.file_url}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-3 px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all ml-auto">
                                             <Download size={16} /> Open Payload
                                         </a>
                                     )}

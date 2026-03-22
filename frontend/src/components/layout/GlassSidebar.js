@@ -23,6 +23,7 @@ const ADMIN_NAV = [
         label: 'Academic Activity',
         items: [
             { name: 'Global Projects',        path: '/dashboard/projects-global',    icon: Briefcase     },
+            { name: 'Global Tasks',           path: '/dashboard/tasks-global',       icon: CheckSquare   },
             { name: 'Global Submissions',     path: '/dashboard/submissions-global', icon: ClipboardList },
             { name: 'Performance Analytics',  path: '/dashboard/performance',        icon: Activity      },
             { name: 'Evaluate Students',      path: '/dashboard/evaluate',           icon: GraduationCap },

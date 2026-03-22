@@ -33,6 +33,7 @@ class Task(Base):
     # Operational Timestamps
     started_at = Column(DateTime, nullable=True) # When student accepts task
     submitted_at = Column(DateTime, nullable=True)
+    closed_at = Column(DateTime, nullable=True) # When faculty closes task
 
     # Student submission
     submission_content = Column(Text, nullable=True)
@@ -40,6 +41,7 @@ class Task(Base):
     # Faculty evaluation
     faculty_feedback = Column(Text, nullable=True)
     marks = Column(Integer, nullable=True)
+    is_report_shared = Column(Boolean, default=False)
 
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow)

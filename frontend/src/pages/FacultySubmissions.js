@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
     CheckCircle2, AlertCircle, MessageSquare,
-    FileText, Search, Download, Info, Star, StarHalf, X, Clock, Send
+    FileText, Search, Download, Info, Star, StarHalf, X, Clock, Send, Lock, FileBarChart, Printer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
@@ -25,6 +25,12 @@ const FacultySubmissions = () => {
     const [showReviewModal, setShowReviewModal] = useState(null);
     const [gradingLoading, setGradingLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    
+    // Feature States
+    const [closingTask, setClosingTask] = useState(false);
+    const [showReportModal, setShowReportModal] = useState(null);
+    const [generatingReport, setGeneratingReport] = useState(false);
+    const [sendingAdmin, setSendingAdmin] = useState(false);
 
     // Review Form State
     const [reviewForm, setReviewForm] = useState({ marks: '', internal_feedback: '', grade: 'A' });
@@ -84,6 +90,56 @@ const FacultySubmissions = () => {
         setSelectedTask(val);
         if (val) setSearchParams({ task_id: val });
         else setSearchParams({});
+    };
+
+    const handleCloseTask = async () => {
+        if (!selectedTask || !currentActiveTask) return;
+        if (!window.confirm("Complete & Close this mission? This will stop all active timers for students who haven't submitted yet. Are you sure?")) return;
+
+        setClosingTask(true);
+        const loadToast = toast.loading("Finalizing mission parameters...");
+        try {
+            await API.post(`/tasks/${selectedTask}/close`);
+            toast.success("Mission officially closed.", { id: loadToast });
+            // Refresh registry
+            const res = await API.get('/tasks/my-tasks');
+            setTasks(res.data.filter(t => t.status !== 'draft') || []);
+            fetchSubmissions();
+        } catch (err) {
+            toast.error("Failed to close mission.", { id: loadToast });
+        } finally {
+            setClosingTask(false);
+        }
+    };
+
+    const handleGenerateReport = async () => {
+        if (!selectedTask) return;
+        setGeneratingReport(true);
+        const loadToast = toast.loading("Compiling Detailed Intel Report...");
+        try {
+            const res = await API.get(`/tasks/${selectedTask}/report`);
+            setShowReportModal(res.data);
+            toast.dismiss(loadToast);
+        } catch (err) {
+            toast.error("Failed to compile report.", { id: loadToast });
+        } finally {
+            setGeneratingReport(false);
+        }
+    };
+
+    const handleSendToAdmin = async () => {
+        if (!selectedTask) return;
+        setSendingAdmin(true);
+        const loadToast = toast.loading("Encrypting and transmitting to Administration...");
+        try {
+            await API.post(`/tasks/${selectedTask}/share-report`);
+            toast.success("Intelligence Report securely delivered to Administration.", { id: loadToast });
+            setShowReportModal({ ...showReportModal, is_shared: true });
+        } catch (err) {
+            toast.error("Transmission failed.", { id: loadToast });
+        } finally {
+            setSendingAdmin(false);
+        }
     };
 
     const handleReviewSubmit = async (e) => {
@@ -187,6 +243,30 @@ const FacultySubmissions = () => {
                             <p className="text-sm text-blue-700 font-medium leading-relaxed max-w-3xl">
                                 {currentActiveTask.description || "No specific instructions provided for this mission."}
                             </p>
+                            
+                            <div className="flex flex-wrap gap-4 pt-4 mt-6 border-t border-blue-200/50">
+                                {currentActiveTask.status !== 'closed' ? (
+                                    <Button onClick={handleCloseTask} disabled={closingTask} className="bg-rose-600 hover:bg-rose-700 shadow-rose-100 shadow-lg px-6 py-2.5 flex items-center gap-2 text-xs">
+                                        <Lock size={16} /> {closingTask ? 'Closing Protocol...' : 'Complete & Close Mission'}
+                                    </Button>
+                                ) : (
+                                    <div className="bg-blue-100/50 text-blue-700 border border-blue-200 px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                                        <Lock size={16} /> Mission Closed
+                                    </div>
+                                )}
+                                <Button 
+                                    onClick={handleGenerateReport} 
+                                    disabled={currentActiveTask?.status !== 'closed' || generatingReport} 
+                                    className={`shadow-lg px-6 py-2.5 flex items-center gap-2 text-xs transition-all ${
+                                        currentActiveTask?.status === 'closed' 
+                                            ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-100' 
+                                            : 'bg-gray-200 text-gray-500 cursor-not-allowed opacity-75'
+                                    }`}
+                                    title={currentActiveTask?.status !== 'closed' ? "Mission must be closed before generating report" : ""}
+                                >
+                                    <FileBarChart size={16} /> {generatingReport ? 'Compiling...' : 'Generate Detailed Report'}
+                                </Button>
+                            </div>
                         </div>
                         <div className="bg-white/80 p-4 rounded-xl border border-blue-100 shadow-sm min-w-48 text-right space-y-1">
                             <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Mission Parameters</p>
@@ -222,7 +302,7 @@ const FacultySubmissions = () => {
             ) : (
                 <div className="grid grid-cols-1 gap-6">
                     {filteredSubmissions.map(sub => (
-                        <motion.div key={sub.id} variants={cardEntrance}>
+                        <motion.div key={sub.id} variants={cardEntrance} initial="hidden" animate="visible" exit="hidden">
                             <GlassCard className="flex flex-col xl:flex-row items-center justify-between gap-8 p-8 group hover:border-blue-200 transition-all rounded-3xl shadow-sm hover:shadow-xl">
                                 <div className="flex items-center gap-6 flex-1 w-full">
                                     <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-sm">
@@ -257,7 +337,7 @@ const FacultySubmissions = () => {
                                                 </div>
                                             </div>
                                             {sub.file_url && (
-                                                <a href={sub.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:underline ml-auto">
+                                                <a href={`http://localhost:8000${sub.file_url}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-blue-600 text-[10px] font-black uppercase tracking-widest hover:underline ml-auto">
                                                     <Download size={14} /> View Payload
                                                 </a>
                                             )}
@@ -348,6 +428,105 @@ const FacultySubmissions = () => {
                                     </Button>
                                 </div>
                             </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Report Modal */}
+            <AnimatePresence>
+                {showReportModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md print:bg-white print:p-0 print:block"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                            className="bg-white rounded-[2rem] p-8 w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-2xl relative custom-scrollbar print:shadow-none print:max-h-none print:w-full print:p-0"
+                        >
+                            <div className="flex justify-between items-start mb-8 print:hidden">
+                                <h2 className="text-2xl font-black text-gray-800 flex items-center gap-3">
+                                    <FileBarChart className="text-blue-600" /> Mission Evaluation Report
+                                </h2>
+                                <div className="flex gap-4">
+                                    <Button 
+                                        onClick={handleSendToAdmin} 
+                                        disabled={sendingAdmin || showReportModal.is_shared}
+                                        className={`px-6 py-2 shadow-lg text-xs flex items-center gap-2 print:hidden transition-all ${
+                                            showReportModal.is_shared 
+                                                ? 'bg-indigo-100 text-indigo-700 cursor-not-allowed shadow-none' 
+                                                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200'
+                                        }`}
+                                    >
+                                        <Send size={16} /> 
+                                        {sendingAdmin ? 'Transmitting...' : showReportModal.is_shared ? 'Transmitted' : 'Send to Admin'}
+                                    </Button>
+                                    <Button onClick={() => window.print()} className="bg-emerald-600 hover:bg-emerald-700 px-6 py-2 shadow-emerald-100 shadow-lg text-xs flex items-center gap-2">
+                                        <Printer size={16} /> Print Report
+                                    </Button>
+                                    <button onClick={() => setShowReportModal(null)} className="p-2 hover:bg-gray-100 rounded-full text-gray-400"><X size={24} /></button>
+                                </div>
+                            </div>
+
+                            {/* Printable Content */}
+                            <div className="space-y-8">
+                                <div className="text-center border-b-[3px] border-double border-gray-200 pb-8">
+                                    <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase mb-2">{showReportModal.title}</h1>
+                                    <p className="text-sm text-gray-500 font-bold uppercase tracking-widest">Official Evaluation Record &bull; Max Points: {showReportModal.max_marks}</p>
+                                    <div className="flex justify-center gap-6 mt-4 text-xs font-bold text-gray-400">
+                                        <p>Deployed: {showReportModal.started_at ? new Date(showReportModal.started_at).toLocaleString() : 'N/A'}</p>
+                                        <p>&bull;</p>
+                                        <p>Closed: {showReportModal.closed_at ? new Date(showReportModal.closed_at).toLocaleString() : 'On-Going'}</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm border-collapse">
+                                        <thead>
+                                            <tr className="border-b-2 border-gray-800 text-xs uppercase tracking-widest text-gray-400 font-black">
+                                                <th className="py-4 px-4 font-black">Operative</th>
+                                                <th className="py-4 px-4 font-black">Status</th>
+                                                <th className="py-4 px-4 font-black">Evaluation Date</th>
+                                                <th className="py-4 px-4 font-black text-right">Time Logged</th>
+                                                <th className="py-4 px-4 font-black text-right">Score</th>
+                                                <th className="py-4 px-4 font-black text-center">Grade</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 font-bold">
+                                            {showReportModal.participants.map((p, idx) => (
+                                                <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                                    <td className="py-4 px-4">
+                                                        <p className="text-gray-900">{p.student_name}</p>
+                                                    </td>
+                                                    <td className="py-4 px-4">
+                                                        <span className={`px-3 py-1 rounded-full text-[10px] uppercase tracking-widest ${p.status === 'graded' ? 'bg-emerald-100 text-emerald-700' : p.status === 'submitted' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                            {p.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-4 px-4 text-gray-600">
+                                                        {p.submitted_at ? new Date(p.submitted_at).toLocaleString() : '-'}
+                                                    </td>
+                                                    <td className="py-4 px-4 text-right text-indigo-600">
+                                                        {p.time_taken_seconds > 0 ? (
+                                                            p.time_taken_seconds > 86400 
+                                                                ? `${Math.floor(p.time_taken_seconds / 86400)}d ${Math.floor((p.time_taken_seconds % 86400)/3600)}h`
+                                                                : `${Math.floor(p.time_taken_seconds / 3600)}h ${Math.floor((p.time_taken_seconds % 3600) / 60)}m`
+                                                        ) : '-'}
+                                                    </td>
+                                                    <td className="py-4 px-4 text-right text-lg font-black text-gray-800">{p.marks !== null ? p.marks : '-'}</td>
+                                                    <td className="py-4 px-4 text-center">
+                                                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gray-900 text-white font-black">{p.grade || '-'}</span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}

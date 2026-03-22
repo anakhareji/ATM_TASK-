@@ -23,6 +23,7 @@ import StudentTimetable from "../pages/StudentTimetable";
 import StudentApproval from "../pages/StudentApproval";
 import AcademicStructure from "../pages/AcademicStructure";
 import AdminProjects from "../pages/AdminProjects";
+import AdminTasks from "../pages/AdminTasks";
 import AdminSubmissions from "../pages/AdminSubmissions";
 import AdminRecognition from "../pages/AdminRecognition";
 import AdminCampusPulse from "../pages/AdminCampusPulse";
@@ -96,6 +97,7 @@ function AppRouter() {
             <Route path="/dashboard/audit" element={<Audit />} />
             <Route path="/dashboard/approvals" element={<StudentApproval />} />
             <Route path="/dashboard/projects-global" element={<AdminProjects />} />
+            <Route path="/dashboard/tasks-global" element={<AdminTasks />} />
             <Route path="/dashboard/submissions-global" element={<AdminSubmissions />} />
             <Route path="/dashboard/academic-structure" element={<AcademicStructure />} />
             <Route path="/dashboard/performance" element={<AdminPerformance />} />

@@ -80,6 +80,10 @@ try:
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'contact_info') ALTER TABLE campus_events ADD contact_info NVARCHAR(300) NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'tags') ALTER TABLE campus_events ADD tags NVARCHAR(500) NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'max_participants') ALTER TABLE campus_events ADD max_participants INT NULL;"))
+        # New tasks columns
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[tasks]') AND name = 'task_code') ALTER TABLE tasks ADD task_code NVARCHAR(50) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[tasks]') AND name = 'closed_at') ALTER TABLE tasks ADD closed_at DATETIME NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[tasks]') AND name = 'is_report_shared') ALTER TABLE tasks ADD is_report_shared BIT NULL DEFAULT 0;"))
         # New student_performance columns
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[student_performance]') AND name = 'is_ranked') ALTER TABLE student_performance ADD is_ranked BIT NULL DEFAULT 0;"))
         # New users columns
