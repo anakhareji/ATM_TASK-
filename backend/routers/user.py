@@ -5,6 +5,7 @@ from typing import Optional
 
 from database import get_db
 from models.user import User
+from utils.security import get_current_user
 
 router = APIRouter(tags=["Users"])
 
@@ -14,13 +15,19 @@ class UserUpdate(BaseModel):
     avatar: Optional[str] = None
 
 @router.put("/{user_id}")
-def update_user(user_id: str, data: UserUpdate, db: Session = Depends(get_db)):
-    # If the frontend passes "me", ideally we resolve from JWT token
-    # For now, we expect a valid integer user ID.
-    try:
-        user_id_int = int(user_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid user ID format, please provide numeric ID")
+def update_user(
+    user_id: str, 
+    data: UserUpdate, 
+    db: Session = Depends(get_db), 
+    current_user: dict = Depends(get_current_user)
+):
+    if user_id == "me":
+        user_id_int = int(current_user["user_id"])
+    else:
+        try:
+            user_id_int = int(user_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid user ID format, please provide numeric ID")
 
     user = db.query(User).filter(User.id == user_id_int).first()
     if not user:

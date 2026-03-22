@@ -34,8 +34,8 @@ const FacultyProjects = () => {
     }, []);
 
     const filteredProjects = projects.filter(p =>
-        p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.description.toLowerCase().includes(searchTerm.toLowerCase())
+        (p.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.description || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handleManageGroups = (projectId) => {

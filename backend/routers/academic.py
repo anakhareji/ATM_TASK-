@@ -181,7 +181,11 @@ def promote_student(id: int, db: Session = Depends(get_db)):
     if not student.course_id:
         raise HTTPException(status_code=400, detail="Student not enrolled in any course")
         
-    prog = db.query(Program).get(course.program_id)
+    course_obj = db.query(Course).get(student.course_id)
+    if not course_obj:
+        raise HTTPException(status_code=400, detail="Student course not found")
+        
+    prog = db.query(Program).get(course_obj.program_id)
     if not prog:
         raise HTTPException(status_code=400, detail="Course program not found")
         

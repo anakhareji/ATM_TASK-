@@ -436,14 +436,30 @@ const FacultyTasks = () => {
         const errors = {};
         if (!formData.title.trim()) errors.title = "Project objective title is required";
         if (!formData.project_id) errors.project_id = "Assigned academic track is required";
-        if (!formData.deadline) errors.deadline = "Completion deadline is mandatory";
+        
+        if (!formData.deadline) {
+            errors.deadline = "Completion deadline is mandatory";
+        } else {
+            const selected = new Date(formData.deadline);
+            const today = new Date();
+            // Allow past creation only if editing an older task, but generally enforce forward direction
+            if (!isEditing && selected <= today) {
+                errors.deadline = "Deadline must be scheduled for a future date/time";
+            }
+        }
+        
         if (formData.max_marks <= 0) errors.max_marks = "Max marks must be a positive integer";
+        
+        const parsedPenalty = parseFloat(formData.late_penalty || 0);
+        if (parsedPenalty < 0 || parsedPenalty > 100) {
+            errors.late_penalty = "Penalty percentage must be bound between 0% and 100%";
+        }
 
         if (formData.task_type === 'individual' && (!formData.selected_students || formData.selected_students.length === 0)) {
-            errors.student_id = "At least one individual recipient must be added";
+            errors.student_id = "At least one individual recipient must be specified";
         }
         if (formData.task_type === 'group' && !formData.group_id) {
-            errors.group_id = "Assigned squad must be selected";
+            errors.group_id = "Assigned deployment squad must be selected";
         }
 
         setFormErrors(errors);
@@ -647,8 +663,8 @@ const FacultyTasks = () => {
     const filteredTasks = useMemo(() => {
         return tasks.filter(t => {
             const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
-            const matchesSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                t.description?.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = (t.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (t.description || "").toLowerCase().includes(searchTerm.toLowerCase());
             return matchesStatus && matchesSearch;
         }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }, [tasks, statusFilter, searchTerm]);

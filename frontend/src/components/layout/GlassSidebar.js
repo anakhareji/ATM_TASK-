@@ -130,8 +130,11 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
     return (
         <div className="w-72 h-full bg-[#000000] flex flex-col overflow-hidden text-white font-sans">
             {/* Profile Section at TOP */}
-            <div className="p-8 flex flex-col items-center border-b border-white/10">
-                <div className="w-20 h-20 rounded-full border-2 border-primary overflow-hidden mb-4 p-1 ring-2 ring-primary/20 bg-white">
+            <div 
+                onClick={() => navigate('/dashboard/settings')}
+                className="p-8 flex flex-col items-center border-b border-white/10 hover:bg-white/5 cursor-pointer transition-all group"
+            >
+                <div className="w-20 h-20 rounded-full border-2 border-primary overflow-hidden mb-4 p-1 ring-2 ring-primary/20 bg-white group-hover:scale-110 transition-transform duration-500">
                     {userAvatar ? (
                         <img src={userAvatar} alt="User" className="w-full h-full object-cover rounded-full" />
                     ) : (
@@ -141,7 +144,7 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
                     )}
                 </div>
                 <div className="text-center">
-                    <h3 className="text-lg font-black tracking-tight leading-tight">{userName}</h3>
+                    <h3 className="text-lg font-black tracking-tight leading-tight group-hover:text-primary transition-colors">{userName}</h3>
                     <p className="text-xs text-secondary-muted font-bold mt-1 lowercase opacity-70 truncate max-w-[200px]">{userEmail}</p>
                 </div>
             </div>

@@ -543,7 +543,7 @@ def list_all_projects(
     q: str | None = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Project)
+    query = db.query(Project).filter(Project.is_deleted == False)
     if status:
         query = query.filter(Project.status == status)
     if department_id:
@@ -580,7 +580,10 @@ def list_all_projects(
 def delete_project_admin(project_id: int, db: Session = Depends(get_db), current_admin: dict = Depends(admin_required)):
     p = db.query(Project).filter(Project.id == project_id).first()
     if not p: raise HTTPException(404, "Project not found")
-    db.delete(p)
+    
+    # Soft delete to satisfy referential constraint integrity
+    p.is_deleted = True
+    p.status = "Archived"
     db.commit()
     db.add(AuditLog(
         user_id=current_admin["user_id"],
@@ -597,15 +600,37 @@ def create_project_admin(data: dict, db: Session = Depends(get_db), current_admi
     title = (data or {}).get("title")
     if not title:
         raise HTTPException(400, "Title is required")
+
+    def safe_int(val):
+        try:
+            return int(val) if val else None
+        except (ValueError, TypeError):
+            return None
+
+    def safe_date(val):
+        if not val:
+            return None
+        # Clean potential ISO timestamps to just YYYY-MM-DD
+        val = val.split('T')[0]
+        try:
+            # Handle YYYY-MM-DD
+            return datetime.strptime(val, "%Y-%m-%d").date()
+        except ValueError:
+            try:
+                # Handle DD-MM-YYYY fallback if submitted
+                return datetime.strptime(val, "%d-%m-%Y").date()
+            except ValueError:
+                return None
+
     p = Project(
         title=title,
         description=data.get("description"),
-        department_id=data.get("department_id"),
-        course_id=data.get("course_id"),
-        lead_faculty_id=data.get("lead_faculty_id"),
+        department_id=safe_int(data.get("department_id")),
+        course_id=safe_int(data.get("course_id")),
+        lead_faculty_id=safe_int(data.get("lead_faculty_id")),
         academic_year=data.get("academic_year"),
-        start_date=datetime.strptime(data.get("start_date"), "%Y-%m-%d").date() if data.get("start_date") else None,
-        end_date=datetime.strptime(data.get("end_date"), "%Y-%m-%d").date() if data.get("end_date") else None,
+        start_date=safe_date(data.get("start_date")),
+        end_date=safe_date(data.get("end_date")),
         status=data.get("status", "Draft"),
         visibility=data.get("visibility", "Department Only"),
         allow_tasks=data.get("allow_tasks", False),
@@ -633,9 +658,32 @@ def create_project_admin(data: dict, db: Session = Depends(get_db), current_admi
 def update_project_admin(project_id: int, data: dict, db: Session = Depends(get_db), current_admin: dict = Depends(admin_required)):
     p = db.query(Project).filter(Project.id == project_id).first()
     if not p: raise HTTPException(404, "Project not found")
-    for key in ["title","description","department_id","course_id","semester"]:
-        if key in data:
-            setattr(p, key, data[key])
+
+    def safe_int(val):
+        try: return int(val) if val else None
+        except: return None
+
+    def safe_date(val):
+        if not val: return None
+        val = str(val).split('T')[0]
+        try: return datetime.strptime(val, "%Y-%m-%d").date()
+        except: 
+            try: return datetime.strptime(val, "%d-%m-%Y").date()
+            except: return None
+
+    if "title" in data: p.title = data["title"]
+    if "description" in data: p.description = data["description"]
+    if "department_id" in data: p.department_id = safe_int(data["department_id"])
+    if "course_id" in data: p.course_id = safe_int(data["course_id"])
+    if "semester" in data: p.semester = data["semester"]
+    if "lead_faculty_id" in data: p.lead_faculty_id = safe_int(data["lead_faculty_id"])
+    if "academic_year" in data: p.academic_year = data["academic_year"]
+    if "start_date" in data: p.start_date = safe_date(data["start_date"])
+    if "end_date" in data: p.end_date = safe_date(data["end_date"])
+    if "status" in data: p.status = data["status"]
+    if "visibility" in data: p.visibility = data["visibility"]
+    if "allow_tasks" in data: p.allow_tasks = bool(data["allow_tasks"])
+
     db.commit()
     db.add(AuditLog(user_id=current_admin["user_id"], action="update_project", entity_type="project", entity_id=p.id))
     db.commit()

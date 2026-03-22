@@ -212,6 +212,7 @@ def seed_performance_data(
                 final_score=rec["final_score"],
                 grade=rec["grade"],
                 remarks=f"Good performance during {rec['semester']}",
+                submitted_to_admin=True,
                 created_at=datetime.utcnow() - timedelta(days=rec["offset"])
             )
             db.add(perf)
@@ -261,7 +262,8 @@ def leaderboard(
     db: Session = Depends(get_db)
 ):
     query = db.query(StudentPerformance).filter(
-        StudentPerformance.final_score.isnot(None)
+        StudentPerformance.final_score.isnot(None),
+        StudentPerformance.is_ranked == True
     )
 
     if min_score is not None:
@@ -277,6 +279,7 @@ def leaderboard(
         {
             "student_id": p.student_id,
             "student_name": p.student.name,
+            "student_avatar": p.student.avatar,
             "final_score": p.final_score,
             "grade": p.grade,
             "semester": p.semester
@@ -519,11 +522,15 @@ def list_submitted_reports(
     if current_user["role"] != ADMIN:
         raise HTTPException(403, "Admin only")
         
-    reports = db.query(StudentPerformance).filter(StudentPerformance.submitted_to_admin == True).all()
+    reports = db.query(StudentPerformance).filter(
+        StudentPerformance.submitted_to_admin == True,
+        StudentPerformance.is_ranked == False
+    ).all()
     data = []
     for r in reports:
         data.append({
             "id": r.id,
+            "student_id": r.student_id,
             "student_name": r.student.name,
             "faculty_name": r.faculty.name,
             "project_title": r.project.title,
@@ -532,3 +539,48 @@ def list_submitted_reports(
             "created_at": r.created_at
         })
     return data
+
+# =====================================================
+# RANK PERFORMANCE (Admin)
+# =====================================================
+@router.post("/{performance_id}/rank")
+def rank_student(
+    performance_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user["role"] != ADMIN:
+        raise HTTPException(status_code=403, detail="Only admins can officially rank students")
+        
+    perf = db.query(StudentPerformance).filter(StudentPerformance.id == performance_id).first()
+    if not perf:
+        raise HTTPException(status_code=404, detail="Performance record not found")
+        
+    perf.is_ranked = True
+    db.commit()
+    
+    # Audit log
+    db.add(AuditLog(
+        user_id=current_user["user_id"],
+        action="Officially ranked student on leaderboard",
+        entity_type="StudentPerformance",
+        entity_id=performance_id
+    ))
+    db.commit()
+    
+    return {"message": f"Student {perf.student.name} has been officially ranked."}
+
+# =====================================================
+# DETAILED STUDENT ANALYTICS (Faculty)
+# =====================================================
+@router.get("/student/{student_id}/analytics")
+def get_student_analytics(
+    student_id: int,
+    project_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user["role"] not in [FACULTY, ADMIN]:
+        raise HTTPException(status_code=403, detail="Access denied")
+        
+    return calculate_system_performance(db, student_id, project_id)

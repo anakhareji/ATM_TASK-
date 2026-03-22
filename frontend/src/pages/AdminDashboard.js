@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
-import AdminGlassLayout from '../components/layout/AdminGlassLayout';
 import { CheckCircle2, Clock, MoreHorizontal, User, Calendar } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -29,20 +28,17 @@ const AdminDashboard = () => {
     }, [fetchStats]);
 
     if (loading) return (
-        <AdminGlassLayout>
             <div className="p-8 space-y-8 animate-pulse bg-surface min-h-screen">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     {[...Array(3)].map((_, i) => <div key={i} className="h-48 bg-white rounded-[32px]" />)}
                 </div>
                 <div className="h-96 bg-white rounded-[32px]" />
             </div>
-        </AdminGlassLayout>
     );
 
     const kpi = stats?.kpi || {};
 
     return (
-        <AdminGlassLayout>
             <div className="space-y-8 pb-12 font-sans overflow-x-hidden">
                 {/* Dashboard content */}
             {/* Row 1: Top Stats */}
@@ -223,9 +219,8 @@ const AdminDashboard = () => {
                         </div>
                     </div>
                 </div>
-                </div>
             </div>
-        </AdminGlassLayout>
+            </div>
     );
 };
 

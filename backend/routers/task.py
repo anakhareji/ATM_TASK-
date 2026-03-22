@@ -693,13 +693,35 @@ def get_task_submissions(
     if current_user["role"] != FACULTY:
         raise HTTPException(403, "Faculty only")
     
-    # Check if task belongs to faculty
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(404, "Task not found")
         
     if task.faculty_id != current_user["user_id"]:
         raise HTTPException(403, "Not your task")
+
+    # Discover target student IDs dynamically based on the mission context
+    from models.group import GroupMember
+    target_ids = []
+    if task.student_id:
+        target_ids.append(task.student_id)
+    elif task.group_id:
+        g_members = db.query(GroupMember).filter(GroupMember.group_id == task.group_id).all()
+        target_ids.extend([m.student_id for m in g_members])
+
+    # Instantiate missing submissions (stubbing) for offline evaluation workflows
+    existing_submissions = db.query(TaskSubmission.student_id).filter(TaskSubmission.task_id == task_id).all()
+    existing_ids = {s.student_id for s in existing_submissions}
+
+    for sid in set(target_ids) - existing_ids:
+        db.add(TaskSubmission(
+            task_id=task_id,
+            student_id=sid,
+            status="pending_submission",
+            is_late=False
+        ))
+    if len(set(target_ids) - existing_ids) > 0:
+        db.commit()
 
     submissions = db.query(TaskSubmission).options(joinedload(TaskSubmission.student)).filter(TaskSubmission.task_id == task_id).all()
     
@@ -710,7 +732,7 @@ def get_task_submissions(
             "student_email": s.student.email if s.student else "N/A",
             "submitted_at": s.submitted_at,
             "status": s.status,
-            "is_late": s.is_late,
+            "is_late": s.is_late or False,
             "file_url": s.file_url,
             "marks": s.marks_obtained,
             "grade": s.grade,
@@ -737,9 +759,14 @@ def delete_faculty_task(
     if role == FACULTY.lower() and task.faculty_id != current_user["user_id"]:
         raise HTTPException(403, "Not your task")
 
+    # Clear referential downstream constraints before parent deletion
+    from models.task_comment import TaskComment
+    db.query(TaskSubmission).filter(TaskSubmission.task_id == task_id).delete(synchronize_session=False)
+    db.query(TaskComment).filter(TaskComment.task_id == task_id).delete(synchronize_session=False)
+
     db.delete(task)
     db.commit()
-    return {"message": "Task deleted"}
+    return {"message": "Task and related metadata deleted successfully"}
 
 # =========================
 # LIST ALL (FOR ADMIN DASHBOARD)

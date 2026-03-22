@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import AdminGlassLayout from '../components/layout/AdminGlassLayout';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -203,7 +202,6 @@ const AdminUsers = () => {
   };
 
   return (
-    <AdminGlassLayout>
       <div className="space-y-8 pb-12">
         <PageHeader title="Identity Governance" subtitle="Manage access protocols, roles, and administrative lifecycle">
           <div className="flex flex-wrap items-center gap-4 mt-4 lg:mt-0">
@@ -659,7 +657,6 @@ const AdminUsers = () => {
           )}
         </Modal>
       </div>
-    </AdminGlassLayout>
   );
 };
 
