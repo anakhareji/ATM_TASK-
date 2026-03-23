@@ -58,9 +58,15 @@ const Settings = () => {
     const [, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
     
     // Theme state
-    const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark');
+    const [darkMode, setDarkMode] = useState(() => {
+        if (user && user.id) {
+            return localStorage.getItem(`theme_${user.id}`) === 'dark';
+        }
+        return false;
+    });
     
     // Modal state
     const [modal, setModal] = useState({ open: false, title: '', content: null });
@@ -70,6 +76,29 @@ const Settings = () => {
         email: user.email || '',
         avatar: user.avatar || ''
     });
+
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            if (window.hasUnsavedSettings) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            if (window.hasUnsavedSettings && user && user.id) {
+                const savedTheme = localStorage.getItem(`theme_${user.id}`);
+                if (savedTheme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            }
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            window.hasUnsavedSettings = false;
+            setHasUnsavedChanges(false);
+        };
+    }, [user]);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -93,13 +122,20 @@ const Settings = () => {
     const toggleTheme = () => {
         const newMode = !darkMode;
         setDarkMode(newMode);
-        localStorage.setItem('theme', newMode ? 'dark' : 'light');
-        document.documentElement.classList.toggle('dark', newMode);
-        toast.success(`${newMode ? 'Dark' : 'Light'} Mode Engaged`);
+        if (newMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        window.hasUnsavedSettings = true;
+        setHasUnsavedChanges(true);
     };
 
     const handleTerminateSession = () => {
         localStorage.clear();
+        document.documentElement.classList.remove('dark');
+        window.hasUnsavedSettings = false;
+        setHasUnsavedChanges(false);
         toast.success('Session Terminated Successfully');
         setTimeout(() => navigate('/login'), 500);
     };
@@ -110,6 +146,8 @@ const Settings = () => {
             const reader = new FileReader();
             reader.onloadend = () => {
                 setFormData(prev => ({ ...prev, avatar: reader.result }));
+                window.hasUnsavedSettings = true;
+                setHasUnsavedChanges(true);
             };
             reader.readAsDataURL(file);
         }
@@ -123,6 +161,19 @@ const Settings = () => {
                 email: formData.email,
                 avatar: formData.avatar
             });
+            
+            // Apply theme changes
+            if (user && user.id) {
+                localStorage.setItem(`theme_${user.id}`, darkMode ? 'dark' : 'light');
+            }
+            if (darkMode) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            window.hasUnsavedSettings = false;
+            setHasUnsavedChanges(false);
+
             toast.success('System Settings Synchronized');
             const updatedUser = { ...user, ...formData };
             localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -266,8 +317,12 @@ const Settings = () => {
                 </div>
                 <button 
                     onClick={handleSave} 
-                    disabled={saving} 
-                    className="px-10 py-4 bg-primary text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.3em] shadow-2xl hover:opacity-90 transition-all active:scale-95 flex items-center gap-3 disabled:opacity-50"
+                    disabled={saving || !hasUnsavedChanges} 
+                    className={`px-10 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.3em] transition-all flex items-center gap-3 ${
+                        hasUnsavedChanges 
+                            ? 'bg-primary text-white hover:opacity-90 shadow-2xl active:scale-95' 
+                            : 'bg-surface border border-border text-secondary/40 cursor-not-allowed shadow-none'
+                    }`}
                 >
                     {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                     {saving ? 'Syncing...' : 'Apply Changes'}
@@ -304,7 +359,7 @@ const Settings = () => {
                                 <input 
                                     className="w-full px-6 py-3.5 bg-surface border border-border rounded-2xl text-sm font-bold text-secondary focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all shadow-sm"
                                     value={formData.name}
-                                    onChange={e => setFormData({...formData, name: e.target.value})}
+                                    onChange={e => { setFormData({...formData, name: e.target.value}); window.hasUnsavedSettings = true; setHasUnsavedChanges(true); }}
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -312,7 +367,7 @@ const Settings = () => {
                                 <input 
                                     className="w-full px-6 py-3.5 bg-surface border border-border rounded-2xl text-sm font-bold text-secondary focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all shadow-sm"
                                     value={formData.email}
-                                    onChange={e => setFormData({...formData, email: e.target.value})}
+                                    onChange={e => { setFormData({...formData, email: e.target.value}); window.hasUnsavedSettings = true; setHasUnsavedChanges(true); }}
                                 />
                             </div>
                         </div>
