@@ -6,7 +6,7 @@ const AppGlassLayout = ({ children }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
-        <div className="h-screen flex bg-surface font-sans text-secondary overflow-hidden">
+        <div className="h-screen flex font-sans text-secondary overflow-hidden">
             {/* Mobile Drawer Overlay */}
             {isSidebarOpen && (
                 <div
@@ -30,7 +30,7 @@ const AppGlassLayout = ({ children }) => {
                 <GlassNavbar isSidebarOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
                 
                 {/* Main scrollable area */}
-                <main className="flex-1 overflow-y-auto bg-surface relative custom-scrollbar">
+                <main className="flex-1 overflow-y-auto relative custom-scrollbar">
                     {/* Content */}
                     <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-10 transition-all duration-500">
                         {children}

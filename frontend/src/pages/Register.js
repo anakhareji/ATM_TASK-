@@ -61,7 +61,7 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-surface font-sans">
+    <div className="min-h-screen flex font-sans">
       {/* Left Side: Illustration */}
       <div className="hidden lg:flex w-1/2 bg-white relative items-center justify-center p-20 overflow-hidden">
         {/* Decorative background patterns */}
