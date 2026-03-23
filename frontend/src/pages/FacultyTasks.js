@@ -1042,27 +1042,39 @@ const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, for
                     {formErrors.title && <p className="text-[10px] text-rose-500 font-black uppercase tracking-wider pl-1">{formErrors.title}</p>}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-3">
-                        <label className="text-xs font-black uppercase tracking-widest text-gray-400">Lifecycle Finish <span className="text-rose-500">*</span></label>
-                        <input
-                            type="datetime-local"
-                            className={`w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none font-bold text-sm ${formErrors.deadline ? 'border-rose-300 ring-2 ring-rose-100' : 'border-gray-100'}`}
-                            value={formData.deadline}
-                            onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                        />
-                        {formErrors.deadline && <p className="text-[10px] text-rose-500 font-black uppercase tracking-wider pl-1">{formErrors.deadline}</p>}
-                    </div>
-                    <div className="space-y-3">
-                        <label className="text-xs font-black uppercase tracking-widest text-gray-400">Maximum Points</label>
-                        <input
-                            type="number" min="0"
-                            className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-black text-sm text-emerald-600"
-                            value={formData.max_marks}
-                            onChange={(e) => setFormData({ ...formData, max_marks: e.target.value })}
-                        />
-                    </div>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-3">
+                <label className="text-xs font-black uppercase tracking-widest text-gray-400">Lifecycle Finish <span className="text-rose-500">*</span></label>
+                <input
+                    type="datetime-local"
+                    className={`w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none font-bold text-sm ${formErrors.deadline ? 'border-rose-300 ring-2 ring-rose-100' : 'border-gray-100'}`}
+                    value={formData.deadline}
+                    onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                />
+                {formErrors.deadline && <p className="text-[10px] text-rose-500 font-black uppercase tracking-wider pl-1">{formErrors.deadline}</p>}
+            </div>
+            <div className="space-y-3">
+                <label className="text-xs font-black uppercase tracking-widest text-gray-400">Priority Level</label>
+                <select
+                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm text-gray-700"
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                >
+                    <option value="High">🔴 High Priority</option>
+                    <option value="Medium">🟠 Standard (Medium)</option>
+                    <option value="Low">⚪ Low Priority</option>
+                </select>
+            </div>
+        </div>
+        <div className="space-y-3 mt-8">
+            <label className="text-xs font-black uppercase tracking-widest text-gray-400">Maximum Points</label>
+            <input
+                type="number" min="0"
+                className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-black text-sm text-emerald-600"
+                value={formData.max_marks}
+                onChange={(e) => setFormData({ ...formData, max_marks: e.target.value })}
+            />
+        </div>
 
                 <div className="space-y-3">
                     <label className="text-xs font-black uppercase tracking-widest text-gray-400">Operational Briefing</label>

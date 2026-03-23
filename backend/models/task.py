@@ -11,10 +11,10 @@ class Task(Base):
     # Task details
     title = Column(String(200), nullable=False)
     description = Column(String(500))
-    priority = Column(String(20))          # Low / Medium / High
+    priority = Column(String(20), default="medium") # 'low', 'medium', 'high'
     deadline = Column(DateTime, nullable=False)
     max_marks = Column(Integer, default=100)
-    task_type = Column(String(20), default="individual") # individual / group
+    task_type = Column(String(50)) # 'individual' or 'group'
 
     # Relations
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)

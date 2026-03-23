@@ -489,7 +489,10 @@ const StudentTasks = () => {
                         }`}>
                           {task.dynamic_status.replace('_', ' ').charAt(0).toUpperCase() + task.dynamic_status.replace('_', ' ').slice(1)}
                         </span>
-                        <span className="text-xs text-gray-400 font-medium">#{task.id}</span>
+                        <span className="text-xs text-gray-400 font-medium tracking-widest uppercase">#{task.id}</span>
+                        <span className={`text-[10px] ml-2 px-1.5 py-0.5 rounded border font-black uppercase tracking-widest ${task.priority === 'High' ? 'text-rose-600 border-rose-200 bg-rose-50' : task.priority === 'Medium' ? 'text-amber-600 border-amber-200 bg-amber-50' : 'text-gray-500 border-gray-200 bg-gray-50'}`}>
+                            {task.priority || 'Medium'}
+                        </span>
                       </div>
                       <h3 className="text-lg font-bold text-gray-900 leading-snug">
                         {task.title}

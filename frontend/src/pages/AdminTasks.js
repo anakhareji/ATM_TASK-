@@ -113,12 +113,21 @@ const AdminTasks = () => {
                             >
                                 <GlassCard className="flex flex-col h-full group hover:border-emerald-200 transition-colors relative overflow-hidden shadow-sm hover:shadow-xl">
                                     <div className="mb-6">
-                                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-4 shadow-sm ${
-                                            task.status === 'closed' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
-                                            task.status === 'in_progress' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                                            'bg-amber-50 text-amber-600 border border-amber-100'
-                                        }`}>
-                                            {task.status || 'Unknown'}
+                                        <div className="flex gap-2 mb-4">
+                                            <div className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ${
+                                                task.status === 'closed' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
+                                                task.status === 'in_progress' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                                                'bg-amber-50 text-amber-600 border border-amber-100'
+                                            }`}>
+                                                {task.status || 'Unknown'}
+                                            </div>
+                                            <div className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm border ${
+                                                task.priority === 'High' ? 'bg-rose-50 text-rose-600 border-rose-200' : 
+                                                task.priority === 'Medium' ? 'bg-amber-50 text-amber-600 border-amber-200' : 
+                                                'bg-gray-50 text-gray-500 border-gray-200'
+                                            }`}>
+                                                {task.priority || 'Medium'} Priority
+                                            </div>
                                         </div>
                                         <h3 className="text-xl font-bold text-gray-800 mb-2 leading-tight pr-8">{task.title}</h3>
                                         <p className="text-gray-500 text-sm line-clamp-2 leading-relaxed">
