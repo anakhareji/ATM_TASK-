@@ -102,7 +102,7 @@ const StudentTimetable = () => {
 
       {/* ── Header ── */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6
-                      bg-white/60 backdrop-blur-2xl border border-white/40 rounded-3xl px-10 py-7 shadow-sm w-full">
+                      bg-white/90 backdrop-blur-2xl border border-white/40 rounded-3xl px-10 py-7 shadow-sm w-full">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center shadow-xl shadow-teal-500/30">
             <CalendarDays size={28} className="text-white"/>
@@ -138,7 +138,7 @@ const StudentTimetable = () => {
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
-          {[...Array(7)].map((_,i) => <div key={i} className="h-96 bg-white/20 rounded-3xl animate-pulse"/>)}
+          {[...Array(7)].map((_,i) => <div key={i} className="h-96 bg-white/60 rounded-3xl animate-pulse"/>)}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
@@ -146,9 +146,9 @@ const StudentTimetable = () => {
             const isToday = isSameDay(date, today);
             const dayItems = [...schedule[idx]].sort((a, b) => a.time.localeCompare(b.time));
             return (
-              <motion.div key={idx} variants={cardEntrance} className="h-full group/col">
+              <motion.div key={idx} initial="hidden" animate="visible" variants={cardEntrance} className="h-full group/col">
                 {/* Day header */}
-                <div className={`mb-3 p-3 rounded-2xl text-center transition-all ${isToday ? 'bg-emerald-500 shadow-lg shadow-emerald-500/25' : 'bg-white/60 border border-white/40'}`}>
+                <div className={`mb-3 p-3 rounded-2xl text-center transition-all ${isToday ? 'bg-emerald-500 shadow-lg shadow-emerald-500/25' : 'bg-white/90 border border-white/40'}`}>
                   <p className={`text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-white/80' : 'text-gray-400'}`}>{DAY_LABELS[date.getDay()]}</p>
                   <p className={`text-2xl font-black italic leading-none mt-0.5 ${isToday ? 'text-white' : 'text-gray-700'}`}>{date.getDate()}</p>
                   {isToday && <p className="text-[8px] font-black text-emerald-200 uppercase tracking-widest mt-0.5">Today</p>}
@@ -156,9 +156,9 @@ const StudentTimetable = () => {
 
                 {/* Items card */}
                 <GlassCard className={`min-h-[420px] flex flex-col gap-3 transition-all duration-300 p-4
-                  ${isToday ? 'border-emerald-200 bg-emerald-50/30 shadow-lg shadow-emerald-500/5' : 'bg-white/30 border-white/50 group-hover/col:bg-white group-hover/col:shadow-xl'}`}>
+                  ${isToday ? 'border-emerald-200 bg-emerald-50/70 shadow-lg shadow-emerald-500/5' : 'bg-white/70 border-white/50 shadow-md group-hover/col:bg-white group-hover/col:shadow-xl'}`}>
                   {dayItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center flex-1 opacity-20 group-hover/col:opacity-40 transition-opacity py-8">
+                    <div className="flex flex-col items-center justify-center flex-1 opacity-50 group-hover/col:opacity-80 transition-opacity py-8 text-gray-500">
                       <Target size={22} className="mb-2"/>
                       <p className="text-[9px] font-black uppercase tracking-widest">Clear</p>
                     </div>
@@ -202,7 +202,7 @@ const StudentTimetable = () => {
 
       {/* Legend + footer */}
       <div className="flex justify-center items-center gap-8">
-        <div className="flex items-center gap-6 px-8 py-3 bg-white/50 border border-white/60 rounded-full backdrop-blur-xl">
+        <div className="flex items-center gap-6 px-8 py-3 bg-white/90 border border-white/60 rounded-full backdrop-blur-xl">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-emerald-500"/>
             <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Task</span>

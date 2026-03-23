@@ -39,9 +39,25 @@ import FacultySubmissions from "../pages/FacultySubmissions";
 import FacultyPlanner from "../pages/FacultyPlanner";
 import FacultyStudents from "../pages/FacultyStudents";
 
+import { useEffect } from "react";
+
 const LayoutWrapper = () => {
   const role = (localStorage.getItem("userRole") || "").toLowerCase();
   
+  useEffect(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user && user.id) {
+         const theme = localStorage.getItem(`theme_${user.id}`);
+         if (theme === 'dark') {
+             document.documentElement.classList.add('dark');
+         } else {
+             document.documentElement.classList.remove('dark');
+         }
+      }
+    } catch(e){}
+  }, []);
+
   // Both Admin, Faculty and Student now use their respective Premium Glass Layouts
   const Layout = role === 'admin' ? AdminGlassLayout : AppGlassLayout;
   
