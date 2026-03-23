@@ -40,14 +40,18 @@ def create_planner(
             detail="Only admin or faculty can create planner"
         )
 
-    # 🔒 Faculty must be assigned to project
+    # 🔒 Faculty must be assigned to project or be the lead faculty
     if current_user["role"] == "faculty":
+        from models.project import Project
+        project = db.query(Project).filter(Project.id == data.project_id).first()
+        is_lead = project and getattr(project, "lead_faculty_id", None) == current_user["user_id"]
+        
         assignment = db.query(ProjectFaculty).filter(
             ProjectFaculty.project_id == data.project_id,
             ProjectFaculty.faculty_id == current_user["user_id"]
         ).first()
 
-        if not assignment:
+        if not assignment and not is_lead:
             raise HTTPException(
                 status_code=403,
                 detail="You are not assigned to this project"

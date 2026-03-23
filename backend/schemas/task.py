@@ -5,7 +5,7 @@ from typing import Optional
 class TaskCreateRequest(BaseModel):
     title: str
     description: Optional[str] = None
-    priority: str
+    priority: Optional[str] = "medium"
     deadline: datetime
     project_id: int
     max_marks: Optional[int] = 100
