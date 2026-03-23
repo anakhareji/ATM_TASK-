@@ -419,7 +419,7 @@ const StudentTasks = () => {
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-8 max-w-7xl mx-auto pb-12">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 border-b border-gray-100 pb-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white shadow-sm mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
             <CheckSquare size={28} className="text-indigo-600" />
@@ -465,7 +465,7 @@ const StudentTasks = () => {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pt-4">
           {filteredTasks.map((task) => (
             <motion.div key={task.id} variants={cardEntrance} initial="hidden" animate="visible" exit="hidden" layout className="h-full">
-              <div className="group h-full flex flex-col p-6 bg-white border border-gray-200 hover:border-indigo-100 rounded-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 relative overflow-hidden">
+              <div className="group h-full flex flex-col p-6 bg-white/90 backdrop-blur-xl border border-white hover:border-indigo-100 rounded-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 relative overflow-hidden">
                 
                 {/* Status Indicator Bar */}
                 <div className={`absolute top-0 left-0 w-1 h-full ${
@@ -590,7 +590,7 @@ const StudentTasks = () => {
           ))}
           
           {filteredTasks.length === 0 && (
-            <div className="col-span-full py-20 rounded-2xl bg-white border border-gray-200 flex flex-col items-center justify-center text-center shadow-sm w-full">
+            <div className="col-span-full py-20 rounded-[2.5rem] bg-white/80 backdrop-blur-xl border border-white flex flex-col items-center justify-center text-center shadow-sm w-full">
                 <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
                     <CheckSquare size={28} className="text-gray-400" />
                 </div>

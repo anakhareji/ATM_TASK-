@@ -76,7 +76,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-surface font-sans">
+    <div className="min-h-screen flex font-sans">
       {/* Left Side: Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white relative z-10">
         <div className="max-w-md w-full">

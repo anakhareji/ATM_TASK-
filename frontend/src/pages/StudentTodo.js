@@ -92,7 +92,7 @@ const StudentTodo = () => {
     <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-10 pb-20">
       
       {/* Tactical Planning Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 bg-white/40 p-1 rounded-[3.5rem] border border-white/50 backdrop-blur-xl">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 bg-white/80 p-1 rounded-[3.5rem] border border-white shadow-sm backdrop-blur-2xl">
         <div className="px-10 py-8">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-emerald-500 rounded-xl shadow-lg shadow-emerald-500/20">
@@ -153,7 +153,7 @@ const StudentTodo = () => {
               const isExpanded = expandedTaskId === t.id;
               return (
               <motion.div key={`task-${t.id}`} variants={cardEntrance} initial="hidden" animate="visible" exit="hidden" layout>
-                 <GlassCard className="p-8 border-indigo-200 bg-indigo-50/10 group hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-300 relative overflow-hidden">
+                 <GlassCard className="p-8 border-indigo-200 bg-white/90 group hover:shadow-2xl hover:shadow-indigo-500/5 transition-all duration-300 relative overflow-hidden backdrop-blur-xl">
                     <div 
                       className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10 cursor-pointer"
                       onClick={() => setExpandedTaskId(isExpanded ? null : t.id)}
@@ -242,7 +242,7 @@ const StudentTodo = () => {
             {/* 📝 RENDER PERSONAL TODOS */}
             {todos.map((t) => (
               <motion.div key={`todo-${t.id}`} variants={cardEntrance} initial="hidden" animate="visible" exit="hidden" layout>
-                <GlassCard className="p-8 border-white/60 bg-white/40 group hover:bg-white hover:shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300">
+                <GlassCard className="p-8 border-white bg-white/90 group hover:bg-white hover:shadow-2xl hover:shadow-emerald-500/5 transition-all duration-300 backdrop-blur-xl">
                   <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                     <div className="flex items-center gap-6 text-center md:text-left">
                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors duration-300 ${
@@ -298,7 +298,7 @@ const StudentTodo = () => {
         )}
 
         {!loading && todos.length === 0 && assignedTasks.length === 0 && (
-          <div className="py-40 rounded-[4rem] bg-white/40 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center backdrop-blur-sm grayscale opacity-60">
+          <div className="py-40 rounded-[4rem] bg-white/80 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center backdrop-blur-xl">
               <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
                   <Target size={48} className="text-gray-300" />
               </div>
