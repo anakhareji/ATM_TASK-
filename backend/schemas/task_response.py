@@ -9,8 +9,8 @@ class TaskResponse(BaseModel):
     priority: str
     deadline: datetime
     project_id: int
-    max_marks: int
-    task_type: str
+    max_marks: Optional[int] = 100
+    task_type: Optional[str] = "individual"
     status: str
     file_url: Optional[str] = None
     created_at: datetime
