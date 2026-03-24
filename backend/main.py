@@ -46,6 +46,7 @@ from routers.academic_structure_v1 import router as academic_structure_v1_router
 from routers.admin_v1 import router as admin_v1_router
 from routers.user import router as user_router
 from routers.public import router as public_router
+from routers.analytics import router as analytics_router
 # -------- Create App --------
 app = FastAPI(
     title="Academic Task Management System",
@@ -128,6 +129,7 @@ app.include_router(academic_structure_v1_router, prefix="/api/v1/academic_struct
 app.include_router(admin_v1_router, prefix="/api/v1/admin")
 app.include_router(user_router, prefix="/api/users")
 app.include_router(public_router, prefix="/api/public")
+app.include_router(analytics_router, prefix="/api")
 # -------- Static Files (uploads) --------
 uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(uploads_dir, exist_ok=True)
