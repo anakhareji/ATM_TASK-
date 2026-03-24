@@ -62,23 +62,32 @@ def get_public_departments(db: Session = Depends(get_db)):
     departments = db.query(DepartmentV1).filter(DepartmentV1.is_active == True).all()
     result = []
     
-    unsplash_images = [
-        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1555949963-aa79dcee981c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1586717791821-3f44a5638d48?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1554224155-9726b3028d77?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-        "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-    ]
+    # Specific targeted thumbnails based on department names
+    dept_images_map = {
+        "computer": "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=1000&auto=format&fit=crop",
+        "biology": "https://images.unsplash.com/photo-1530026405186-ed1f139313f8?q=80&w=1000&auto=format&fit=crop", # Glowing test tubes/DNA vibes
+        "psychology": "https://images.unsplash.com/photo-1559757175-5700dde675bc?q=80&w=1000&auto=format&fit=crop", # Brain/Mind abstract
+        "mechanical": "https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=1000&auto=format&fit=crop", # Engineering blueprints/gears
+        "default": "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1000&auto=format&fit=crop"
+    }
     
-    for i, d in enumerate(departments):
-        # Count programs/courses in this department
+    for d in departments:
         course_count = db.query(Program).filter(Program.department_id == d.id).count()
+        
+        # Match image based on name
+        d_name_lower = d.name.lower()
+        matched_image = dept_images_map["default"]
+        for key, img_url in dept_images_map.items():
+            if key in d_name_lower:
+                matched_image = img_url
+                break
+                
         result.append({
             "id": d.id,
             "name": d.name,
             "code": d.code,
             "description": d.description or "Excellence in education and research.",
             "course_count": course_count,
-            "image": unsplash_images[i % len(unsplash_images)]
+            "image": matched_image
         })
     return result

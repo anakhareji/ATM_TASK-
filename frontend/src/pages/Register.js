@@ -1,57 +1,23 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, UserPlus, GraduationCap, BookOpen } from "lucide-react";
-import Button from "../components/ui/Button";
+import { Eye, EyeOff, User, Lock, Home } from "lucide-react";
 import API from "../api/axios";
 import { getErrorMessage } from "../utils/errorHelpers";
+import toast from "react-hot-toast";
 
 const Register = () => {
-    const [role, setRole] = useState("student"); // student or faculty
-    const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        password: "",
-        confirmPassword: ""
-    });
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState("");
-    const navigate = useNavigate();
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError("");
-
-        // Validation
-        if (formData.password !== formData.confirmPassword) {
-            setError("Passwords do not match");
-            return;
-        }
-
-        if (formData.password.length < 6) {
-            setError("Password must be at least 6 characters");
-            return;
-        }
-
-        setIsLoading(true);
-
-        try {
-            const endpoint = role === "student" ? "/auth/register/student" : "/auth/register/faculty";
-            await API.post(endpoint, {
-                name: formData.name,
-                email: formData.email,
-                password: formData.password
-            });
-
-            // Success - redirect to login with success message
-            alert("Registration successful! Your account is pending admin approval. You'll be able to login once approved.");
-            navigate("/login");
-        } catch (err) {
-            setIsLoading(false);
-            setError(getErrorMessage(err, "Registration failed. Please try again."));
-        }
-    };
+  const [role, setRole] = useState("student");
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: ""
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleInputChange = (e) => {
     setFormData({
@@ -60,215 +26,204 @@ const Register = () => {
     });
   };
 
-  return (
-    <div className="min-h-screen flex font-sans">
-      {/* Left Side: Illustration */}
-      <div className="hidden lg:flex w-1/2 bg-white relative items-center justify-center p-20 overflow-hidden">
-        {/* Decorative background patterns */}
-        <div className="absolute inset-0 z-0 opacity-10">
-          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[100px]" />
-          <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-accent-blue/20 rounded-full blur-[80px]" />
-        </div>
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-        <div className="relative z-10 w-full h-full flex items-center justify-center">
-          <div className="relative">
-            {/* Using a placeholder for the registration illustration */}
-            <img 
-              src="https://img.freepik.com/free-vector/sign-up-concept-illustration_114360-7885.jpg" 
-              alt="Register Illustration" 
-              className="max-w-xl drop-shadow-3xl"
-            />
-          </div>
-        </div>
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const endpoint = role === "student" ? "/auth/register/student" : "/auth/register/faculty";
+      await API.post(endpoint, {
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        email: formData.email,
+        password: formData.password
+      });
+
+      toast.success("Registration successful! Account pending approval.");
+      navigate("/login");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Registration failed. Please try again."));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen relative flex items-center justify-center p-4 md:p-8 font-sans bg-[#3c786c]">
+      {/* Background Layer (Blurred Cafe) */}
+      <div className="absolute inset-0 overflow-hidden z-0">
+         <div className="absolute inset-0 bg-[#29786a]/90 mix-blend-multiply z-10" />
+         <img 
+            src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=2000&auto=format&fit=crop" 
+            className="w-full h-full object-cover opacity-60 blur-[3px] scale-105" 
+            alt="Cafe Background" 
+         />
       </div>
 
-      {/* Right Side: Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white relative z-10">
-        <div className="max-w-xl w-full">
-          {/* Logo/Brand (AT) */}
-          <div className="mb-10 flex justify-end">
-             <div className="w-10 h-10 rounded-full bg-violet-100 flex items-center justify-center text-violet-600 font-bold text-xs">
-                AT
+      {/* Home Button Top Left */}
+      <Link to="/" className="absolute top-6 left-6 md:top-10 md:left-10 flex items-center gap-2 text-white/90 hover:text-white font-medium text-lg transition-all z-20 px-4 py-2 hover:bg-white/20 hover:backdrop-blur-md rounded-xl hover:-translate-y-1 hover:shadow-xl duration-300">
+        <Home size={24} /> Home
+      </Link>
+
+      {/* Main Split Card */}
+      <div className="relative z-10 w-full max-w-5xl md:h-[650px] bg-white rounded-xl md:rounded-[2rem] shadow-2xl flex flex-col md:flex-row overflow-hidden">
+        
+        {/* Left Side (Image with S-Curve wave) */}
+        <div className="hidden md:block relative w-[45%] bg-[#368b78]">
+           <img 
+              src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=1000&auto=format&fit=crop" 
+              className="w-full h-full object-cover mix-blend-overlay opacity-60" 
+              alt="Inside Cafe" 
+           />
+           <div className="absolute inset-0 bg-[#1c5f52]/40 mix-blend-multiply" />
+           
+           {/* SVG Wave mask overlay to create the S-curve onto the white side */}
+           <svg className="absolute right-0 top-0 h-full w-[250px] text-white" viewBox="0 0 100 1000" preserveAspectRatio="none">
+              <path d="M100,0 L100,1000 L90,1000 C150,650 -50,350 0,0 Z" fill="currentColor" />
+           </svg>
+        </div>
+
+        {/* Right Side (Form) */}
+        <div className="w-full md:w-[55%] flex flex-col justify-center items-center py-10 p-8 md:px-12 relative bg-white overflow-y-auto custom-scrollbar">
+           <div className="w-full max-w-md flex flex-col items-center flex-1 justify-center">
+             
+             <h2 className="text-4xl text-gray-800 mb-6 font-black tracking-tight">Sign Up</h2>
+             
+             {/* Tabs */}
+             <div className="flex w-full mb-6 gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setRole("student")} 
+                  className={`flex-1 py-3 text-[10px] sm:text-xs font-black tracking-widest uppercase transition-all rounded-lg border-2 ${role === 'student' ? 'border-[#36c2a6] text-[#36c2a6] bg-[#f0faf8]' : 'border-gray-100 text-gray-400 hover:border-gray-200'}`}
+                >
+                  STUDENT
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setRole("faculty")} 
+                  className={`flex-1 py-3 text-[10px] sm:text-xs font-black tracking-widest uppercase transition-all rounded-lg border-2 ${role === 'faculty' ? 'border-gray-800 text-gray-800 bg-gray-50' : 'border-gray-100 text-gray-400 hover:border-gray-200'}`}
+                >
+                  FACULTY
+                </button>
              </div>
-          </div>
+             
+             <form className="w-full space-y-4" onSubmit={handleSubmit}>
+                 
+                 {/* First Name & Last Name */}
+                 <div className="flex flex-col sm:flex-row gap-4">
+                     <div className="relative flex-1">
+                         <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                         <input 
+                            name="firstName" 
+                            type="text" 
+                            required
+                            placeholder="Enter First Name" 
+                            className="w-full py-3.5 pl-11 pr-4 text-gray-600 bg-white border border-gray-200 rounded-lg outline-none focus:border-[#36c2a6] focus:ring-1 focus:ring-[#36c2a6] transition-all placeholder:text-gray-400 font-light" 
+                            value={formData.firstName} 
+                            onChange={handleInputChange} 
+                         />
+                     </div>
+                     <div className="relative flex-1">
+                         <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                         <input 
+                            name="lastName" 
+                            type="text" 
+                            required
+                            placeholder="Enter Last Name" 
+                            className="w-full py-3.5 pl-11 pr-4 text-gray-600 bg-white border border-gray-200 rounded-lg outline-none focus:border-[#36c2a6] focus:ring-1 focus:ring-[#36c2a6] transition-all placeholder:text-gray-400 font-light" 
+                            value={formData.lastName} 
+                            onChange={handleInputChange} 
+                         />
+                     </div>
+                 </div>
 
-          <div className="mb-8">
-            <h2 className="text-4xl font-black text-secondary tracking-tight">
-              Sign Up
-            </h2>
-          </div>
+                 {/* Email Input */}
+                 <div className="relative">
+                     <User size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" />
+                     <input 
+                        type="email" 
+                        name="email"
+                        required
+                        placeholder="Enter Email (e.g. anakha@gmail.com)" 
+                        className="w-full py-3.5 pl-12 pr-4 text-gray-600 bg-white border border-gray-200 rounded-lg outline-none focus:border-[#36c2a6] focus:ring-1 focus:ring-[#36c2a6] transition-all placeholder:text-gray-400 font-light" 
+                        value={formData.email} 
+                        onChange={handleInputChange} 
+                     />
+                 </div>
 
-          {/* Role Selection (Kept from original logic) */}
-          <div className="mb-8 p-1 bg-gray-50 rounded-2xl flex border border-gray-100">
-             <button 
-                onClick={() => setRole("student")}
-                className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${role === "student" ? "bg-white text-primary shadow-sm" : "text-secondary-muted"}`}
-             >
-                Student
-             </button>
-             <button 
-                onClick={() => setRole("faculty")}
-                className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${role === "faculty" ? "bg-white text-primary shadow-sm" : "text-secondary-muted"}`}
-             >
-                Faculty
-             </button>
-          </div>
+                 {/* Password Input */}
+                 <div className="relative">
+                     <Lock size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" />
+                     <input 
+                        type={showPassword ? "text" : "password"} 
+                        name="password"
+                        required
+                        placeholder="••••••••" 
+                        className="w-full py-3.5 pl-12 pr-12 text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-[#36c2a6] focus:ring-1 focus:ring-[#36c2a6] transition-all placeholder:text-gray-400 tracking-wider" 
+                        value={formData.password} 
+                        onChange={handleInputChange} 
+                     />
+                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                        {showPassword ? <Eye size={16}/> : <EyeOff size={16}/>}
+                     </button>
+                 </div>
 
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 text-xs font-bold">
-              {error}
-            </div>
-          )}
+                 {/* Confirm Password Input */}
+                 <div className="relative">
+                     <Lock size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" />
+                     <input 
+                        type={showConfirmPassword ? "text" : "password"} 
+                        name="confirmPassword"
+                        required
+                        placeholder="Confirm Password" 
+                        className="w-full py-3.5 pl-12 pr-12 text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-[#36c2a6] focus:ring-1 focus:ring-[#36c2a6] transition-all placeholder:text-gray-400 tracking-wider" 
+                        value={formData.confirmPassword} 
+                        onChange={handleInputChange} 
+                     />
+                     <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                        {showConfirmPassword ? <Eye size={16}/> : <EyeOff size={16}/>}
+                     </button>
+                 </div>
+                 
+                 {/* Terms and Conditions */}
+                 <div className="flex items-center gap-3 pt-2">
+                     <input type="checkbox" id="terms" required className="w-5 h-5 rounded border border-gray-300 text-[#36c2a6] focus:ring-[#36c2a6] cursor-pointer accent-[#36c2a6]" />
+                     <label htmlFor="terms" className="text-sm font-bold text-gray-700 cursor-pointer">
+                         I agree to all terms
+                     </label>
+                 </div>
 
-          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-x-6 gap-y-4" autoComplete="off">
-            <div className="space-y-1">
-              <div className="relative group">
-                <input
-                  type="text"
-                  name="firstName"
-                  onChange={handleInputChange}
-                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-gray-200 group-hover:border-primary focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-300 shadow-sm"
-                  placeholder="Enter First Name"
-                  required
-                />
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-muted">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                </div>
-              </div>
-            </div>
+                 {/* Action Buttons */}
+                 <div className="w-full pt-4">
+                     <button 
+                         type="submit" 
+                         disabled={isLoading} 
+                         className="w-full bg-[#36c2a6] hover:bg-[#2ca38a] text-white border border-transparent font-black py-4 px-6 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-[#36c2a6]/30 disabled:opacity-70 shadow-md flex items-center justify-center tracking-widest uppercase"
+                     >
+                         {isLoading ? "Processing..." : "REGISTER"}
+                     </button>
+                 </div>
 
-            <div className="space-y-1">
-              <div className="relative group">
-                <input
-                  type="text"
-                  name="lastName"
-                  onChange={handleInputChange}
-                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-gray-200 group-hover:border-primary focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-300 shadow-sm"
-                  placeholder="Enter Last Name"
-                  required
-                />
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-muted">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                </div>
-              </div>
-            </div>
-
-            <div className="col-span-2 space-y-1">
-              <div className="relative group">
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-gray-200 group-hover:border-primary focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-300 shadow-sm"
-                  placeholder="Enter Username"
-                  required
-                />
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-muted">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                </div>
-              </div>
-            </div>
-
-            <div className="col-span-2 space-y-1">
-              <div className="relative group">
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white border border-gray-200 group-hover:border-primary focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-300 shadow-sm"
-                  placeholder="Enter Email"
-                  required
-                />
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-muted">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                </div>
-              </div>
-            </div>
-
-            <div className="col-span-2 space-y-1">
-              <div className="relative group">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="w-full pl-12 pr-12 py-4 rounded-2xl bg-white border border-gray-200 group-hover:border-primary focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-300 shadow-sm"
-                  placeholder="Enter Password"
-                  required
-                />
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-muted">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-secondary-muted hover:text-primary transition-colors p-1"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="col-span-2 space-y-1">
-              <div className="relative group">
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className="w-full pl-12 pr-12 py-4 rounded-2xl bg-white border border-gray-200 group-hover:border-primary focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all duration-300 shadow-sm"
-                  placeholder="Confirm Password"
-                  required
-                />
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-muted">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-secondary-muted hover:text-primary transition-colors p-1"
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="col-span-2 flex items-center gap-3 ml-1 mt-2">
-                <input type="checkbox" id="terms" required className="w-5 h-5 accent-primary rounded-lg border-gray-300" />
-                <label htmlFor="terms" className="text-sm font-bold text-gray-700">I agree to all terms</label>
-            </div>
-
-            <div className="col-span-2 mt-6">
-              <button
-                className="w-40 py-4 bg-primary text-white font-black rounded-2xl shadow-xl shadow-primary/20 hover:bg-primary-hover active:scale-95 transition-all duration-300 uppercase tracking-widest text-xs"
-                disabled={isLoading}
-                type="submit"
-              >
-                {isLoading ? "Processing..." : "Register"}
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-10 text-sm font-bold text-secondary-muted">
-              Already have an account?{" "}
-              <Link to="/login" className="text-accent-blue font-black hover:underline underline-offset-4">
-                Sign In
-              </Link>
-          </div>
+                 {/* Sign In Link */}
+                 <div className="text-center pt-4">
+                     <span className="text-sm text-gray-500 font-medium">Already have an account? </span>
+                     <Link to="/login" className="text-sm text-[#36c2a6] hover:text-[#2da38b] font-black underline underline-offset-4">
+                         Sign In
+                     </Link>
+                 </div>
+             </form>
+             
+           </div>
         </div>
       </div>
     </div>
