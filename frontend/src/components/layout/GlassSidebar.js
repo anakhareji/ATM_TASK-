@@ -135,7 +135,7 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
     };
 
     return (
-        <div className="w-72 h-full bg-[#000000] flex flex-col overflow-hidden text-white font-sans">
+        <div className="w-72 h-full bg-[#3c786c] flex flex-col overflow-hidden text-white font-sans">
             {/* Profile Section at TOP */}
             <div 
                 onClick={() => navigate('/dashboard/settings')}
