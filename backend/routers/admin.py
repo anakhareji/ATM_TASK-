@@ -251,40 +251,57 @@ def get_admin_dashboard_stats(db: Session = Depends(get_db)):
     total_tasks = db.query(Task).count()
     total_submissions = db.query(TaskSubmission).count()
     
-    # Submission rate
-    sub_rate = 0
-    if total_tasks > 0:
-        sub_rate = round((total_submissions / (total_tasks * (active_students or 1))) * 100, 1)
+    # Task Status Breakdown
+    completed_tasks = db.query(Task).filter(Task.status.in_(["completed", "graded", "submitted"])).count()
+    in_progress_tasks = db.query(Task).filter(Task.status == "in_progress").count()
+    pending_tasks = db.query(Task).filter(Task.status.in_(["assigned", "draft", "published"])).count()
+    
+    # Delayed: deadline passed, not completed
+    from datetime import datetime
+    now = datetime.utcnow()
+    delayed_tasks = db.query(Task).filter(Task.deadline < now, Task.status.notin_(["completed", "graded"])).count()
+    
+    task_overview = {
+        "complete_pct": round((completed_tasks / total_tasks * 100) if total_tasks else 0),
+        "in_progress_pct": round((in_progress_tasks / total_tasks * 100) if total_tasks else 0),
+        "pending_pct": round((pending_tasks / total_tasks * 100) if total_tasks else 0),
+        "delayed_pct": round((delayed_tasks / total_tasks * 100) if total_tasks else 0)
+    }
 
-    # Grade distribution (with fallback for no data)
-    try:
-        grades = db.query(StudentPerformance.grade, func.count(StudentPerformance.id)).group_by(StudentPerformance.grade).all()
-        grade_dist = {g[0]: g[1] for g in grades if g[0]}
-    except Exception:
-        grade_dist = {}
-
-    # Performance trend (last 6 months - simulated)
-    perf_trend = [
-        {"month": "Sep", "score": 65, "activity": 450},
-        {"month": "Oct", "score": 68, "activity": 520},
-        {"month": "Nov", "score": 72, "activity": 610},
-        {"month": "Dec", "score": 70, "activity": 480},
-        {"month": "Jan", "score": 75, "activity": 720},
-        {"month": "Feb", "score": 78, "activity": 850},
-    ]
-
-    # Recent Audits (Manually serialized for JSON)
-    audits = db.query(AuditLog).order_by(desc(AuditLog.timestamp)).limit(8).all()
-    serialized_audits = []
-    for a in audits:
-        user_obj = db.query(User).filter(User.id == a.user_id).first()
-        serialized_audits.append({
-            "id": a.id,
-            "user_name": user_obj.name if user_obj else "System",
-            "action": a.action,
-            "entity": a.entity_type,
-            "timestamp": a.timestamp.isoformat() if a.timestamp else None
+    # Recent Tasks for Table
+    recent_tasks_query = db.query(Task).order_by(desc(Task.created_at)).limit(4).all()
+    recent_tasks = []
+    for t in recent_tasks_query:
+        faculty = db.query(User).filter(User.id == t.faculty_id).first()
+        status_label = "Running" if t.status == "in_progress" else "Pending" if t.status in ["assigned", "published"] else "Complete"
+        if t.deadline < now and t.status not in ["completed", "graded"]:
+            status_label = "Delayed"
+            color = "amber-500"
+        elif status_label == "Running":
+            color = "primary"
+        elif status_label == "Pending":
+            color = "blue-500"
+        else:
+            color = "emerald-500"
+            
+        progress = "100%" if status_label == "Complete" else "50%" if status_label == "Running" else "0%"
+        if status_label == "Delayed": progress = "90%" # mock mostly done but stuck
+            
+        recent_tasks.append({
+            "name": t.title,
+            "manager": faculty.name if faculty else "Unknown",
+            "date": t.deadline.strftime("%d %b %Y"),
+            "status": status_label,
+            "progress": progress,
+            "color": color
         })
+        
+    # Weekly Progress (Completed in last 7 days)
+    from datetime import timedelta
+    last_week = now - timedelta(days=7)
+    weekly_completed = db.query(TaskSubmission).filter(TaskSubmission.submitted_at >= last_week).count()
+    weekly_progress_pct = round((weekly_completed / (in_progress_tasks + weekly_completed) * 100) if (in_progress_tasks + weekly_completed) > 0 else 0)
+    if weekly_progress_pct == 0 and weekly_completed > 0: weekly_progress_pct = 100
 
     return {
         "kpi": {
@@ -292,22 +309,18 @@ def get_admin_dashboard_stats(db: Session = Depends(get_db)):
             "faculty": total_faculty,
             "students": total_students,
             "active_students": active_students,
-            "pending_approvals": pending_approvals,
             "projects": total_projects,
             "tasks": total_tasks,
-            "submission_rate": f"{sub_rate}%",
-            "avg_score": round(db.query(func.avg(StudentPerformance.final_score)).scalar() or 0, 1),
-            "growth": {
-                "users": "+12%",
-                "submissions": "+8.4%",
-                "projects": "+5%",
-                "performance": "+15%"
-            }
+            "tasks_finished": completed_tasks,
+            "task_overview": task_overview,
+            "tracked_hours": total_tasks * 4, # Estimated rough aggregation metric
+            "tracked_mins": 30,
+            "running_tasks": in_progress_tasks,
+            "weekly_completed": weekly_completed,
+            "weekly_progress_pct": weekly_progress_pct,
+            "next_deadline_hours": 2 # Static relative formatting for now
         },
-        "grade_distribution": grade_dist,
-        "performance_trend": perf_trend,
-        "recent_audits": serialized_audits,
-        "system_status": "Healthy"
+        "recent_tasks": recent_tasks
     }
 
 # ======================
