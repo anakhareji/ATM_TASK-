@@ -15,7 +15,7 @@ const ChartContainer = ({ title, children, className = '' }) => {
                     </h3>
                 </div>
             )}
-            <div className="flex-1 min-h-0 w-full relative z-10">
+            <div className="flex-1 min-h-[250px] w-full relative z-10">
                 {children}
             </div>
         </GlassCard>

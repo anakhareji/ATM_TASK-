@@ -18,12 +18,15 @@ const Leaderboard = () => {
             if (minScore !== '') params.min_score = parseFloat(minScore);
             if (maxScore !== '') params.max_score = parseFloat(maxScore);
 
-            const response = await axios.get('/performance/leaderboard', { params });
-            const rawData = Array.isArray(response.data) ? response.data : [];
+            const response = await axios.get('/analytics/performance/students');
+            let rawData = Array.isArray(response.data) ? response.data : [];
+            if (params.min_score) rawData = rawData.filter(s => s.atm_score >= params.min_score);
+            if (params.max_score) rawData = rawData.filter(s => s.atm_score <= params.max_score);
+
             const processed = rawData.map(s => ({
                 ...s,
-                final_score: Number(s.final_score) || 0,
-                student_name: s.student_name || `Student #${s.student_id}`
+                final_score: Number(s.atm_score) || 0,
+                student_name: s.name || `Student #${s.student_id}`
             }));
             setStudents(processed.slice(0, 5));
         } catch (error) {
@@ -101,8 +104,9 @@ const Leaderboard = () => {
                     students.map((student, index) => (
                         <motion.div
                             key={index}
-                            variants={tableRowVariants}
-                            // 'initial' and 'animate' propagated from parent staggerContainer
+                            initial={{ opacity: 0, y: 5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.1 }}
                             className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-2xl hover:shadow-md transition-all shadow-sm group"
                         >
                             <div className="flex items-center gap-4">
@@ -120,10 +124,12 @@ const Leaderboard = () => {
                                         </div>
                                         {student.student_name || `Student #${student.student_id}`}
                                     </div>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-1 ${student.grade === 'A' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                                        student.grade === 'B' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'bg-gray-50 text-gray-700 border border-gray-200'
-                                        }`}>
-                                        Grade {student.grade}
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-1 ${
+                                        student.atm_score >= 90 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                        student.atm_score >= 70 ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 
+                                        'bg-gray-50 text-gray-700 border border-gray-200'
+                                    }`}>
+                                        {student.atm_score >= 90 ? 'Grade A+' : student.atm_score >= 80 ? 'Grade A' : student.atm_score >= 70 ? 'Grade B' : student.atm_score >= 60 ? 'Grade C' : 'Grade D'}
                                     </span>
                                 </div>
                             </div>

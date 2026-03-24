@@ -90,14 +90,16 @@ body {
   .dark .text-white { color: #FFFFFF !important; }
 }
 
-.stat-card {
-  @apply bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm transition-all hover:shadow-md cursor-default;
-}
+@layer components {
+  .stat-card {
+    @apply bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm transition-all hover:shadow-md cursor-default;
+  }
 
-.progress-bar-container {
-  @apply w-full h-2 bg-gray-100 rounded-full overflow-hidden;
-}
+  .progress-bar-container {
+    @apply w-full h-2 bg-gray-100 rounded-full overflow-hidden;
+  }
 
-.progress-bar-fill {
-  @apply h-full bg-primary rounded-full transition-all duration-700;
+  .progress-bar-fill {
+    @apply h-full bg-primary rounded-full transition-all duration-700;
+  }
 }

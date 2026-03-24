@@ -56,8 +56,10 @@ const AdminDashboard = () => {
                     <div>
                         <p className="text-sm font-bold text-secondary-muted mb-1">Task Finished</p>
                         <div className="flex items-baseline gap-2">
-                             <h3 className="text-4xl font-black text-secondary">08</h3>
-                             <p className="text-sm font-bold text-secondary-muted">/ 15</p>
+                             <h3 className="text-4xl font-black text-secondary">
+                               {kpi.tasks_finished < 10 ? `0${kpi.tasks_finished || 0}` : kpi.tasks_finished || 0}
+                             </h3>
+                             <p className="text-sm font-bold text-secondary-muted">/ {kpi.tasks || 0}</p>
                         </div>
                     </div>
                 </div>
@@ -74,7 +76,9 @@ const AdminDashboard = () => {
                     </div>
                     <div>
                         <p className="text-sm font-bold text-secondary-muted mb-1">Tracked Time</p>
-                        <h3 className="text-4xl font-black text-secondary">31<span className="text-2xl ml-1 text-secondary-muted">h</span> 45<span className="text-2xl ml-1 text-secondary-muted">m</span></h3>
+                        <h3 className="text-4xl font-black text-secondary">
+                          {kpi.tracked_hours || 0}<span className="text-2xl ml-1 text-secondary-muted">h</span> {kpi.tracked_mins || 0}<span className="text-2xl ml-1 text-secondary-muted">m</span>
+                        </h3>
                     </div>
                 </div>
 
@@ -90,30 +94,30 @@ const AdminDashboard = () => {
                         <div className="space-y-2">
                             <div className="flex justify-between items-center text-xs font-bold text-secondary-muted">
                                 <span>Complete</span>
-                                <span>75%</span>
+                                <span>{kpi.task_overview?.complete_pct || 0}%</span>
                             </div>
-                            <div className="progress-bar-container"><div className="progress-bar-fill w-[75%]" /></div>
+                            <div className="progress-bar-container"><div className="progress-bar-fill" style={{ width: `${kpi.task_overview?.complete_pct || 0}%` }} /></div>
                         </div>
                         <div className="space-y-2">
                             <div className="flex justify-between items-center text-xs font-bold text-secondary-muted">
                                 <span>In Progress</span>
-                                <span>50%</span>
+                                <span>{kpi.task_overview?.in_progress_pct || 0}%</span>
                             </div>
-                            <div className="progress-bar-container"><div className="progress-bar-fill w-[50%] bg-[#3b82f6]" /></div>
+                            <div className="progress-bar-container"><div className="progress-bar-fill bg-[#3b82f6]" style={{ width: `${kpi.task_overview?.in_progress_pct || 0}%` }} /></div>
                         </div>
                         <div className="space-y-2">
                             <div className="flex justify-between items-center text-xs font-bold text-secondary-muted">
                                 <span>Not Start</span>
-                                <span>40%</span>
+                                <span>{kpi.task_overview?.pending_pct || 0}%</span>
                             </div>
-                            <div className="progress-bar-container"><div className="progress-bar-fill w-[40%] bg-emerald-500" /></div>
+                            <div className="progress-bar-container"><div className="progress-bar-fill bg-emerald-500" style={{ width: `${kpi.task_overview?.pending_pct || 0}%` }} /></div>
                         </div>
                         <div className="space-y-2">
                             <div className="flex justify-between items-center text-xs font-bold text-secondary-muted">
                                 <span>Delayed</span>
-                                <span>10%</span>
+                                <span>{kpi.task_overview?.delayed_pct || 0}%</span>
                             </div>
-                            <div className="progress-bar-container"><div className="progress-bar-fill w-[10%] bg-amber-500" /></div>
+                            <div className="progress-bar-container"><div className="progress-bar-fill bg-amber-500" style={{ width: `${kpi.task_overview?.delayed_pct || 0}%` }} /></div>
                         </div>
                     </div>
                 </div>
@@ -142,12 +146,11 @@ const AdminDashboard = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 font-bold text-sm">
-                                {[
-                                    { name: 'Redesign Web App', manager: 'Alice Johnson', date: '21 Mar 2026', status: 'Running', progress: '75%', color: 'primary' },
-                                    { name: 'Database Optimization', manager: 'Bob Smith', date: '25 Mar 2026', status: 'Pending', progress: '40%', color: 'amber-500' },
-                                    { name: 'Mobile App Setup', manager: 'Charlie Brown', date: '28 Mar 2026', status: 'Running', progress: '30%', color: 'blue-500' },
-                                    { name: 'API Documentation', manager: 'David Miller', date: '01 Apr 2026', status: 'Complete', progress: '100%', color: 'emerald-500' },
-                                ].map((task, i) => (
+                                {(!stats?.recent_tasks || stats.recent_tasks.length === 0) ? (
+                                    <tr>
+                                        <td colSpan="5" className="px-8 py-10 text-center text-secondary-muted font-medium">No tasks found.</td>
+                                    </tr>
+                                ) : stats.recent_tasks.map((task, i) => (
                                     <tr key={i} className="hover:bg-gray-50/50 transition-colors group">
                                         <td className="px-8 py-5 text-secondary">{task.name}</td>
                                         <td className="px-8 py-5">
@@ -187,21 +190,21 @@ const AdminDashboard = () => {
                          <div className="relative w-40 h-40 mb-6">
                             <svg className="w-full h-full transform -rotate-90">
                                 <circle cx="80" cy="80" r="70" fill="transparent" stroke="#f1f5f9" strokeWidth="12" />
-                                <circle cx="80" cy="80" r="70" fill="transparent" stroke="url(#gradient)" strokeWidth="12" strokeDasharray="440" strokeDashoffset="110" strokeLinecap="round" />
+                                <circle cx="80" cy="80" r="70" fill="transparent" stroke="url(#gradient)" strokeWidth="12" strokeDasharray="440" strokeDashoffset={440 - (440 * (kpi.weekly_progress_pct || 0)) / 100} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
                                 <defs>
                                     <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                        <stop offset="0%" stopColor="#FF6767" />
-                                        <stop offset="100%" stopColor="#FF8E8E" />
+                                        <stop offset="0%" stopColor="#10B981" />
+                                        <stop offset="100%" stopColor="#34D399" />
                                     </linearGradient>
                                 </defs>
                             </svg>
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-4xl font-black text-secondary">75%</span>
+                                <span className="text-4xl font-black text-secondary">{kpi.weekly_progress_pct || 0}%</span>
                                 <span className="text-[10px] font-black text-secondary-muted uppercase tracking-widest mt-1">Progress</span>
                             </div>
                          </div>
                          <h4 className="text-xl font-black text-secondary">Weekly Progress</h4>
-                         <p className="text-sm font-bold text-secondary-muted mt-2 text-center px-4">You have finished 10 tasks this week!</p>
+                         <p className="text-sm font-bold text-secondary-muted mt-2 text-center px-4">You have finished {kpi.weekly_completed || 0} tasks this week!</p>
                     </div>
 
                     <div className="stat-card bg-secondary text-white border-transparent">
@@ -210,12 +213,12 @@ const AdminDashboard = () => {
                             <Clock size={20} className="text-primary" />
                         </div>
                         <div className="space-y-2">
-                             <h2 className="text-4xl font-black">35</h2>
+                             <h2 className="text-4xl font-black">{kpi.running_tasks || 0}</h2>
                              <p className="text-sm font-bold text-secondary-muted">Total tasks currently active</p>
                         </div>
                         <div className="mt-8 pt-8 border-t border-white/10 flex justify-between items-center text-xs font-black uppercase tracking-widest">
                             <span className="text-secondary-muted">Next Deadline</span>
-                            <span className="text-primary">2 Hours Later</span>
+                            <span className="text-primary">{kpi.next_deadline_hours || 0} Hours Later</span>
                         </div>
                     </div>
                 </div>
