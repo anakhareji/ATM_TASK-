@@ -25,7 +25,7 @@ const ADMIN_NAV = [
             { name: 'Global Projects',        path: '/dashboard/projects-global',    icon: Briefcase     },
             { name: 'Global Submissions',     path: '/dashboard/submissions-global', icon: ClipboardList },
             { name: 'Performance Analytics',  path: '/dashboard/performance',        icon: Activity      },
-            { name: 'Evaluate Students',      path: '/dashboard/evaluate',           icon: GraduationCap },
+            // { name: 'Evaluate Students',      path: '/dashboard/evaluate',           icon: GraduationCap },
         ]
     },
     {

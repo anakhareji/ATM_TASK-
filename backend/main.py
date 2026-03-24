@@ -93,6 +93,11 @@ try:
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'external_url') ALTER TABLE campus_news ADD external_url NVARCHAR(500) NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'read_time_mins') ALTER TABLE campus_news ADD read_time_mins INT NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'updated_at') ALTER TABLE campus_news ADD updated_at DATETIME NULL;"))
+        # New todos columns
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[todos]') AND name = 'planner_id') ALTER TABLE todos ADD planner_id INT NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[todos]') AND name = 'task_id') ALTER TABLE todos ADD task_id INT NULL;"))
+        # New academic_planner column
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[academic_planner]') AND name = 'is_active') ALTER TABLE academic_planner ADD is_active BIT NULL DEFAULT 1;"))
 except Exception as e:
     print(f"Auto-migration error: {e}")
 

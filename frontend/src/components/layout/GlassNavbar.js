@@ -167,7 +167,7 @@ const SEARCH_INDEX = [
     { title: 'Squad Management', subtitle: 'Groups', path: '/dashboard/groups', type: 'page', roles: ['faculty'] },
     { title: 'Operational Intel', subtitle: 'Submissions', path: '/dashboard/submissions', type: 'page', roles: ['faculty'] },
     { title: 'Academic Planner', subtitle: 'Planning', path: '/dashboard/planner', type: 'page', roles: ['faculty'] },
-    { title: 'Evaluate Students', subtitle: 'Grading', path: '/dashboard/evaluate', type: 'page', roles: ['admin', 'faculty'] },
+    // { title: 'Evaluate Students', subtitle: 'Grading', path: '/dashboard/evaluate', type: 'page', roles: ['admin', 'faculty'] },
 
     // Student Routes
     { title: 'Mission Control', subtitle: 'Overview', path: '/dashboard', type: 'page', roles: ['student'] },

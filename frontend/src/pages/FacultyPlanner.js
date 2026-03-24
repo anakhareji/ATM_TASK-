@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
     Plus, Calendar, Target, Flag,
-    ListTodo, Info, ChevronRight, Search, Layout, AlertCircle
+    ListTodo, Info, ChevronRight, Search, Layout, AlertCircle,
+    Trash2, PlayCircle, PauseCircle, CheckCircle2, Circle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -20,6 +21,8 @@ const FacultyPlanner = () => {
     const [loadingInitial, setLoadingInitial] = useState(true);
     const [loadingMilestones, setLoadingMilestones] = useState(false);
     const [showModal, setShowModal] = useState(false);
+    const [showLogModal, setShowLogModal] = useState(false);
+    const [selectedMilestone, setSelectedMilestone] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -83,6 +86,28 @@ const FacultyPlanner = () => {
     }, [fetchMilestones]);
 
     // Handlers
+    const handleDelete = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this milestone?")) return;
+        const loadToast = toast.loading("Deleting milestone...");
+        try {
+            await API.delete(`/planner/${id}`);
+            toast.success("Milestone deleted.", { id: loadToast });
+            fetchMilestones();
+        } catch (err) {
+            toast.error("Failed to delete milestone.", { id: loadToast });
+        }
+    };
+
+    const handleToggleActive = async (id) => {
+        try {
+            await API.patch(`/planner/${id}/toggle`);
+            toast.success("Milestone status updated.");
+            fetchMilestones();
+        } catch (err) {
+            toast.error("Failed to update status.");
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
@@ -142,21 +167,21 @@ const FacultyPlanner = () => {
             {/* Path Grid */}
             <AnimatePresence mode="wait">
                 {loadingMilestones ? (
-                    <div className="py-32 flex flex-col items-center">
+                    <motion.div key="loading" variants={staggerContainer} initial="hidden" animate="visible" exit="hidden" className="py-32 flex flex-col items-center">
                         <div className="w-8 h-8 border-2 border-rose-500 border-t-transparent rounded-full animate-spin mb-4" />
                         <p className="text-rose-400 font-bold">Synchronizing Paths...</p>
-                    </div>
+                    </motion.div>
                 ) : filteredMilestones.length === 0 ? (
-                    <div className="py-40 flex flex-col items-center text-center bg-white/40 rounded-[2.5rem] border border-dashed border-gray-200">
+                    <motion.div key="empty" variants={staggerContainer} initial="hidden" animate="visible" exit="hidden" className="py-40 flex flex-col items-center text-center bg-white/40 rounded-[2.5rem] border border-dashed border-gray-200">
                         <Layout size={64} className="text-gray-200 mb-6" />
                         <h3 className="text-2xl font-black text-gray-400">Zero Milestones Detected</h3>
                         <p className="text-gray-300 font-medium">Strategic paths must be defined to monitor student progression.</p>
                         <Button onClick={() => setShowModal(true)} variant="ghost" className="mt-8 text-rose-600 font-black">Generate First Milestone</Button>
-                    </div>
+                    </motion.div>
                 ) : (
-                    <div className="space-y-6">
+                    <motion.div key="list" variants={staggerContainer} initial="hidden" animate="visible" exit="hidden" className="space-y-6">
                         {filteredMilestones.map((milestone) => (
-                            <motion.div key={milestone.id} variants={cardEntrance}>
+                            <motion.div key={milestone.id} variants={cardEntrance} className="mb-6">
                                 <GlassCard className="group hover:border-rose-200 p-0 overflow-hidden rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-300">
                                     <div className="p-8 flex flex-col md:flex-row justify-between gap-8">
                                         <div className="flex gap-6 flex-1">
@@ -176,7 +201,8 @@ const FacultyPlanner = () => {
                                                     <span className="flex items-center gap-1.5 text-rose-600 italic tracking-widest uppercase">{new Date(milestone.end_date).toLocaleDateString()}</span>
                                                 </div>
                                                 <p className="text-sm text-gray-500 font-medium leading-relaxed max-w-xl">
-                                                    Success path for <span className="text-gray-800 font-black">{milestone.student_name || `Recipient #${milestone.student_id}`}</span> focused on achieving defined completion criteria.
+                                                    <span className="block mb-2 text-gray-700">{milestone.description || "No strategic details provided."}</span>
+                                                    Success path for <span className="text-gray-800 font-black">{milestone.student_name || `Recipient #${milestone.student_id}`}</span>.
                                                 </p>
                                             </div>
                                         </div>
@@ -200,15 +226,39 @@ const FacultyPlanner = () => {
                                         </div>
                                     </div>
                                     <div className="px-8 py-5 bg-gray-50/80 border-t border-gray-100 flex justify-between items-center group-hover:bg-rose-50/20">
-                                        <div className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest">
-                                            <AlertCircle size={14} className="text-amber-500" /> Path Monitoring Active
+                                        <button 
+                                            onClick={() => handleToggleActive(milestone.id)}
+                                            className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest transition-colors ${milestone.is_active ? 'text-amber-600 hover:text-rose-600' : 'text-gray-400 hover:text-emerald-500'}`}
+                                        >
+                                            {milestone.is_active ? (
+                                                <><PlayCircle size={16} className="text-emerald-500" /> Active Monitoring</>
+                                            ) : (
+                                                <><PauseCircle size={16} className="text-gray-400" /> Paused</>
+                                            )}
+                                        </button>
+                                        <div className="flex items-center gap-3">
+                                            <button 
+                                                onClick={() => handleDelete(milestone.id)} 
+                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                title="Delete Milestone"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                            <Button 
+                                                onClick={() => { setSelectedMilestone(milestone); setShowLogModal(true); }} 
+                                                variant="ghost" 
+                                                icon={<ListTodo size={16} />} 
+                                                size="sm" 
+                                                className="font-black"
+                                            >
+                                                View Execution Log
+                                            </Button>
                                         </div>
-                                        <Button variant="ghost" icon={<ListTodo size={16} />} size="sm" className="font-black">View Execution Log</Button>
                                     </div>
                                 </GlassCard>
                             </motion.div>
                         ))}
-                    </div>
+                    </motion.div>
                 )}
             </AnimatePresence>
 
@@ -250,6 +300,17 @@ const FacultyPlanner = () => {
                                     />
                                 </div>
 
+                                <div className="space-y-3">
+                                    <label className="text-xs font-black uppercase tracking-widest text-gray-400">Details / Description</label>
+                                    <textarea
+                                        required
+                                        placeholder="Enter milestone details..."
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                        className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-3xl outline-none focus:ring-4 focus:ring-rose-50/50 font-bold text-sm text-gray-800 transition-all resize-none min-h-[100px]"
+                                    />
+                                </div>
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-3">
                                         <label className="text-xs font-black uppercase tracking-widest text-gray-400">Project Track</label>
@@ -285,6 +346,66 @@ const FacultyPlanner = () => {
                                     </Button>
                                 </div>
                             </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Execution Log Modal */}
+            <AnimatePresence>
+                {showLogModal && selectedMilestone && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+                    >
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowLogModal(false)} />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 50 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 50 }}
+                            className="bg-white rounded-[3rem] p-10 w-full max-w-2xl relative z-10 shadow-2xl border border-white max-h-[90vh] flex flex-col"
+                        >
+                            <div className="flex justify-between items-center mb-8 shrink-0">
+                                <div>
+                                    <h2 className="text-3xl font-black text-gray-800 tracking-tight flex items-center gap-3">
+                                        <ListTodo className="text-rose-600" /> Execution Log
+                                    </h2>
+                                    <p className="text-gray-400 font-bold text-sm mt-1">Generated tasks for {selectedMilestone.title}</p>
+                                </div>
+                                <button onClick={() => setShowLogModal(false)} className="p-2 hover:bg-gray-100 rounded-full text-gray-400"><X size={24} /></button>
+                            </div>
+                            
+                            <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+                                {selectedMilestone.todos && selectedMilestone.todos.length > 0 ? (
+                                    selectedMilestone.todos.map((todo) => (
+                                        <div key={todo.id} className="flex items-center justify-between p-5 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                {todo.status === 'completed' ? (
+                                                    <CheckCircle2 size={24} className="text-emerald-500 shrink-0" />
+                                                ) : (
+                                                    <Circle size={24} className="text-gray-300 shrink-0" />
+                                                )}
+                                                <div>
+                                                    <p className={`font-bold text-sm ${todo.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                                                        {todo.title}
+                                                    </p>
+                                                    <span className={`text-[10px] uppercase tracking-widest font-black mt-1 ${
+                                                        todo.status === 'completed' ? 'text-emerald-500' : 'text-amber-500'
+                                                    }`}>
+                                                        {todo.status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="text-xs font-bold text-gray-400">
+                                                <Calendar size={14} className="inline mr-1 text-rose-400" />
+                                                {new Date(todo.due_date).toLocaleDateString()}
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-10">
+                                        <p className="text-gray-400 font-bold">No tasks found in the execution log.</p>
+                                    </div>
+                                )}
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}
