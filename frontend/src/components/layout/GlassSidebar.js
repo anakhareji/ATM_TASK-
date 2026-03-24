@@ -23,6 +23,7 @@ const ADMIN_NAV = [
         label: 'Academic Activity',
         items: [
             { name: 'Global Projects',        path: '/dashboard/projects-global',    icon: Briefcase     },
+            { name: 'Global Tasks',           path: '/dashboard/tasks-global',       icon: CheckSquare   },
             { name: 'Global Submissions',     path: '/dashboard/submissions-global', icon: ClipboardList },
             { name: 'Performance Analytics',  path: '/dashboard/performance',        icon: Activity      },
             // { name: 'Evaluate Students',      path: '/dashboard/evaluate',           icon: GraduationCap },
@@ -123,7 +124,13 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
     const navSections = role === 'admin' ? ADMIN_NAV : role === 'faculty' ? FACULTY_NAV : STUDENT_NAV;
 
     const handleLogout = () => {
+        if (window.hasUnsavedSettings) {
+            if (window.confirm("You have unsaved changes. Click OK to stay and save them, or Cancel to discard and leave.")) {
+                return;
+            }
+        }
         localStorage.clear();
+        document.documentElement.classList.remove('dark');
         navigate('/login');
     };
 
@@ -164,7 +171,15 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
                                 key={item.path}
                                 to={item.path}
                                 end={item.path === '/dashboard'}
-                                onClick={() => setIsOpen && setIsOpen(false)}
+                                onClick={(e) => {
+                                    if (window.hasUnsavedSettings) {
+                                        if (window.confirm("You have unsaved changes. Click OK to stay and save them, or Cancel to discard and leave.")) {
+                                            e.preventDefault();
+                                            return;
+                                        }
+                                    }
+                                    setIsOpen && setIsOpen(false);
+                                }}
                                 className={({ isActive }) => `
                                     flex items-center gap-4 px-6 py-4 rounded-2xl
                                     transition-all duration-300 group text-sm font-bold
@@ -195,6 +210,14 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
                 <div className="pt-4 border-t border-white/5 mt-4">
                      <NavLink
                         to="/dashboard/settings"
+                        onClick={(e) => {
+                            if (window.hasUnsavedSettings && window.location.pathname !== '/dashboard/settings') {
+                                if (window.confirm("You have unsaved changes. Click OK to stay and save them, or Cancel to discard and leave.")) {
+                                    e.preventDefault();
+                                    return;
+                                }
+                            }
+                        }}
                         className={({ isActive }) => `flex items-center gap-4 px-6 py-4 rounded-2xl text-sm font-bold transition-all ${isActive ? 'bg-primary/10 text-primary' : 'text-secondary-muted hover:text-white hover:bg-white/5'}`}
                      >
                         <Shield size={20} className="shrink-0" />

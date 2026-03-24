@@ -45,7 +45,7 @@ from routers.academic import router as academic_router
 from routers.academic_structure_v1 import router as academic_structure_v1_router
 from routers.admin_v1 import router as admin_v1_router
 from routers.user import router as user_router
-
+from routers.public import router as public_router
 # -------- Create App --------
 app = FastAPI(
     title="Academic Task Management System",
@@ -80,6 +80,14 @@ try:
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'contact_info') ALTER TABLE campus_events ADD contact_info NVARCHAR(300) NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'tags') ALTER TABLE campus_events ADD tags NVARCHAR(500) NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_events]') AND name = 'max_participants') ALTER TABLE campus_events ADD max_participants INT NULL;"))
+        # New tasks columns
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[tasks]') AND name = 'task_code') ALTER TABLE tasks ADD task_code NVARCHAR(50) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[tasks]') AND name = 'closed_at') ALTER TABLE tasks ADD closed_at DATETIME NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[tasks]') AND name = 'is_report_shared') ALTER TABLE tasks ADD is_report_shared BIT NULL DEFAULT 0;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[tasks]') AND name = 'priority') ALTER TABLE tasks ADD priority NVARCHAR(20) NULL DEFAULT 'medium';"))
+        # New task_submissions columns for BLOB storage
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[task_submissions]') AND name = 'file_data') ALTER TABLE task_submissions ADD file_data VARBINARY(MAX) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[task_submissions]') AND name = 'file_mime') ALTER TABLE task_submissions ADD file_mime NVARCHAR(50) NULL;"))
         # New student_performance columns
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[student_performance]') AND name = 'is_ranked') ALTER TABLE student_performance ADD is_ranked BIT NULL DEFAULT 0;"))
         # New users columns
@@ -124,7 +132,7 @@ app.include_router(academic_structure_v1_router, prefix="/api/v1/academic-struct
 app.include_router(academic_structure_v1_router, prefix="/api/v1/academic_structure")
 app.include_router(admin_v1_router, prefix="/api/v1/admin")
 app.include_router(user_router, prefix="/api/users")
-
+app.include_router(public_router, prefix="/api/public")
 # -------- Static Files (uploads) --------
 uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(uploads_dir, exist_ok=True)

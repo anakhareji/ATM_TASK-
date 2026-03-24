@@ -23,6 +23,7 @@ import StudentTimetable from "../pages/StudentTimetable";
 import StudentApproval from "../pages/StudentApproval";
 import AcademicStructure from "../pages/AcademicStructure";
 import AdminProjects from "../pages/AdminProjects";
+import AdminTasks from "../pages/AdminTasks";
 import AdminSubmissions from "../pages/AdminSubmissions";
 import AdminRecognition from "../pages/AdminRecognition";
 import AdminCampusPulse from "../pages/AdminCampusPulse";
@@ -38,9 +39,25 @@ import FacultySubmissions from "../pages/FacultySubmissions";
 import FacultyPlanner from "../pages/FacultyPlanner";
 import FacultyStudents from "../pages/FacultyStudents";
 
+import { useEffect } from "react";
+
 const LayoutWrapper = () => {
   const role = (localStorage.getItem("userRole") || "").toLowerCase();
   
+  useEffect(() => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user && user.id) {
+         const theme = localStorage.getItem(`theme_${user.id}`);
+         if (theme === 'dark') {
+             document.documentElement.classList.add('dark');
+         } else {
+             document.documentElement.classList.remove('dark');
+         }
+      }
+    } catch(e){}
+  }, []);
+
   // Both Admin, Faculty and Student now use their respective Premium Glass Layouts
   const Layout = role === 'admin' ? AdminGlassLayout : AppGlassLayout;
   
@@ -96,6 +113,7 @@ function AppRouter() {
             <Route path="/dashboard/audit" element={<Audit />} />
             <Route path="/dashboard/approvals" element={<StudentApproval />} />
             <Route path="/dashboard/projects-global" element={<AdminProjects />} />
+            <Route path="/dashboard/tasks-global" element={<AdminTasks />} />
             <Route path="/dashboard/submissions-global" element={<AdminSubmissions />} />
             <Route path="/dashboard/academic-structure" element={<AcademicStructure />} />
             <Route path="/dashboard/performance" element={<AdminPerformance />} />

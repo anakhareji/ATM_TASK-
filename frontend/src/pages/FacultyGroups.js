@@ -408,7 +408,8 @@ const GroupCard = ({ group, allStudents, onDelete, setGroups }) => {
         if (!selectedStudent) return;
 
         // Prevent duplicate
-        if (group.members.some(m => m.student_id === parseInt(selectedStudent))) {
+        const membersList = group?.members || [];
+        if (membersList.some(m => m.student_id === parseInt(selectedStudent))) {
             toast.error("Student already exists in this squad.");
             setSelectedStudent("");
             return;
@@ -502,11 +503,11 @@ const GroupCard = ({ group, allStudents, onDelete, setGroups }) => {
 
                     {/* Member List */}
                     <div className="space-y-2">
-                        {group.members.length === 0 ? (
+                        {(!group?.members || group?.members?.length === 0) ? (
                             <p className="text-center py-6 text-gray-300 text-xs font-bold uppercase tracking-widest italic">Squad Empty</p>
                         ) : (
                             group.members.map(m => {
-                                const s = allStudents.find(st => st.id === m.student_id);
+                                const s = allStudents.find(st => String(st.id) === String(m.student_id));
                                 return (
                                     <div key={m.student_id} className={`flex justify-between items-center p-4 rounded-2xl border transition-all ${m.is_leader ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg' : 'bg-white border-gray-100 hover:border-indigo-100 shadow-sm'}`}>
                                         <div className="flex items-center gap-3">
@@ -533,8 +534,8 @@ const GroupCard = ({ group, allStudents, onDelete, setGroups }) => {
 
                 {/* Footer Meta */}
                 <div className="px-6 py-3 bg-gray-50 flex justify-between items-center">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{group.members.length} Members</p>
-                    {group.members.some(m => m.is_leader) ? (
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{group?.members?.length || 0} Members</p>
+                    {group?.members?.some(m => m.is_leader) ? (
                         <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Leader Assigned</p>
                     ) : (
                         <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-1"><AlertCircle size={10} /> Leader Required</p>

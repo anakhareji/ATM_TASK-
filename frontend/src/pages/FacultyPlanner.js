@@ -316,7 +316,10 @@ const FacultyPlanner = () => {
                                         <label className="text-xs font-black uppercase tracking-widest text-gray-400">Project Track</label>
                                         <select required className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-rose-500 font-bold text-sm" value={formData.project_id} onChange={e => setFormData({ ...formData, project_id: e.target.value })}>
                                             <option value="">Select Track...</option>
-                                            {projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                                            {projects.map(p => {
+                                                const trackId = p.id || p.project_id;
+                                                return <option key={trackId} value={trackId}>{p.title}</option>
+                                            })}
                                         </select>
                                     </div>
                                     <div className="space-y-3">

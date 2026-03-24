@@ -324,13 +324,14 @@ const MissionTimer = ({ startedAt }) => {
       let diff = now - start;
       if (diff < 0) diff = 0;
 
-      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const totalHours = Math.floor(diff / (1000 * 60 * 60));
+      const days = Math.floor(totalHours / 24);
+      const hours = totalHours % 24;
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-      setElapsed(
-        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-      );
+      const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      setElapsed(days > 0 ? `${days}d, ${timeStr}` : timeStr);
     };
 
     calculateElapsed();
@@ -357,6 +358,7 @@ const StudentTasks = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(null);
   const [submissionText, setSubmissionText] = useState('');
+  const [submissionFile, setSubmissionFile] = useState(null);
   const [activeCommentTask, setActiveCommentTask] = useState(null);
   
   // Filters
@@ -386,10 +388,17 @@ const StudentTasks = () => {
     setSubmitting(true);
     const loadToast = toast.loading("Uploading mission evidence...");
     try {
-      await API.post(`/tasks/${showSubmitModal.id}/submit`, { submission_text: submissionText });
+      const formData = new FormData();
+      formData.append('submission_text', submissionText);
+      if (submissionFile) {
+        formData.append('file', submissionFile);
+      }
+
+      await API.post(`/tasks/${showSubmitModal.id}/submit`, formData);
       toast.success("Transmission Received.", { id: loadToast });
       setShowSubmitModal(null);
       setSubmissionText('');
+      setSubmissionFile(null);
       fetchTasks();
     } catch (err) {
       toast.error('Broadcast Interrupted. Retry.', { id: loadToast });
@@ -410,7 +419,7 @@ const StudentTasks = () => {
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-8 max-w-7xl mx-auto pb-12">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 border-b border-gray-100 pb-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white shadow-sm mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
             <CheckSquare size={28} className="text-indigo-600" />
@@ -456,7 +465,7 @@ const StudentTasks = () => {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pt-4">
           {filteredTasks.map((task) => (
             <motion.div key={task.id} variants={cardEntrance} initial="hidden" animate="visible" exit="hidden" layout className="h-full">
-              <div className="group h-full flex flex-col p-6 bg-white border border-gray-200 hover:border-indigo-100 rounded-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 relative overflow-hidden">
+              <div className="group h-full flex flex-col p-6 bg-white/90 backdrop-blur-xl border border-white hover:border-indigo-100 rounded-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 relative overflow-hidden">
                 
                 {/* Status Indicator Bar */}
                 <div className={`absolute top-0 left-0 w-1 h-full ${
@@ -480,7 +489,10 @@ const StudentTasks = () => {
                         }`}>
                           {task.dynamic_status.replace('_', ' ').charAt(0).toUpperCase() + task.dynamic_status.replace('_', ' ').slice(1)}
                         </span>
-                        <span className="text-xs text-gray-400 font-medium">#{task.id}</span>
+                        <span className="text-xs text-gray-400 font-medium tracking-widest uppercase">#{task.id}</span>
+                        <span className={`text-[10px] ml-2 px-1.5 py-0.5 rounded border font-black uppercase tracking-widest ${task.priority === 'High' ? 'text-rose-600 border-rose-200 bg-rose-50' : task.priority === 'Medium' ? 'text-amber-600 border-amber-200 bg-amber-50' : 'text-gray-500 border-gray-200 bg-gray-50'}`}>
+                            {task.priority || 'Medium'}
+                        </span>
                       </div>
                       <h3 className="text-lg font-bold text-gray-900 leading-snug">
                         {task.title}
@@ -540,7 +552,7 @@ const StudentTasks = () => {
                     </button>
                     
                     <div className="flex items-center gap-3">
-                      {(task.dynamic_status.includes('in_progress') || task.dynamic_status.includes('overdue')) && (
+                      {(task.dynamic_status.includes('in_progress') || task.dynamic_status.includes('overdue') || task.dynamic_status === 'pending_submission') && (
                         <button
                           onClick={() => setShowSubmitModal(task)}
                           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors shadow-[0_2px_10px_rgb(79,70,229,0.2)]"
@@ -578,7 +590,7 @@ const StudentTasks = () => {
           ))}
           
           {filteredTasks.length === 0 && (
-            <div className="col-span-full py-20 rounded-2xl bg-white border border-gray-200 flex flex-col items-center justify-center text-center shadow-sm w-full">
+            <div className="col-span-full py-20 rounded-[2.5rem] bg-white/80 backdrop-blur-xl border border-white flex flex-col items-center justify-center text-center shadow-sm w-full">
                 <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
                     <CheckSquare size={28} className="text-gray-400" />
                 </div>
@@ -635,13 +647,29 @@ const StudentTasks = () => {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Submission Details</label>
                   <textarea
-                    rows={6}
+                    rows={4}
                     required
                     placeholder="Provide a link to your repository, Google Drive, or enter text directly..."
                     value={submissionText}
                     onChange={(e) => setSubmissionText(e.target.value)}
                     className="w-full px-4 py-3 bg-white border border-gray-300 hover:border-gray-400 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-sm transition-all shadow-sm resize-y"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Evidence Attachment</label>
+                  <div className="flex items-center justify-center w-full">
+                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                              <Paperclip className="w-8 h-8 mb-3 text-gray-400" />
+                              <p className="mb-2 text-sm text-gray-500 font-semibold truncate max-w-sm">
+                                  {submissionFile ? submissionFile.name : <><span className="text-indigo-600">Click to upload</span> or drag and drop</>}
+                              </p>
+                              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">PDF (MAX. 10MB)</p>
+                          </div>
+                          <input type="file" className="hidden" accept=".pdf" onChange={(e) => setSubmissionFile(e.target.files[0])} />
+                      </label>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 justify-end pt-2">

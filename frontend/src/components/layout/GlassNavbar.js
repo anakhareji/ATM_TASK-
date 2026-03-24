@@ -26,7 +26,13 @@ const ProfilePanel = ({ user, profile, onClose, onEditProfile }) => {
   const rc = roleColors(user.role);
 
   const handleLogout = () => {
+    if (window.hasUnsavedSettings) {
+        if (window.confirm("You have unsaved changes. Click OK to stay and save them, or Cancel to discard and leave.")) {
+            return;
+        }
+    }
     localStorage.clear();
+    document.documentElement.classList.remove('dark');
     navigate('/login');
   };
 
@@ -230,6 +236,11 @@ const GlassNavbar = ({ isSidebarOpen, setIsOpen }) => {
     }, [searchQuery, user.role]);
 
     const handleSearchSelect = (path) => {
+        if (window.hasUnsavedSettings) {
+            if (window.confirm("You have unsaved changes. Click OK to stay and save them, or Cancel to discard and leave.")) {
+                return;
+            }
+        }
         setSearchQuery('');
         navigate(path);
     };
@@ -305,7 +316,15 @@ const GlassNavbar = ({ isSidebarOpen, setIsOpen }) => {
 
                 {/* Notifications */}
                 <button 
-                    onClick={() => navigate('/dashboard/notifications')}
+                    onClick={(e) => {
+                        if (window.hasUnsavedSettings && window.location.pathname !== '/dashboard/notifications') {
+                            if (window.confirm("You have unsaved changes. Click OK to stay and save them, or Cancel to discard and leave.")) {
+                                e.preventDefault();
+                                return;
+                            }
+                        }
+                        navigate('/dashboard/notifications');
+                    }}
                     className="relative p-3 rounded-2xl bg-white border border-gray-100 hover:border-primary/30 hover:bg-primary/5 transition-all group shadow-sm active:scale-95"
                 >
                     <Bell className="w-6 h-6 text-secondary-muted group-hover:text-primary transition-colors"/>

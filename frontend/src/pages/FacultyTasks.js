@@ -775,7 +775,7 @@ const FacultyTasks = () => {
 const TaskCard = ({ task, onPublish, onDelete, onEdit, onViewSubmissions, isActiveActivity, toggleActivity }) => {
     const isOverdue = new Date(task.deadline) < new Date();
     return (
-        <motion.div layout variants={cardEntrance}>
+        <motion.div layout variants={cardEntrance} initial="hidden" animate="visible" exit="hidden">
             <GlassCard className="group p-0 overflow-hidden border-l-8 border-l-transparent hover:border-l-emerald-500 transition-all duration-300 rounded-[2rem] shadow-sm hover:shadow-2xl">
                 <div className="p-8">
                     <div className="flex justify-between items-start mb-6">
@@ -1042,27 +1042,39 @@ const CreateTaskModal = ({ isOpen, onClose, onSubmit, formData, setFormData, for
                     {formErrors.title && <p className="text-[10px] text-rose-500 font-black uppercase tracking-wider pl-1">{formErrors.title}</p>}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-3">
-                        <label className="text-xs font-black uppercase tracking-widest text-gray-400">Lifecycle Finish <span className="text-rose-500">*</span></label>
-                        <input
-                            type="datetime-local"
-                            className={`w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none font-bold text-sm ${formErrors.deadline ? 'border-rose-300 ring-2 ring-rose-100' : 'border-gray-100'}`}
-                            value={formData.deadline}
-                            onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                        />
-                        {formErrors.deadline && <p className="text-[10px] text-rose-500 font-black uppercase tracking-wider pl-1">{formErrors.deadline}</p>}
-                    </div>
-                    <div className="space-y-3">
-                        <label className="text-xs font-black uppercase tracking-widest text-gray-400">Maximum Points</label>
-                        <input
-                            type="number" min="0"
-                            className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-black text-sm text-emerald-600"
-                            value={formData.max_marks}
-                            onChange={(e) => setFormData({ ...formData, max_marks: e.target.value })}
-                        />
-                    </div>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-3">
+                <label className="text-xs font-black uppercase tracking-widest text-gray-400">Lifecycle Finish <span className="text-rose-500">*</span></label>
+                <input
+                    type="datetime-local"
+                    className={`w-full px-5 py-3.5 bg-gray-50 border rounded-2xl outline-none font-bold text-sm ${formErrors.deadline ? 'border-rose-300 ring-2 ring-rose-100' : 'border-gray-100'}`}
+                    value={formData.deadline}
+                    onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                />
+                {formErrors.deadline && <p className="text-[10px] text-rose-500 font-black uppercase tracking-wider pl-1">{formErrors.deadline}</p>}
+            </div>
+            <div className="space-y-3">
+                <label className="text-xs font-black uppercase tracking-widest text-gray-400">Priority Level</label>
+                <select
+                    className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-bold text-sm text-gray-700"
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                >
+                    <option value="High">🔴 High Priority</option>
+                    <option value="Medium">🟠 Standard (Medium)</option>
+                    <option value="Low">⚪ Low Priority</option>
+                </select>
+            </div>
+        </div>
+        <div className="space-y-3 mt-8">
+            <label className="text-xs font-black uppercase tracking-widest text-gray-400">Maximum Points</label>
+            <input
+                type="number" min="0"
+                className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl outline-none font-black text-sm text-emerald-600"
+                value={formData.max_marks}
+                onChange={(e) => setFormData({ ...formData, max_marks: e.target.value })}
+            />
+        </div>
 
                 <div className="space-y-3">
                     <label className="text-xs font-black uppercase tracking-widest text-gray-400">Operational Briefing</label>
@@ -1158,7 +1170,7 @@ const SubmissionsModal = ({ isOpen, onClose, task, submissions, gradeData, setGr
                                         </div>
                                     </div>
                                     {sub.file_url && (
-                                        <a href={sub.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-3 px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all ml-auto">
+                                        <a href={`http://localhost:8000${sub.file_url}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-3 px-6 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all ml-auto">
                                             <Download size={16} /> Open Payload
                                         </a>
                                     )}

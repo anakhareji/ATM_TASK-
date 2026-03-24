@@ -3,14 +3,70 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import SearchBar from '../components/ui/SearchBar';
 import FeatureIcon from '../components/ui/FeatureIcon';
-import CourseCard from '../components/ui/CourseCard';
+import DepartmentCard from '../components/ui/DepartmentCard';
 import TeacherCard from '../components/ui/TeacherCard';
+import axios from '../api/axios';
 
 const Landing = () => {
     const [isVisible, setIsVisible] = useState(false);
+    const [departments, setDepartments] = useState([]);
+    const [teachers, setTeachers] = useState([]);
+    const [activeSection, setActiveSection] = useState('hero');
 
     useEffect(() => {
         setIsVisible(true);
+        const fetchData = async () => {
+            try {
+                const [departmentsRes, teachersRes] = await Promise.all([
+                    axios.get('/public/departments'),
+                    axios.get('/public/teachers')
+                ]);
+                setDepartments(departmentsRes.data);
+                setTeachers(teachersRes.data);
+            } catch (error) {
+                console.error("Error fetching data", error);
+            }
+        };
+        fetchData();
+    }, []);
+
+    // Idle detection and auto-scroll
+    useEffect(() => {
+        let idleTimer;
+        let scrollTimer;
+        const sections = ['hero', 'departments', 'teachers'];
+
+        const resetIdleTimer = () => {
+            clearTimeout(idleTimer);
+            clearInterval(scrollTimer);
+            
+            idleTimer = setTimeout(() => {
+                // start auto-scroll
+                scrollTimer = setInterval(() => {
+                    setActiveSection(prev => {
+                        const currentIndex = sections.indexOf(prev);
+                        const nextIndex = (currentIndex + 1) % sections.length;
+                        const nextSection = sections[nextIndex];
+                        const element = document.getElementById(nextSection);
+                        if (element) {
+                            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                        return nextSection;
+                    });
+                }, 3000); // switch every 3 seconds
+            }, 3000); // 3 seconds of inactivity
+        };
+
+        const events = ['mousemove', 'keydown', 'touchstart', 'click'];
+        events.forEach(event => window.addEventListener(event, resetIdleTimer));
+        
+        resetIdleTimer();
+
+        return () => {
+            clearTimeout(idleTimer);
+            clearInterval(scrollTimer);
+            events.forEach(event => window.removeEventListener(event, resetIdleTimer));
+        };
     }, []);
 
     const features = [
@@ -31,45 +87,13 @@ const Landing = () => {
         },
     ];
 
-    const courses = [
-        {
-            title: "Machine Learning Masterclass 2026",
-            category: "Data Science",
-            rating: 4.9,
-            students: "12k",
-            lessons: 45,
-            image: "https://images.unsplash.com/photo-1555949963-aa79dcee981c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-        },
-        {
-            title: "User Experience Design Fundamentals",
-            category: "Design",
-            rating: 4.8,
-            students: "8.5k",
-            lessons: 32,
-            image: "https://images.unsplash.com/photo-1586717791821-3f44a5638d48?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-        },
-        {
-            title: "Financial Analysis & Valuation",
-            category: "Business",
-            rating: 4.7,
-            students: "15k",
-            lessons: 28,
-            image: "https://images.unsplash.com/photo-1554224155-9726b3028d77?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-        }
-    ];
-
-    const teachers = [
-        { name: "Dr. Eleanor Pena", role: "Head of Data Science", image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" },
-        { name: "Marvin McKinney", role: "Senior UX Designer", image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" },
-        { name: "Savannah Nguyen", role: "Financial Consultant", image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80" },
-    ];
 
     return (
         <div className="font-sans text-slate-800 bg-gray-50/50 selection:bg-emerald-100 selection:text-emerald-900">
             <Navbar />
 
             {/* Hero Section */}
-            <section className="relative min-h-[700px] flex items-center justify-center overflow-hidden">
+            <section id="hero" className="relative min-h-[700px] flex items-center justify-center overflow-hidden">
                 {/* Background Image */}
                 <div
                     className="absolute inset-0 z-0"
@@ -135,13 +159,13 @@ const Landing = () => {
                 </div>
             </section>
 
-            {/* Courses Section */}
-            <section id="courses" className="py-24 bg-slate-50">
+            {/* Departments Section */}
+            <section id="departments" className="py-24 bg-slate-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-end mb-16">
                         <div>
-                            <span className="text-emerald-600 font-bold tracking-wider uppercase text-sm mb-2 block">Top Rated</span>
-                            <h2 className="text-4xl font-bold text-gray-900">Our Popular Courses</h2>
+                            <span className="text-emerald-600 font-bold tracking-wider uppercase text-sm mb-2 block">Academic Structure</span>
+                            <h2 className="text-4xl font-bold text-gray-900">Our Academic Departments</h2>
                         </div>
                         <button className="hidden md:flex items-center gap-2 text-emerald-600 font-semibold hover:text-emerald-700 transition-colors">
                             Explore All
@@ -150,8 +174,8 @@ const Landing = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                        {courses.map((course, index) => (
-                            <CourseCard key={index} {...course} />
+                        {departments.map((dept, index) => (
+                            <DepartmentCard key={index} {...dept} />
                         ))}
                     </div>
                 </div>

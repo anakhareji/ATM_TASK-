@@ -35,7 +35,7 @@ const StudentGroups = () => {
     <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-10 pb-20">
       
       {/* Squad Briefing Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 bg-white/40 p-1 rounded-[3.5rem] border border-white/50 backdrop-blur-xl">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 bg-white/80 p-1 rounded-[3.5rem] border border-white shadow-sm backdrop-blur-2xl">
         <div className="px-10 py-8">
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-indigo-500 rounded-xl shadow-lg shadow-indigo-500/20">
@@ -60,7 +60,7 @@ const StudentGroups = () => {
 
       {loading ? (
         <div className="grid grid-cols-1 gap-8">
-            {[1,2].map(i => <div key={i} className="h-64 bg-white/20 rounded-[3rem] animate-pulse border border-white" />)}
+            {[1,2].map(i => <div key={i} className="h-64 bg-white/60 backdrop-blur-xl rounded-[3rem] animate-pulse border border-white" />)}
         </div>
       ) : (
         <div className="space-y-10">
@@ -74,7 +74,7 @@ const StudentGroups = () => {
                 exit="hidden"
                 layout
               >
-                <GlassCard className="p-0 overflow-hidden border-white/60 bg-white/40 group">
+                <GlassCard className="p-0 overflow-hidden border-white bg-white/90 backdrop-blur-xl group shadow-sm hover:shadow-xl transition-all duration-500">
                   <div className="flex flex-col xl:flex-row">
                     
                     {/* Left Side: Project Intel */}
@@ -100,7 +100,7 @@ const StudentGroups = () => {
                           {squad.project_description || "Detailed project specifications are currently being synchronized with mission parameters."}
                        </p>
 
-                       <div className="p-6 bg-white/60 rounded-[2rem] border border-white/80 shadow-inner">
+                       <div className="p-6 bg-white/80 rounded-[2rem] border border-white shadow-inner">
                           <div className="flex items-center gap-3 mb-1">
                              <Target size={14} className="text-indigo-400" />
                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Squad Identification</p>
@@ -131,7 +131,7 @@ const StudentGroups = () => {
                               className={`group/member p-6 rounded-[2rem] border transition-all duration-500 flex items-center justify-between ${
                                 m.is_leader 
                                 ? 'bg-indigo-600 text-white border-indigo-500 shadow-xl shadow-indigo-100' 
-                                : 'bg-white/40 border-white/60 hover:bg-white hover:shadow-xl hover:shadow-gray-200/50 text-gray-800'
+                                : 'bg-white/80 border-white hover:bg-white hover:shadow-xl hover:shadow-gray-200/50 text-gray-800'
                               }`}
                             >
                               <div className="flex items-center gap-4">
@@ -191,7 +191,7 @@ const StudentGroups = () => {
           </AnimatePresence>
 
           {squads.length === 0 && (
-            <div className="py-40 rounded-[4rem] bg-white/40 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center backdrop-blur-sm grayscale opacity-60">
+            <div className="py-40 rounded-[4rem] bg-white/80 backdrop-blur-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-center shadow-sm">
                 <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
                     <Users size={48} className="text-gray-300" />
                 </div>
