@@ -208,10 +208,11 @@ const TaskTimeline = ({ taskId }) => {
                                     {new Date(event.timestamp).toLocaleDateString()} • {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                             </div>
-                            <div className="bg-white/60 p-3 rounded-xl border border-gray-50 shadow-sm group-hover:border-indigo-100 transition-colors">
-                                <p className="text-[11px] font-semibold text-gray-700 leading-relaxed">
-                                    {event.detail}
-                                </p>
+                            <div className="bg-white/60 p-3 rounded-xl border border-gray-50 shadow-sm group-hover:border-indigo-100 transition-colors quill-content text-left overflow-hidden">
+                                <p 
+                                    className="text-[11px] font-semibold text-gray-700 leading-relaxed" 
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(event.detail) }} 
+                                />
                             </div>
                         </div>
                     </div>
@@ -464,10 +465,7 @@ const TaskComments = ({ taskId, isReportShared }) => {
                     </div>
                 </div>
             ) : (
-                <div className="py-12 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                    <History size={24} className="mx-auto text-gray-200 mb-2" />
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">History Log Coming Soon</p>
-                </div>
+                <TaskTimeline taskId={taskId} />
             )}
         </div>
     );
@@ -573,7 +571,9 @@ const StudentTasks = () => {
     return tasks.filter(t => {
         const matchesSearch = (t.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
                               (t.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || t.dynamic_status === statusFilter;
+        const matchesStatus = statusFilter === 'all' || 
+                              t.dynamic_status === statusFilter || 
+                              (statusFilter === 'submitted' && t.dynamic_status === 'graded');
         return matchesSearch && matchesStatus;
     });
   }, [tasks, searchTerm, statusFilter]);
@@ -582,12 +582,21 @@ const StudentTasks = () => {
     <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-8 max-w-7xl mx-auto pb-12">
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 border-b border-gray-100 pb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-            <CheckSquare size={28} className="text-indigo-600" />
-            My Tasks
-          </h1>
-          <p className="text-sm text-gray-500 mt-1.5 ml-1">Manage and track your assigned projects and submissions</p>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => window.location.href='/dashboard'}
+            className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-indigo-600"
+            title="Back to Dashboard"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
+              <CheckSquare size={28} className="text-indigo-600" />
+              My Tasks
+            </h1>
+            <p className="text-sm text-gray-500 mt-1.5 ml-1">Manage and track your assigned projects and submissions</p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
@@ -656,7 +665,7 @@ const StudentTasks = () => {
                             {task.priority || 'Medium'}
                         </span>
                       </div>
-                      <h3 className="text-lg font-bold text-gray-900 leading-snug">
+                      <h3 className="text-lg font-bold text-gray-900 leading-snug line-clamp-2" title={task.title}>
                         {task.title}
                       </h3>
                       <p className="text-sm text-gray-500 line-clamp-2 mt-1">

@@ -129,8 +129,8 @@ const AdminTasks = () => {
                                                 {task.priority || 'Medium'} Priority
                                             </div>
                                         </div>
-                                        <h3 className="text-xl font-bold text-gray-800 mb-2 leading-tight pr-8">{task.title}</h3>
-                                        <p className="text-gray-500 text-sm line-clamp-2 leading-relaxed">
+                                        <h3 className="text-xl font-bold text-gray-800 mb-2 leading-tight pr-8 line-clamp-2" title={task.title}>{task.title}</h3>
+                                        <p className="text-gray-500 text-sm line-clamp-3 leading-relaxed">
                                             {task.description || "No mission brief provided."}
                                         </p>
                                     </div>

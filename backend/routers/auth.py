@@ -107,7 +107,7 @@ def get_my_profile(
     except Exception:
         pass
 
-    return {
+    profile_data = {
         "id":               user.id,
         "roll_no":          user.roll_no,
         "name":             user.name,
@@ -122,3 +122,23 @@ def get_my_profile(
         "course":           course_name,
         "joined":           user.created_at.isoformat() if user.created_at else None,
     }
+
+    if user.role.lower() == "student":
+        try:
+            from routers.analytics import calculate_student_atm
+            from models.student_recognition import StudentRecognition
+            atm_data = calculate_student_atm(db, user.id)
+            profile_data["recognition_tier"] = atm_data.get("tier", "Regular")
+            profile_data["final_score"] = round(atm_data.get("final_score", 0), 1)
+            profile_data["tasks_completed"] = atm_data.get("tasks_completed", 0)
+            
+            recognitions = db.query(StudentRecognition).filter(StudentRecognition.student_id == user.id).all()
+            profile_data["medals"] = [r.award_type for r in recognitions]
+        except Exception as e:
+            print(f"Error calculating ATM for profile: {e}")
+            profile_data["recognition_tier"] = "Regular"
+            profile_data["final_score"] = 0
+            profile_data["tasks_completed"] = 0
+            profile_data["medals"] = []
+
+    return profile_data

@@ -442,10 +442,13 @@ def get_my_tasks(
         
         if role == STUDENT.lower():
             # GET ACTIVE/PROGRESS TASKS (EXCLUDE PUBLISHED/DRAFT)
+            from models.task_submission import TaskSubmission
+            engaged_tasks = [s.task_id for s in db.query(TaskSubmission).filter(TaskSubmission.student_id == user_id).all()]
             tasks = db.query(Task).filter(
                 (Task.student_id == user_id) |
-                (Task.group_id.in_(db.query(GroupMember.group_id).filter(GroupMember.student_id == user_id))),
-                Task.status.in_(["in_progress", "submitted", "graded", "returned"])
+                (Task.group_id.in_(db.query(GroupMember.group_id).filter(GroupMember.student_id == user_id))) |
+                (Task.id.in_(engaged_tasks)),
+                Task.status.in_(["published", "in_progress", "submitted", "graded", "returned", "closed"])
             ).all()
             
             res = []
@@ -864,6 +867,11 @@ def get_task_report(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
+    role = current_user["role"].lower()
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+
     # Access Control
     if role == FACULTY.lower():
         if task.faculty_id != current_user["user_id"]:

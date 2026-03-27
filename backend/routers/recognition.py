@@ -78,6 +78,7 @@ def get_cert_stats(db: Session = Depends(get_db)):
             top_students.append({
                 "student_id": s.id,
                 "name": s.name,
+                "avatar": getattr(s, 'avatar', None),
                 "performance_score": round(weighted_score, 1),
                 "roll_no": s.roll_no
             })
@@ -101,6 +102,7 @@ def get_recent_certs(db: Session = Depends(get_db)):
             "id": c.id,
             "student_name": user.name if user else "Unknown",
             "student_email": user.email if user else "",
+            "student_avatar": user.avatar if user else None,
             "roll_no": user.roll_no if user else None,
             "badge_type": c.award_type,
             "performance_score": c.performance_score if hasattr(c, 'performance_score') and c.performance_score is not None else "N/A",
@@ -137,6 +139,7 @@ def get_student_performance(student_id: str, db: Session = Depends(get_db)):
         "student_id": student_id,
         "internal_id": user.id,
         "name": user.name,
+        "avatar": user.avatar,
         "certification_id": cert.id if cert else None,
         "eligibility_status": "eligible" if atm >= 50 else "ineligible",
         "completion_rate": int((metrics["completion_score"] / 20) * 100) if metrics["completion_score"] else 0,

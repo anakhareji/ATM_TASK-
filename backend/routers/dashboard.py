@@ -37,35 +37,30 @@ def student_dashboard(
     from models.academic_saas import DepartmentV1 as Department, CourseV1 as Course
     dept = db.query(Department).get(student.department_id) if student.department_id else None
     course = db.query(Course).get(student.course_id) if student.course_id else None
-
-    todos = db.query(Todo).filter(
-        Todo.student_id == student_id
-    ).all()
-
-    total = len(todos)
-    completed = sum(1 for t in todos if t.status == "completed")
-    overdue = sum(1 for t in todos if t.status == "overdue")
-    pending = total - completed - overdue
-
-    completion_rate = (completed / total * 100) if total else 0
-
-    latest_performance = db.query(StudentPerformance).filter(
-        StudentPerformance.student_id == student_id
-    ).order_by(desc(StudentPerformance.created_at)).first()
-
-    final_score = latest_performance.final_score if latest_performance else None
-    grade = latest_performance.grade if latest_performance else None
-    semester = latest_performance.semester if latest_performance else None
-
-    perf_all = db.query(StudentPerformance).filter(
-        StudentPerformance.student_id == student_id,
-        StudentPerformance.final_score.isnot(None)
-    ).all()
-
-    cgpa = None
-    if perf_all:
-        avg_score = sum(p.final_score for p in perf_all if p.final_score is not None) / len(perf_all)
-        cgpa = round(avg_score / 10, 2)
+    # Utilize Live ATM Analytical Matrix
+    from routers.analytics import calculate_student_atm
+    metrics = calculate_student_atm(db, student_id)
+    
+    # Map metrics to expected UI keys
+    total_assigned = metrics.get('total_assigned_past', 0)
+    total_submitted = metrics.get('total_submitted', 0)
+    pending = max(0, total_assigned - total_submitted)
+    
+    completion_rate = 0
+    if total_assigned > 0:
+        completion_rate = (total_submitted / total_assigned) * 100
+        
+    final_score = metrics.get('atm_score', 0)
+    cgpa = int(final_score * 10) # Derive GPA index points
+    
+    # Calculate Grade
+    grade = "D"
+    if final_score >= 90: grade = "A+"
+    elif final_score >= 80: grade = "A"
+    elif final_score >= 70: grade = "B"
+    elif final_score >= 60: grade = "C"
+    
+    semester = student.current_semester if student.current_semester else "N/A"
 
     now = datetime.utcnow()
     week_ahead = now + timedelta(days=7)
@@ -84,6 +79,19 @@ def student_dashboard(
         Task.deadline <= week_ahead,
         Task.status.in_(["published", "in_progress", "returned"])
     ).all()
+    upcoming_global = db.query(Task).filter(
+        Task.student_id == None,
+        Task.group_id == None,
+        Task.deadline >= now,
+        Task.deadline <= week_ahead,
+        Task.status.in_(["published", "in_progress", "returned"])
+    ).all()
+
+    # Filter out tasks the student has already submitted
+    from models.task_submission import TaskSubmission
+    submitted_ids = [s.task_id for s in db.query(TaskSubmission).filter(TaskSubmission.student_id == student_id).all()]
+    
+    unique_upcoming = list({t.id: t for t in (upcoming_individual + upcoming_group + upcoming_global) if t.id not in submitted_ids}.values())
 
     def countdown(d: datetime):
         delta = d - now
@@ -99,23 +107,28 @@ def student_dashboard(
             "priority": t.priority,
             "task_type": t.task_type,
             "countdown": countdown(t.deadline)
-        } for t in (upcoming_individual + upcoming_group)
+        } for t in unique_upcoming
     ]
 
-    recent_feedback = db.query(Task).filter(
-        Task.faculty_feedback.isnot(None),
-        ((Task.student_id == student_id) | (Task.group_id.in_(group_ids) if group_ids else False))
-    ).order_by(desc(Task.submitted_at)).limit(5).all()
+    recent_feedback = db.query(TaskSubmission).filter(
+        TaskSubmission.student_id == student_id,
+        TaskSubmission.feedback.isnot(None)
+    ).order_by(desc(TaskSubmission.submitted_at)).limit(20).all()
 
-    recent_feedback_res = [
-        {
-            "id": t.id,
-            "title": t.title,
-            "feedback": t.faculty_feedback,
-            "faculty_id": t.faculty_id,
-            "timestamp": t.submitted_at.isoformat() if t.submitted_at else None
-        } for t in recent_feedback
-    ]
+    # Formatted filter to bypass MSSQL Text data constraints
+    recent_feedback = [sub for sub in recent_feedback if str(sub.feedback).strip() != ""][:5]
+
+    recent_feedback_res = []
+    for sub in recent_feedback:
+        t = db.query(Task).filter(Task.id == sub.task_id).first()
+        if t:
+            recent_feedback_res.append({
+                "id": t.id,
+                "title": t.title,
+                "feedback": sub.feedback,
+                "faculty_id": t.faculty_id,
+                "timestamp": sub.submitted_at.isoformat() if sub.submitted_at else None
+            })
 
     groups = db.query(ProjectGroup).join(GroupMember, ProjectGroup.id == GroupMember.group_id).filter(
         GroupMember.student_id == student_id
@@ -162,14 +175,14 @@ def student_dashboard(
         achievements.append({"title": "Consistent Contributor", "badge": "teal"})
 
     return {
-        "total_todos": total,
-        "completed_todos": completed,
+        "total_todos": total_assigned,
+        "completed_todos": total_submitted,
         "pending_todos": pending,
-        "overdue_todos": overdue,
-        "completion_rate": round(completion_rate, 2),
+        "overdue_todos": 0,
+        "completion_rate": int(completion_rate),
         "final_score": final_score,
         "grade": grade,
-        "semester_progress": round(completion_rate, 2),
+        "semester_progress": int(completion_rate),
         "cgpa": cgpa,
         "semester": semester,
         "upcoming_tasks": upcoming_tasks,
