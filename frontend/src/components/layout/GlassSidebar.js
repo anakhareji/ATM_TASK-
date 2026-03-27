@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Bell, FileText, Newspaper, Activity,
@@ -110,6 +110,30 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
     const [userEmail, setUserEmail] = useState(localStorage.getItem('userEmail') || 'user@example.com');
     const [userAvatar, setUserAvatar] = useState(localStorage.getItem('userAvatar'));
 
+    const [todoCount, setTodoCount] = useState(0);
+
+    const fetchTodoCount = useCallback(async () => {
+        if (role !== 'student') return;
+        try {
+            const res = await API.get('/tasks/my-tasks');
+            const tasks = res.data || [];
+            const pending = tasks.filter(t => 
+                t.dynamic_status === 'in_progress' || 
+                t.dynamic_status === 'pending_submission' || 
+                t.dynamic_status.includes('overdue')
+            ).length;
+            setTodoCount(pending);
+        } catch (e) {
+            console.error("Sidebar count sync failed", e);
+        }
+    }, [role]);
+
+    useEffect(() => {
+        fetchTodoCount();
+        const interval = setInterval(fetchTodoCount, 60000); 
+        return () => clearInterval(interval);
+    }, [fetchTodoCount]);
+
     useEffect(() => {
         const handleProfileUpdate = () => {
             setUserName(localStorage.getItem('userName') || 'User');
@@ -196,6 +220,11 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
                                             className={`shrink-0 transition-all duration-300 ${isActive ? 'text-primary scale-110' : 'text-secondary-muted group-hover:text-white'}`}
                                         />
                                         <span className="truncate flex-1 tracking-tight">{item.name}</span>
+                                        {item.name === 'My Tasks' && todoCount > 0 && (
+                                            <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-black rounded-full animate-bounce shadow-[0_0_10px_#FF6767]">
+                                                {todoCount}
+                                            </span>
+                                        )}
                                         {isActive && (
                                             <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_10px_#FF6767]" />
                                         )}

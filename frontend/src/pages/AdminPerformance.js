@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Download, Users, Star, TrendingUp, Search, Plus, X, BookOpen, CheckCircle, Sparkles } from 'lucide-react';
+import { Download, Users, Star, TrendingUp, Search, Plus, X, BookOpen, CheckCircle, Sparkles, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GradeChart from '../components/dashboard/GradeChart';
 import Leaderboard from '../components/dashboard/Leaderboard';
@@ -334,8 +334,15 @@ const AdminPerformance = () => {
                               {r.avatar ? <img src={r.avatar} alt="Avatar" className="w-full h-full object-cover" /> : '?'}
                             </div>
                             <div className="flex flex-col">
-                               <span className="font-bold text-sm text-secondary group-hover:text-primary transition-colors">
+                               <span className="font-bold text-sm text-secondary group-hover:text-primary transition-colors flex items-center gap-1.5">
                                  {r.name || `Student #${r.student_id}`}
+                                 {r.official_badge && (
+                                    <Crown size={14} className={
+                                        r.official_badge === 'gold' ? 'text-amber-500 fill-amber-300' :
+                                        r.official_badge === 'silver' ? 'text-gray-400 fill-gray-200' :
+                                        r.official_badge === 'bronze' ? 'text-amber-700 fill-amber-600' : 'text-emerald-500'
+                                    } />
+                                 )}
                                </span>
                                <span className="text-[10px] font-bold text-secondary-muted uppercase tracking-widest leading-none mt-0.5">
                                  ID: {r.student_id}

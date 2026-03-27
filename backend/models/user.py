@@ -11,6 +11,7 @@ class User(Base):
     password = Column(String(255), nullable=False)
     role = Column(String(20), nullable=False)
     status = Column(String(20), default="active")
+    roll_no = Column(String(50), unique=True, nullable=True)
     avatar = Column(Text, nullable=True)
 
     created_by_faculty_id = Column(Integer, ForeignKey("users.id"), nullable=True)

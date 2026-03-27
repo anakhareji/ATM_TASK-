@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from database import engine, Base
+from database import engine, Base, SessionLocal
 import os
 
 # -------- Import Models --------
@@ -56,12 +56,7 @@ app = FastAPI(
 # -------- CORS --------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -93,6 +88,7 @@ try:
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[student_performance]') AND name = 'is_ranked') ALTER TABLE student_performance ADD is_ranked BIT NULL DEFAULT 0;"))
         # New users columns
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[users]') AND name = 'avatar') ALTER TABLE users ADD avatar NVARCHAR(MAX) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[users]') AND name = 'roll_no') ALTER TABLE users ADD roll_no NVARCHAR(50) NULL;"))
         # New campus_news columns
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'category') ALTER TABLE campus_news ADD category NVARCHAR(60) NULL DEFAULT 'general';"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'cover_image_url') ALTER TABLE campus_news ADD cover_image_url NVARCHAR(500) NULL;"))
@@ -102,8 +98,36 @@ try:
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'external_url') ALTER TABLE campus_news ADD external_url NVARCHAR(500) NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'read_time_mins') ALTER TABLE campus_news ADD read_time_mins INT NULL;"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'updated_at') ALTER TABLE campus_news ADD updated_at DATETIME NULL;"))
+        # New todos columns
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[todos]') AND name = 'planner_id') ALTER TABLE todos ADD planner_id INT NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[todos]') AND name = 'task_id') ALTER TABLE todos ADD task_id INT NULL;"))
+        # New academic_planner column
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[academic_planner]') AND name = 'is_active') ALTER TABLE academic_planner ADD is_active BIT NULL DEFAULT 1;"))
+        # New student_recognitions columns
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[student_recognitions]') AND name = 'performance_score') ALTER TABLE student_recognitions ADD performance_score INT NULL;"))
 except Exception as e:
     print(f"Auto-migration error: {e}")
+
+# -------- Backfill Missing IDs --------
+from utils.id_generator import generate_unique_id
+def backfill_missing_ids():
+    db = SessionLocal()
+    try:
+        from models.user import User
+        users_without_ids = db.query(User).filter(User.roll_no == None).all()
+        if users_without_ids:
+            print(f"Backfilling unique IDs for {len(users_without_ids)} users...")
+            for user in users_without_ids:
+                user.roll_no = generate_unique_id(user.role, db)
+            db.commit()
+            print("Backfill successful.")
+    except Exception as e:
+        db.rollback()
+        print(f"Backfill error: {e}")
+    finally:
+        db.close()
+
+# backfill_missing_ids()
 
 
 # -------- Include Routers (ONLY PREFIX HERE) --------

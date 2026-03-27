@@ -74,7 +74,8 @@ const Settings = () => {
     const [formData, setFormData] = useState({
         name: user.name || '',
         email: user.email || '',
-        avatar: user.avatar || ''
+        avatar: user.avatar || '',
+        roll_no: user.roll_no || ''
     });
 
     useEffect(() => {
@@ -108,7 +109,8 @@ const Settings = () => {
                 setFormData({
                     name: res.data.name || user.name,
                     email: res.data.email || user.email,
-                    avatar: res.data.avatar || user.avatar
+                    avatar: res.data.avatar || user.avatar,
+                    roll_no: res.data.roll_no || ''
                 });
             } catch {
                 toast.error('Failed to sync settings data');
@@ -360,6 +362,14 @@ const Settings = () => {
                                     className="w-full px-6 py-3.5 bg-surface border border-border rounded-2xl text-sm font-bold text-secondary focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 outline-none transition-all shadow-sm"
                                     value={formData.name}
                                     onChange={e => { setFormData({...formData, name: e.target.value}); window.hasUnsavedSettings = true; setHasUnsavedChanges(true); }}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-secondary-muted ml-1">Unique Terminal ID</label>
+                                <input 
+                                    className="w-full px-6 py-3.5 bg-surface border border-border rounded-2xl text-sm font-bold text-secondary-muted opacity-70 cursor-not-allowed outline-none shadow-sm"
+                                    value={formData.roll_no || '#PENDING'}
+                                    readOnly
                                 />
                             </div>
                             <div className="space-y-1.5">
