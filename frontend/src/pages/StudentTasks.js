@@ -120,7 +120,102 @@ const CommentEditor = ({ value, onChange, onSave, onCancel, placeholder, autoFoc
     );
 };
 
-const TaskComments = ({ taskId }) => {
+const TaskTimeline = ({ taskId }) => {
+    const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchTimeline = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await API.get(`/tasks/${taskId}/timeline`);
+            setEvents(res.data || []);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    }, [taskId]);
+
+    useEffect(() => {
+        if (taskId) fetchTimeline();
+    }, [taskId, fetchTimeline]);
+
+    if (loading && events.length === 0) {
+        return (
+            <div className="space-y-4 pt-2">
+                {[1, 2, 3].map(i => (
+                    <div key={i} className="flex gap-4 items-start">
+                        <div className="w-2 h-2 rounded-full bg-gray-200 mt-2 shrink-0 animate-pulse" />
+                        <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-gray-50 rounded w-1/3 animate-pulse" />
+                            <div className="h-3 bg-gray-50 rounded w-full animate-pulse" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    if (events.length === 0) {
+        return (
+            <div className="text-center py-10 bg-gray-50/50 rounded-2xl border border-dashed border-gray-100">
+                <History size={24} className="mx-auto text-gray-200 mb-2" />
+                <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No mission history logged</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative pt-2 pl-2">
+            {/* Timeline Line */}
+            <div className="absolute left-[7px] top-0 bottom-0 w-[2px] bg-indigo-50" />
+
+            <div className="space-y-8">
+                {events.map((event, idx) => (
+                    <div key={event.id || idx} className="relative flex gap-6 items-start group">
+                        {/* Event Dot */}
+                        <div className={`w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm z-10 mt-1.5 shrink-0 transition-transform group-hover:scale-125 ${
+                            event.type === 'creation' ? 'bg-amber-400' :
+                            event.type === 'publication' ? 'bg-indigo-400' :
+                            event.type === 'acceptance' ? 'bg-blue-400' :
+                            event.type === 'submission' ? 'bg-emerald-400' :
+                            event.type === 'grading' ? 'bg-purple-400' :
+                            event.type === 'closure' ? 'bg-gray-400' : 'bg-indigo-400'
+                        }`} />
+
+                        <div className="flex-1 space-y-1">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                                        event.type === 'submission' ? 'bg-emerald-50 text-emerald-600' : 
+                                        event.type === 'grading' ? 'bg-purple-50 text-purple-600' : 
+                                        'bg-gray-50 text-gray-400'
+                                    }`}>
+                                        {event.type}
+                                    </span>
+                                    <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">
+                                        • {event.user_name}
+                                    </span>
+                                </div>
+                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest opacity-60 group-hover:opacity-100 transition-opacity">
+                                    {new Date(event.timestamp).toLocaleDateString()} • {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
+                            <div className="bg-white/60 p-3 rounded-xl border border-gray-50 shadow-sm group-hover:border-indigo-100 transition-colors quill-content text-left overflow-hidden">
+                                <p 
+                                    className="text-[11px] font-semibold text-gray-700 leading-relaxed" 
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(event.detail) }} 
+                                />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const TaskComments = ({ taskId, isReportShared }) => {
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [loading, setLoading] = useState(false);
@@ -302,10 +397,7 @@ const TaskComments = ({ taskId }) => {
                     </div>
                 </div>
             ) : (
-                <div className="py-12 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                    <History size={24} className="mx-auto text-gray-200 mb-2" />
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">History Log Coming Soon</p>
-                </div>
+                <TaskTimeline taskId={taskId} />
             )}
         </div>
     );
@@ -411,7 +503,9 @@ const StudentTasks = () => {
     return tasks.filter(t => {
         const matchesSearch = (t.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
                               (t.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || t.dynamic_status === statusFilter;
+        const matchesStatus = statusFilter === 'all' || 
+                              t.dynamic_status === statusFilter || 
+                              (statusFilter === 'submitted' && t.dynamic_status === 'graded');
         return matchesSearch && matchesStatus;
     });
   }, [tasks, searchTerm, statusFilter]);
@@ -419,13 +513,22 @@ const StudentTasks = () => {
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-8 max-w-7xl mx-auto pb-12">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white shadow-sm mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-            <CheckSquare size={28} className="text-indigo-600" />
-            My Tasks
-          </h1>
-          <p className="text-sm text-gray-500 mt-1.5 ml-1">Manage and track your assigned projects and submissions</p>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 border-b border-gray-100 pb-6">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => window.location.href='/dashboard'}
+            className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-indigo-600"
+            title="Back to Dashboard"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
+              <CheckSquare size={28} className="text-indigo-600" />
+              My Tasks
+            </h1>
+            <p className="text-sm text-gray-500 mt-1.5 ml-1">Manage and track your assigned projects and submissions</p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
@@ -494,7 +597,7 @@ const StudentTasks = () => {
                             {task.priority || 'Medium'}
                         </span>
                       </div>
-                      <h3 className="text-lg font-bold text-gray-900 leading-snug">
+                      <h3 className="text-lg font-bold text-gray-900 leading-snug line-clamp-2" title={task.title}>
                         {task.title}
                       </h3>
                       <p className="text-sm text-gray-500 line-clamp-2 mt-1">

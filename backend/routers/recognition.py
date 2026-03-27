@@ -36,7 +36,35 @@ def get_cert_stats(db: Session = Depends(get_db)):
         dist[c.award_type.lower()] = dist.get(c.award_type.lower(), 0) + 1
     
     top_students = []
-    # Mock top students
+    weights = get_admin_weights(db)
+    
+    from routers.analytics import calculate_student_atm
+    for sid in student_ids:
+        s = db.query(User).filter(User.id == sid).first()
+        if not s: continue
+        
+        metrics = calculate_student_atm(db, s.id)
+        if metrics['total_assigned_past'] > 0:
+            comp_norm = (metrics["completion_score"] / 20) * 100 if metrics["completion_score"] else 0
+            avg_norm = metrics["average_percentage"]
+            
+            weighted_score = (
+                (comp_norm * weights["w_task"]) + 
+                (avg_norm * weights["w_score"]) + 
+                (10 * weights["w_group"]) + 
+                (5 * weights["w_event"])
+            )
+            
+            top_students.append({
+                "student_id": s.id,
+                "name": s.name,
+                "avatar": getattr(s, 'avatar', None),
+                "performance_score": round(weighted_score, 1),
+                "roll_no": s.roll_no
+            })
+            
+    top_students.sort(key=lambda x: x["performance_score"], reverse=True)
+    
     return {
         "total_certifications": len(certs),
         "distribution": dist,
@@ -53,6 +81,8 @@ def get_recent_certs(db: Session = Depends(get_db)):
             "id": c.id,
             "student_name": user.name if user else "Unknown",
             "student_email": user.email if user else "",
+            "student_avatar": user.avatar if user else None,
+            "roll_no": user.roll_no if user else None,
             "badge_type": c.award_type,
             "performance_score": "N/A",
             "issue_date": str(c.awarded_at if hasattr(c, 'awarded_at') else datetime.utcnow())
@@ -67,14 +97,17 @@ def get_student_performance(student_id: int, db: Session = Depends(get_db)):
     
     return {
         "student_id": student_id,
-        "eligibility_status": "eligible",
-        "completion_rate": 85,
-        "avg_score": 75,
-        "group_contribution": 8,
-        "event_participation": 2,
-        "performance_score": 82,
-        "recommended_badge": "gold",
-        "certification_id": None
+        "internal_id": user.id,
+        "name": user.name,
+        "avatar": user.avatar,
+        "certification_id": cert.id if cert else None,
+        "eligibility_status": "eligible" if atm >= 50 else "ineligible",
+        "completion_rate": int((metrics["completion_score"] / 20) * 100) if metrics["completion_score"] else 0,
+        "avg_score": metrics["average_percentage"],
+        "group_contribution": 10,
+        "event_participation": 5,
+        "performance_score": atm,
+        "recommended_badge": rec
     }
 
 @router.post("/issue")

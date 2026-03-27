@@ -166,7 +166,7 @@ const StudentDashboard = () => {
                         </div>
                         <div>
                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-black text-gray-800 uppercase italic tracking-tight group-hover:text-emerald-600 transition-colors">{task.title}</h4>
+                              <h4 className="font-black text-gray-800 uppercase italic tracking-tight group-hover:text-emerald-600 transition-colors line-clamp-1" title={task.title}>{task.title}</h4>
                               <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-[0.2em] ${
                                 task.priority === 'High' ? 'bg-rose-100 text-rose-600' : 'bg-gray-100 text-gray-600'
                               }`}>
@@ -222,10 +222,12 @@ const StudentDashboard = () => {
                        )}
                     </div>
                   </div>
-                  
-                  <Button className="w-full mt-10 bg-white text-emerald-700 hover:bg-emerald-50 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl" onClick={() => window.location.href='/dashboard/tasks'}>
+                  <button 
+                      className="w-full mt-10 bg-white text-emerald-700 hover:bg-emerald-50 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all" 
+                      onClick={() => window.location.href='/dashboard/tasks'}
+                  >
                       Review All Feedback
-                  </Button>
+                  </button>
                </div>
                {/* Pattern */}
                <div className="absolute top-0 right-0 w-full h-full opacity-10 pointer-events-none overflow-hidden">

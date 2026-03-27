@@ -220,12 +220,12 @@ const FacultySubmissions = () => {
                         />
                     </div>
                     <select
-                        className="px-6 py-3 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm shadow-sm transition-all"
+                        className="px-6 py-3 bg-white border border-gray-200 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm shadow-sm transition-all w-full md:w-auto md:max-w-xs text-ellipsis overflow-hidden whitespace-nowrap"
                         value={selectedTask}
                         onChange={handleTaskChange}
                     >
                         <option value="">Select Task to Review...</option>
-                        {tasks.map(t => <option key={t.id} value={String(t.id)}>{t.title}</option>)}
+                        {tasks.map(t => <option key={t.id} value={String(t.id)}>{t.title.length > 40 ? t.title.substring(0, 40) + "..." : t.title}</option>)}
                     </select>
                 </div>
             </div>

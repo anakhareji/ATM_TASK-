@@ -784,7 +784,7 @@ const TaskCard = ({ task, onPublish, onDelete, onEdit, onViewSubmissions, isActi
                                 {task.task_type === 'group' ? <Users size={24} /> : <User size={24} />}
                             </div>
                             <div>
-                                <h3 className="text-xl font-black text-gray-800 tracking-tight group-hover:text-emerald-700 transition-colors uppercase">
+                                <h3 className="text-xl font-black text-gray-800 tracking-tight group-hover:text-emerald-700 transition-colors uppercase line-clamp-2" title={task.title}>
                                     {task.title}
                                 </h3>
                                 <div className="flex flex-wrap items-center gap-3 mt-1">

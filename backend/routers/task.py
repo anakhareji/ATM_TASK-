@@ -442,10 +442,13 @@ def get_my_tasks(
         
         if role == STUDENT.lower():
             # GET ACTIVE/PROGRESS TASKS (EXCLUDE PUBLISHED/DRAFT)
+            from models.task_submission import TaskSubmission
+            engaged_tasks = [s.task_id for s in db.query(TaskSubmission).filter(TaskSubmission.student_id == user_id).all()]
             tasks = db.query(Task).filter(
                 (Task.student_id == user_id) |
-                (Task.group_id.in_(db.query(GroupMember.group_id).filter(GroupMember.student_id == user_id))),
-                Task.status.in_(["in_progress", "submitted", "graded", "returned"])
+                (Task.group_id.in_(db.query(GroupMember.group_id).filter(GroupMember.student_id == user_id))) |
+                (Task.id.in_(engaged_tasks)),
+                Task.status.in_(["published", "in_progress", "submitted", "graded", "returned", "closed"])
             ).all()
             
             res = []
@@ -865,15 +868,19 @@ def get_task_report(
     current_user: dict = Depends(get_current_user)
 ):
     role = current_user["role"].lower()
-    if role not in [FACULTY.lower(), ADMIN.lower()]:
-        raise HTTPException(403, "Faculty and Admin only")
-        
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(404, "Task not found")
-        
-    if role == FACULTY.lower() and task.faculty_id != current_user["user_id"]:
-        raise HTTPException(403, "Not your task")
+
+    # Access Control
+    if role == FACULTY.lower():
+        if task.faculty_id != current_user["user_id"]:
+            raise HTTPException(403, "Not authorized to view this mission report")
+    elif role == STUDENT.lower():
+        if not getattr(task, "is_report_shared", False):
+            raise HTTPException(403, "This mission report has not been released by Command.")
+    elif role != ADMIN.lower():
+        raise HTTPException(403, "Unauthorized access")
 
     submissions = db.query(TaskSubmission).options(joinedload(TaskSubmission.student)).filter(TaskSubmission.task_id == task_id).all()
     

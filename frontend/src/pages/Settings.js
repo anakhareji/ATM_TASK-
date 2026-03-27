@@ -4,7 +4,7 @@ import {
   User, Moon, Sun, HelpCircle, ShieldCheck, FileText, 
   ChevronRight, Camera, Save, Loader2, LogOut,
   Bell, Monitor, Globe, Smartphone, Lock, XCircle,
-  ExternalLink, Mail, MessageSquare
+  ExternalLink, Mail, MessageSquare, Award
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
@@ -55,7 +55,7 @@ const SettingsModal = ({ open, title, onClose, children }) => {
 const Settings = () => {
     const navigate = useNavigate();
     const [user] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
-    const [, setProfile] = useState(null);
+    const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -372,6 +372,35 @@ const Settings = () => {
                             </div>
                         </div>
                     </div>
+
+                    {profile?.medals && profile.medals.length > 0 && (
+                        <div className="mt-8 pt-8 border-t border-border/50">
+                            <h4 className="text-[10px] font-black text-secondary-muted uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                <Award size={14} className="text-amber-500" /> Operational Honors
+                            </h4>
+                            <div className="flex flex-wrap gap-4">
+                                {profile.medals.map((medal, idx) => (
+                                    <motion.div 
+                                        key={idx}
+                                        initial={{ scale: 0, rotate: -45 }}
+                                        animate={{ scale: 1, rotate: 0 }}
+                                        transition={{ type: "spring", stiffness: 300, delay: idx * 0.15 }}
+                                        className={`flex-1 min-w-[150px] flex items-center p-3.5 rounded-2xl border shadow-xl ${
+                                            medal.toLowerCase() === 'gold' ? 'bg-gradient-to-br from-yellow-300 to-amber-500 border-yellow-200 text-yellow-900 shadow-yellow-500/40' :
+                                            medal.toLowerCase() === 'silver' ? 'bg-gradient-to-br from-gray-200 to-gray-400 border-gray-100 text-gray-800 shadow-gray-400/40' :
+                                            'bg-gradient-to-br from-amber-600 to-orange-700 border-amber-500 text-orange-50 shadow-orange-700/40'
+                                        }`}
+                                    >
+                                        <Award size={28} className="opacity-90 flex-shrink-0" />
+                                        <div className="ml-4 flex flex-col justify-center">
+                                            <span className="text-xs font-black uppercase tracking-widest leading-none mb-1">{medal} Honor</span>
+                                            <span className="text-[8px] font-bold uppercase tracking-[0.2em] opacity-80 leading-none">Verified By Intel</span>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </GlassCard>
 
                 {/* 2. MISSION AESTHETICS */}
