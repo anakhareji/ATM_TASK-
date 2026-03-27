@@ -479,7 +479,7 @@ def get_my_tasks(
                     "status": t.status,
                     "file_url": t.file_url,
                     "created_at": t.created_at,
-                    "started_at": t.started_at,  # CRITICAL FOR TIMER
+                    "is_report_shared": getattr(t, "is_report_shared", False),
                     "dynamic_status": status
                 }
                 res.append(t_data)
@@ -919,6 +919,31 @@ def get_task_report(
         
     return report_data
 
+@router.get("/{task_id}/my-evaluation")
+def get_my_evaluation(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user["role"].lower() != STUDENT.lower():
+        raise HTTPException(403, "Access restricted to operative personnel only.")
+        
+    sub = db.query(TaskSubmission).filter(
+        TaskSubmission.task_id == task_id,
+        TaskSubmission.student_id == current_user["user_id"]
+    ).first()
+    
+    if not sub:
+        return {"status": "none", "grade": None, "feedback": None, "marks": None}
+        
+    return {
+        "status": sub.status,
+        "grade": sub.grade,
+        "feedback": sub.feedback,
+        "marks": sub.marks_obtained,
+        "submitted_at": sub.submitted_at
+    }
+
 @router.post("/{task_id}/share-report")
 def share_task_report(
     task_id: int,
@@ -965,6 +990,109 @@ def delete_faculty_task(
     db.delete(task)
     db.commit()
     return {"message": "Task and related metadata deleted successfully"}
+
+# =========================
+# TASK TIMELINE
+# =========================
+@router.get("/{task_id}/timeline")
+def get_task_timeline(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(404, "Task not found")
+        
+    events = []
+    
+    # 1. Creation
+    events.append({
+        "id": "cre_" + str(task.id),
+        "type": "creation",
+        "timestamp": task.created_at,
+        "detail": f"Mission '{task.title}' initialized by Command.",
+        "user_name": "System",
+        "role": "admin"
+    })
+    
+    # 2. Publication
+    if task.published_at:
+        events.append({
+            "id": "pub_" + str(task.id),
+            "type": "publication",
+            "timestamp": task.published_at,
+            "detail": "Mission intel published to operative field.",
+            "user_name": "Faculty",
+            "role": "faculty"
+        })
+        
+    # 3. Acceptance
+    if task.started_at:
+        events.append({
+            "id": "acc_" + str(task.id),
+            "type": "acceptance",
+            "timestamp": task.started_at,
+            "detail": "Operative has accepted the mission. Timer activated.",
+            "user_name": "Student",
+            "role": "student"
+        })
+        
+    # 4. Comments
+    from models.task_comment import TaskComment
+    comments = db.query(TaskComment).filter(TaskComment.task_id == task_id).all()
+    for c in comments:
+        user = db.query(User).filter(User.id == c.user_id).first()
+        events.append({
+            "id": "com_" + str(c.id),
+            "type": "comment",
+            "timestamp": c.created_at,
+            "detail": c.comment_text,
+            "user_name": user.name if user else "Unknown",
+            "role": c.user_role
+        })
+        
+    # 5. Submissions
+    submissions = db.query(TaskSubmission).filter(TaskSubmission.task_id == task_id).all()
+    for s in submissions:
+        user = db.query(User).filter(User.id == s.student_id).first()
+        events.append({
+            "id": "sub_" + str(s.id),
+            "type": "submission",
+            "timestamp": s.submitted_at,
+            "detail": f"Evidence transmission received: {s.submission_text[:100]}...",
+            "user_name": user.name if user else "Student",
+            "role": "student"
+        })
+        
+        # 6. Grading (per submission)
+        if s.status == "graded":
+            # Since we don't have a graded_at column, we'll use the submitted_at as base
+            # In a real app we'd add graded_at. Here we indicate it was graded.
+            events.append({
+                "id": "grd_" + str(s.id),
+                "type": "grading",
+                "timestamp": s.submitted_at, 
+                "detail": f"Mission Certified. Result: {s.grade}. Review: {s.feedback or 'No written feedback.'}",
+                "user_name": "Faculty Evaluator",
+                "role": "faculty"
+            })
+
+    # 7. Closure
+    if getattr(task, "closed_at", None):
+        events.append({
+            "id": "clo_" + str(task.id),
+            "type": "closure",
+            "timestamp": task.closed_at,
+            "detail": "Mission formally closed and archived.",
+            "user_name": "System",
+            "role": "admin"
+        })
+
+    # Sort by timestamp
+    events.sort(key=lambda x: x["timestamp"])
+    
+    return events
 
 # =========================
 # LIST ALL (FOR ADMIN DASHBOARD)

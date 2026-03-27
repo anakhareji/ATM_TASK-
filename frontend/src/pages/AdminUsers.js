@@ -31,7 +31,8 @@ const AdminUsers = () => {
 
   const userModalDefault = {
     open: false, id: null, name: '', email: '', role: 'student', password: '',
-    department_id: '', program_id: '', course_id: '', batch: '', current_semester: 1
+    department_id: '', program_id: '', course_id: '', batch: '', current_semester: 1,
+    roll_no: ''
   };
   const [userModal, setUserModal] = useState(userModalDefault);
 
@@ -244,6 +245,7 @@ const AdminUsers = () => {
                 <thead className="bg-gray-50/80 border-b border-gray-100">
                   <tr>
                     <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">User Identity</th>
+                    <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-widest text-gray-400">ID</th>
                     <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-widest text-gray-400">Classification</th>
                     <th className="px-8 py-5 text-center text-[10px] font-black uppercase tracking-widest text-gray-400">Access Index</th>
                     <th className="px-8 py-5 text-right text-[10px] font-black uppercase tracking-widest text-gray-400">Operations</th>
@@ -296,6 +298,11 @@ const AdminUsers = () => {
                               </div>
                             </div>
                           </div>
+                        </td>
+                        <td className="px-8 py-5">
+                          <span className="text-xs font-mono font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
+                            {u.roll_no ? u.roll_no : `#${u.id}`}
+                          </span>
                         </td>
                         <td className="px-8 py-5 text-center">
                           <Badge variant={u.role}>{u.role}</Badge>
@@ -415,6 +422,16 @@ const AdminUsers = () => {
                   <option value="faculty">Faculty</option>
                   <option value="admin">Administrator</option>
                 </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase text-gray-400 ml-1">Roll No / ID {userModal.id ? "" : "(Auto-Generated if Empty)"}</label>
+                <input
+                  type="text"
+                  placeholder={userModal.id ? "Unique ID" : "Auto-Generated"}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 outline-none font-bold opacity-70 cursor-not-allowed"
+                  value={userModal.roll_no}
+                  readOnly
+                />
               </div>
               {!userModal.id && (
                 <div className="space-y-1">
@@ -587,7 +604,8 @@ const AdminUsers = () => {
                     department_id: u.department_id || '',
                     program_id: u.program_id || '',
                     batch: u.batch || '',
-                    current_semester: u.current_semester || 1
+                    current_semester: u.current_semester || 1,
+                    roll_no: u.roll_no || ''
                   });
                 }}
                 className="bg-indigo-600 rounded-2xl px-6 font-black"

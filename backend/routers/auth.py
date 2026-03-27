@@ -109,6 +109,7 @@ def get_my_profile(
 
     profile_data = {
         "id":               user.id,
+        "roll_no":          user.roll_no,
         "name":             user.name,
         "email":            user.email,
         "role":             user.role,

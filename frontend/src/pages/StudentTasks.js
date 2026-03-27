@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckSquare, UploadCloud, MessageSquare, User, Users, 
-  AlertCircle, Clock, Search,
+  AlertCircle, Clock, Search, 
   Info, CheckCircle2, FileText, CheckCircle,
-  Layout, Bold, Italic, Link, Paperclip, AtSign, Smile, Code, History, List, Edit3, Trash2
+  Layout, Bold, Italic, Link, Paperclip, AtSign, Smile, Code, History, List, Edit3, Trash2, Download, FileSearch
 } from 'lucide-react';
 import API from '../api/axios';
 import { staggerContainer, cardEntrance } from '../utils/motionVariants';
@@ -12,6 +12,13 @@ import toast from 'react-hot-toast';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import DOMPurify from 'dompurify';
+
+const CloseIcon = ({ size }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
+);
 
 const RichContent = ({ content, className = '' }) => {
     return (
@@ -217,10 +224,12 @@ const TaskTimeline = ({ taskId }) => {
 
 const TaskComments = ({ taskId, isReportShared }) => {
     const [comments, setComments] = useState([]);
+    const [evaluation, setEvaluation] = useState(null);
     const [newComment, setNewComment] = useState('');
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('comments');
     const [isInputFocused, setIsInputFocused] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
     
     // Editing state
     const [editingId, setEditingId] = useState(null);
@@ -228,11 +237,15 @@ const TaskComments = ({ taskId, isReportShared }) => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const currentUserId = user.id || user.user_id;
 
-    const fetchComments = useCallback(async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await API.get(`/tasks/${taskId}/comments`);
-            setComments(res.data || []);
+            const [commRes, evalRes] = await Promise.all([
+                API.get(`/tasks/${taskId}/comments`),
+                API.get(`/tasks/${taskId}/my-evaluation`).catch(() => ({ data: null }))
+            ]);
+            setComments(commRes.data || []);
+            setEvaluation(evalRes.data);
         } catch (e) {
             console.error(e);
         } finally {
@@ -241,8 +254,8 @@ const TaskComments = ({ taskId, isReportShared }) => {
     }, [taskId]);
 
     useEffect(() => {
-        if (taskId) fetchComments();
-    }, [taskId, fetchComments]);
+        if (taskId) fetchData();
+    }, [taskId, fetchData]);
 
     const handleSend = async () => {
         if (!newComment.trim()) return;
@@ -250,7 +263,7 @@ const TaskComments = ({ taskId, isReportShared }) => {
             await API.post(`/tasks/${taskId}/comments`, { comment_text: newComment });
             setNewComment('');
             setIsInputFocused(false);
-            fetchComments();
+            fetchData();
             toast.success('Comment logged');
         } catch (e) {
             toast.error('Failed to log activity');
@@ -262,7 +275,7 @@ const TaskComments = ({ taskId, isReportShared }) => {
         try {
             await API.put(`/tasks/comments/${id}`, { comment_text: editContent });
             setEditingId(null);
-            fetchComments();
+            fetchData();
             toast.success('Activity updated');
         } catch (e) {
             toast.error('Failed to update activity');
@@ -273,10 +286,31 @@ const TaskComments = ({ taskId, isReportShared }) => {
         if (!window.confirm('Erase this activity entry permanently?')) return;
         try {
             await API.delete(`/tasks/comments/${id}`);
-            fetchComments();
+            fetchData();
             toast.success('Activity erased');
         } catch (e) {
             toast.error('Failed to erase activity');
+        }
+    };
+
+    const downloadReport = async () => {
+        setIsDownloading(true);
+        try {
+            const res = await API.get(`/tasks/${taskId}/report`);
+            const data = res.data;
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Mission_Report_TASK_${taskId}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.success('Report downloaded');
+        } catch (e) {
+            toast.error('Report capture failed');
+        } finally {
+            setIsDownloading(false);
         }
     };
 
@@ -287,7 +321,7 @@ const TaskComments = ({ taskId, isReportShared }) => {
             </h3>
             
             <div className="flex gap-1 border-b border-gray-100 mb-6 overflow-x-auto pb-1 custom-scrollbar">
-                {['all', 'comments', 'history', 'approvals'].map(tab => (
+                {['comments', 'history'].map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
@@ -297,13 +331,47 @@ const TaskComments = ({ taskId, isReportShared }) => {
                             : 'border-transparent text-gray-400 hover:text-gray-600'
                         }`}
                     >
-                        {tab}
+                        {tab === 'comments' ? 'Comments & Reports' : 'Mission History'}
                     </button>
                 ))}
             </div>
 
             {activeTab === 'comments' ? (
                 <div className="space-y-6">
+                    {/* Faculty Evaluation Section */}
+                    {evaluation && evaluation.status === 'graded' && (
+                        <div className="bg-indigo-50/50 rounded-2xl border border-indigo-100 p-5 space-y-4 shadow-sm animate-fadeIn">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg">
+                                        <FileSearch size={20} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-indigo-900 uppercase tracking-wider">Faculty Evaluation Received</h4>
+                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                                            Outcome: {evaluation.grade} • {evaluation.marks} Pts
+                                        </p>
+                                    </div>
+                                </div>
+                                {isReportShared && (
+                                    <button 
+                                        onClick={downloadReport}
+                                        disabled={isDownloading}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                    >
+                                        {isDownloading ? 'Downloading...' : <><Download size={14} /> Mission Report</>}
+                                    </button>
+                                )}
+                            </div>
+                            
+                            {evaluation.feedback && (
+                                <div className="bg-white/80 p-4 rounded-xl border border-indigo-50 italic text-[11px] font-medium text-indigo-800 leading-relaxed shadow-inner">
+                                    "{evaluation.feedback}"
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Add Comment Section */}
                     <div className="flex gap-3 group">
                         <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-[10px] shadow-md shrink-0 uppercase overflow-hidden">
@@ -568,7 +636,7 @@ const StudentTasks = () => {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pt-4">
           {filteredTasks.map((task) => (
             <motion.div key={task.id} variants={cardEntrance} initial="hidden" animate="visible" exit="hidden" layout className="h-full">
-              <div className="group h-full flex flex-col p-6 bg-white/90 backdrop-blur-xl border border-white hover:border-indigo-100 rounded-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 relative overflow-hidden">
+              <div className="group h-full flex flex-col p-6 bg-white border border-gray-200 hover:border-indigo-100 rounded-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 relative overflow-hidden">
                 
                 {/* Status Indicator Bar */}
                 <div className={`absolute top-0 left-0 w-1 h-full ${
@@ -683,7 +751,7 @@ const StudentTasks = () => {
                         exit={{ height: 0, opacity: 0 }} 
                         className="overflow-hidden"
                       >
-                         <TaskComments taskId={task.id} />
+                         <TaskComments taskId={task.id} isReportShared={task.is_report_shared} />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -693,7 +761,7 @@ const StudentTasks = () => {
           ))}
           
           {filteredTasks.length === 0 && (
-            <div className="col-span-full py-20 rounded-[2.5rem] bg-white/80 backdrop-blur-xl border border-white flex flex-col items-center justify-center text-center shadow-sm w-full">
+            <div className="col-span-full py-20 rounded-2xl bg-white border border-gray-200 flex flex-col items-center justify-center text-center shadow-sm w-full">
                 <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
                     <CheckSquare size={28} className="text-gray-400" />
                 </div>
@@ -732,7 +800,7 @@ const StudentTasks = () => {
                     onClick={() => setShowSubmitModal(null)}
                     className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-700 rounded-lg transition-colors"
                   >
-                        <X size={20} />
+                        <CloseIcon size={20} />
                   </button>
               </div>
 
@@ -792,11 +860,6 @@ const StudentTasks = () => {
   );
 };
 
-const X = ({ size }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-    </svg>
-);
+// End of file
 
 export default StudentTasks;

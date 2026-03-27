@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
-  TrendingUp, Award, Activity, History, Zap, Target, BookOpen, BarChart3, Star, Sparkles
+  TrendingUp, Award, Activity, History, Zap, Target, BookOpen, BarChart3, Star, Sparkles, MessageSquare
 } from 'lucide-react';
 import API from '../api/axios';
 import GlassCard from '../components/ui/GlassCard';
@@ -218,16 +218,26 @@ const GradeChart = () => {
                             </span>
                           </td>
                           <td className="py-5 px-8 hidden md:table-cell">
-                            <div className="flex items-center gap-6">
-                              <div>
-                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Faculty</p>
-                                <p className="text-base font-black text-gray-700 italic">{p.score}<span className="text-gray-300 text-xs ml-1">/100</span></p>
+                            <div className="flex flex-col gap-4">
+                              <div className="flex items-center gap-6">
+                                <div>
+                                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Faculty</p>
+                                  <p className="text-base font-black text-gray-700 italic">{p.score}<span className="text-gray-300 text-xs ml-1">/100</span></p>
+                                </div>
+                                <div className="w-px h-6 bg-gray-100"/>
+                                <div>
+                                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">System</p>
+                                  <p className="text-base font-black text-gray-700 italic">{p.system_score}<span className="text-gray-300 text-xs ml-1">/100</span></p>
+                                </div>
                               </div>
-                              <div className="w-px h-6 bg-gray-100"/>
-                              <div>
-                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">System</p>
-                                <p className="text-base font-black text-gray-700 italic">{p.system_score}<span className="text-gray-300 text-xs ml-1">/100</span></p>
-                              </div>
+                              {p.remarks && (
+                                <div className="p-3 bg-gray-50 border border-gray-100 rounded-xl max-w-xs group-hover:bg-indigo-50/50 group-hover:border-indigo-100 transition-colors">
+                                   <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1 flex items-center gap-1">
+                                      <MessageSquare size={10}/> Evaluator Dossier Notes
+                                   </p>
+                                   <p className="text-xs font-semibold text-gray-600 leading-relaxed italic">"{p.remarks}"</p>
+                                </div>
+                              )}
                             </div>
                           </td>
                           <td className="py-5 px-8 text-center">

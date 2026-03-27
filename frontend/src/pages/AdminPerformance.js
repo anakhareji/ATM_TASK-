@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Download, Users, Star, TrendingUp, Search, Plus, X, BookOpen, CheckCircle, Sparkles } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { Download, Users, Star, TrendingUp, Search, Plus, X, BookOpen, CheckCircle, Sparkles, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GradeChart from '../components/dashboard/GradeChart';
 import Leaderboard from '../components/dashboard/Leaderboard';
@@ -58,6 +58,12 @@ const AdminPerformance = () => {
   // Computed grade preview while admin types
   const previewGrade = scoreToGrade(form.score);
 
+  // Pagination & Search States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDept, setSelectedDept] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   // ── fetch helpers ──────────────────────────────────────────────────────────
   const fetchDropdowns = useCallback(async () => {
     try {
@@ -75,13 +81,11 @@ const AdminPerformance = () => {
   const fetchRange = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await API.get('/performance/score-range', {
-        params: {
-          min_score: minScore !== '' ? parseFloat(minScore) : 0,
-          max_score: maxScore !== '' ? parseFloat(maxScore) : 100,
-        },
-      });
-      setFiltered(res.data || []);
+      const res = await API.get('/analytics/performance/students');
+      let data = res.data || [];
+      if (minScore !== '') data = data.filter(d => d.atm_score >= parseFloat(minScore));
+      if (maxScore !== '') data = data.filter(d => d.atm_score <= parseFloat(maxScore));
+      setFiltered(data);
     } catch {
       setFiltered([]);
     } finally {
@@ -91,21 +95,14 @@ const AdminPerformance = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const overview     = await API.get('/performance/semester-overview');
-      const data         = overview.data || [];
-      const leaderboard  = await API.get('/performance/leaderboard');
-      const totalAvg     = data.length
-        ? data.reduce((a, c) => a + (parseFloat(c.average) || 0), 0) / data.length
-        : 0;
+      const statsRes = await API.get('/analytics/performance/stats');
+      const data = statsRes.data || {};
+      
       setStats({
-        avg:      totalAvg.toFixed(1),
-        total:    (leaderboard.data || []).length,
-        passRate: data.length ? '94%' : '—',
+        avg:      `${data.average_score || 0}%`,
+        total:    data.total_records || 0,
+        passRate: `${data.pass_rate || 0}%`,
       });
-
-      // Fetch submitted reports
-      const subRes = await API.get('/performance/submitted');
-      setSubmittedReports(subRes.data || []);
     } catch { /* ignore */ }
   }, []);
 
@@ -141,6 +138,34 @@ const AdminPerformance = () => {
     fetchStats();
     fetchDropdowns();
   }, [fetchRange, fetchStats, fetchDropdowns]);
+
+  // Handle derived state for filtering locally
+  const processedStudents = useMemo(() => {
+    let result = [...filtered];
+    
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(s => 
+        (s.name && s.name.toLowerCase().includes(q)) || 
+        (s.student_id && s.student_id.toString().includes(q)) ||
+        (s.email && s.email.toLowerCase().includes(q))
+      );
+    }
+    
+    if (selectedDept) {
+      result = result.filter(s => s.department_name === selectedDept);
+    }
+    
+    return result;
+  }, [filtered, searchQuery, selectedDept]);
+
+  const totalPages = Math.ceil(processedStudents.length / itemsPerPage);
+  const currentStudents = processedStudents.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const uniqueDepartments = useMemo(() => {
+    const depts = new Set(filtered.map(s => s.department_name).filter(d => Boolean(d) && d !== 'N/A'));
+    return Array.from(depts);
+  }, [filtered]);
 
   // ── Submit grade ───────────────────────────────────────────────────────────
   const handleSubmitGrade = async (e) => {
@@ -202,17 +227,13 @@ const AdminPerformance = () => {
               className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gray-50 border border-gray-200 text-gray-600 text-xs font-black uppercase tracking-widest hover:bg-gray-100 transition-colors">
               <Download size={15}/> Export CSV
             </button>
-            <button onClick={() => setShowGradeForm(true)}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:opacity-90 transition-opacity">
-              <Plus size={15}/> Enter Grade
-            </button>
           </div>
         </div>
 
         {/* ── Stat Pills ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            { label: 'Average Score', value: `${stats.avg}%`, icon: Star,       color: 'text-emerald-600', bg: 'bg-emerald-50' },
+            { label: 'Average Score', value: `${stats.avg}`, icon: Star,       color: 'text-emerald-600', bg: 'bg-emerald-50' },
             { label: 'Total Records', value: stats.total,     icon: Users,      color: 'text-teal-600',    bg: 'bg-teal-50'    },
             { label: 'Pass Rate',     value: stats.passRate,  icon: TrendingUp, color: 'text-cyan-600',    bg: 'bg-cyan-50'    },
           ].map(({ label, value, icon: Icon, color, bg }) => (
@@ -235,81 +256,50 @@ const AdminPerformance = () => {
         </div>
         <motion.div variants={cardEntrance}><SemesterChart/></motion.div>
 
-        {/* ── Pending Submissions from Faculty ── */}
-        <motion.div variants={cardEntrance}>
-          <GlassCard className="bg-indigo-50/20 border-indigo-100">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                 <h3 className="text-lg font-black text-gray-800 flex items-center gap-2 uppercase tracking-tight">
-                   <Sparkles size={20} className="text-indigo-500 animate-pulse"/> Submitted for Ranking
-                 </h3>
-                 <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-0.5">Evaluations validated by faculty • Currently on Leaderboard</p>
-              </div>
-              <div className="px-5 py-2 bg-indigo-600 text-white rounded-2xl text-xl font-black italic shadow-lg shadow-indigo-500/20">
-                {submittedReports.length}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {submittedReports.length === 0 ? (
-                <div className="col-span-full py-12 text-center text-gray-400 font-bold bg-white/50 rounded-3xl border-2 border-dashed">
-                  Awaiting faculty validations...
-                </div>
-              ) : (
-                submittedReports.map((r) => (
-                  <div key={r.id} className="bg-white p-6 rounded-[2rem] border border-indigo-100 shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
-                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                       <CheckCircle size={80} className="text-indigo-600"/>
-                    </div>
-                    <div className="flex justify-between items-start mb-4 relative z-10">
-                      <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Scholar</p>
-                        <h4 className="text-lg font-black text-gray-800 uppercase italic truncate max-w-[150px]">{r.student_name}</h4>
-                      </div>
-                      <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase border ${gColor(r.grade)}`}>
-                        {r.grade}
-                      </span>
-                    </div>
-                    <div className="space-y-2 relative z-10">
-                       <p className="text-[10px] text-gray-400 font-bold uppercase">Evaluated by: <span className="text-indigo-600">{r.faculty_name}</span></p>
-                       <div className="flex items-center gap-4">
-                          <div className="text-3xl font-black text-gray-800 italic">{r.final_score.toFixed(1)} <span className="text-xs text-gray-300 ml-1">XP</span></div>
-                          <div className="h-8 w-px bg-gray-100"/>
-                          <p className="text-[9px] text-gray-400 font-black uppercase leading-tight truncate">{r.project_title}</p>
-                       </div>
-                       
-                       <button 
-                         onClick={() => handleRankStudent(r.id)}
-                         className="w-full mt-4 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2">
-                         <Star size={14}/> Rank Operative
-                       </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </GlassCard>
-        </motion.div>
-
         {/* ── Registry Table ── */}
         <motion.div variants={cardEntrance}>
           <GlassCard className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-bold text-secondary flex items-center gap-2">
-                  <Search size={20} className="text-emerald-500"/> Performance Registry
-                </h3>
-                <p className="text-xs text-secondary-muted font-medium">Detailed audit of student evaluations across all projects</p>
-              </div>
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="flex bg-surface p-1 rounded-xl border border-border">
-                  <input type="number" value={minScore} onChange={e => setMinScore(e.target.value)} placeholder="Min"
-                    className="w-20 px-3 py-1.5 bg-transparent text-sm focus:outline-none placeholder:text-secondary-muted text-secondary font-medium"/>
-                  <div className="w-px h-6 bg-border self-center mx-1"/>
-                  <input type="number" value={maxScore} onChange={e => setMaxScore(e.target.value)} placeholder="Max"
-                    className="w-20 px-3 py-1.5 bg-transparent text-sm focus:outline-none placeholder:text-secondary-muted text-secondary font-medium"/>
-                </div>
-                <Button onClick={fetchRange} className="rounded-xl shadow-lg shadow-emerald-200 dark:shadow-emerald-900/20">Filter</Button>
+                 <div className="p-3 bg-primary/10 mb-2 rounded-2xl">
+                    <Search size={24} className="text-primary" />
+                 </div>
+                 <div>
+                    <h3 className="text-lg font-bold text-secondary">Performance Registry</h3>
+                    <p className="text-xs text-secondary-muted font-medium">Detailed audit of student evaluations across all projects</p>
+                 </div>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-3 bg-gray-50/50 p-2 rounded-2xl border border-gray-100">
+                <input
+                  type="text"
+                  placeholder="Search student..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                  className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 w-full sm:w-48 focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                />
+                
+                <select
+                  value={selectedDept}
+                  onChange={(e) => { setSelectedDept(e.target.value); setCurrentPage(1); }}
+                  className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 w-full sm:w-40 focus:ring-2 focus:ring-primary/20 outline-none appearance-none cursor-pointer transition-all"
+                >
+                  <option value="">All Departments</option>
+                  {uniqueDepartments.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+
+                <div className="hidden sm:block w-px h-8 bg-gray-200 mx-1"></div>
+
+                {/* Score constraints */}
+                <input type="number" placeholder="Min" value={minScore} onChange={e => setMinScore(e.target.value)}
+                  className="w-full sm:w-16 px-3 py-2 text-center text-sm font-bold bg-white border border-gray-200 rounded-xl outline-none focus:border-primary transition-colors"/>
+                <input type="number" placeholder="Max" value={maxScore} onChange={e => setMaxScore(e.target.value)}
+                  className="w-full sm:w-16 px-3 py-2 text-center text-sm font-bold bg-white border border-gray-200 rounded-xl outline-none focus:border-primary transition-colors"/>
+                <Button onClick={fetchRange} className="w-full sm:w-auto px-5 py-2 bg-primary text-white text-sm font-bold rounded-xl shadow-lg shadow-primary/20 hover:bg-primary-hover transition-all">
+                  Filter
+                </Button>
               </div>
             </div>
 
@@ -323,43 +313,99 @@ const AdminPerformance = () => {
                 <div className="p-12 text-center bg-surface/50">
                   <Users size={48} className="mx-auto text-secondary-muted/50 mb-4"/>
                   <p className="text-secondary-muted font-bold mb-1">No Records Found</p>
-                  <p className="text-xs text-secondary-muted/80">Click "Enter Grade" above to add the first record.</p>
+                  <p className="text-xs text-secondary-muted/80">There are currently no performance records to display.</p>
                 </div>
               ) : (
                 <table className="min-w-full divide-y divide-border">
                   <thead>
                     <tr className="bg-surface/80">
-                      {['Student', 'Semester', 'Score', 'Grade', 'Project'].map(h => (
+                      {['Student', 'Dept/Sem', 'Score', 'Class', 'Tasks'].map(h => (
                         <th key={h} className="px-6 py-4 text-left text-xs font-bold text-secondary-muted uppercase tracking-widest">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border bg-card/50">
-                    {filtered.map((r, idx) => (
+                    {currentStudents.map((r, idx) => (
                       <motion.tr key={idx} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04 }}
                         className="hover:bg-surface/50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-700 font-bold text-xs overflow-hidden">
-                              {r.student_avatar ? <img src={r.student_avatar} alt="User" className="w-full h-full object-cover" /> : (r.student_name || '?').charAt(0).toUpperCase()}
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs overflow-hidden">
+                              {r.avatar ? <img src={r.avatar} alt="Avatar" className="w-full h-full object-cover" /> : '?'}
                             </div>
-                            <span className="font-bold text-secondary">{r.student_name || `Student #${r.student_id}`}</span>
+                            <div className="flex flex-col">
+                               <span className="font-bold text-sm text-secondary group-hover:text-primary transition-colors flex items-center gap-1.5">
+                                 {r.name || `Student #${r.student_id}`}
+                                 {r.official_badge && (
+                                    <Crown size={14} className={
+                                        r.official_badge === 'gold' ? 'text-amber-500 fill-amber-300' :
+                                        r.official_badge === 'silver' ? 'text-gray-400 fill-gray-200' :
+                                        r.official_badge === 'bronze' ? 'text-amber-700 fill-amber-600' : 'text-emerald-500'
+                                    } />
+                                 )}
+                               </span>
+                               <span className="text-[10px] font-bold text-secondary-muted uppercase tracking-widest leading-none mt-0.5">
+                                 ID: {r.student_id}
+                               </span>
+                            </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm font-bold text-secondary-muted">{r.semester || '—'}</td>
-                        <td className="px-6 py-4 font-black text-emerald-500">{r.final_score}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest border ${gColor(r.grade)}`}>
-                            {r.grade || '—'}
+                           <div className="flex flex-col">
+                              <span className="text-sm font-bold text-secondary">{r.department_name || 'N/A'}</span>
+                              <span className="text-[10px] font-bold text-secondary-muted uppercase tracking-widest mt-0.5">{r.semester}</span>
+                           </div>
+                        </td>
+                        <td className="px-6 py-4 flex flex-col gap-1">
+                          <span className="text-[10px] text-emerald-600 font-bold">ATM: <span className="text-emerald-500 font-black text-sm">{r.atm_score}</span></span>
+                          <span className="text-[9px] text-gray-400 font-medium">Quality: {r.quality_score}</span>
+                          <span className="text-[9px] text-gray-400 font-medium">Timeliness: {r.timeliness_score}</span>
+                          <span className="text-[9px] text-gray-400 font-medium">Completion: {r.completion_score}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest border ${
+                                        r.atm_score >= 90 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                                        r.atm_score >= 70 ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 
+                                        'bg-gray-50 text-gray-700 border border-gray-200'
+                          }`}>
+                            {r.atm_score >= 90 ? 'A+' : r.atm_score >= 80 ? 'A' : r.atm_score >= 70 ? 'B' : r.atm_score >= 60 ? 'C' : 'D'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-secondary-muted/60">#{r.project_id}</td>
+                        <td className="px-6 py-4 text-sm text-secondary-muted/60">{r.total_graded} Graded Tasks</td>
                       </motion.tr>
                     ))}
                   </tbody>
                 </table>
               )}
             </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between p-6 border-t border-gray-50 bg-gray-50/30 gap-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-secondary-muted">
+                   Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, processedStudents.length)} of {processedStudents.length} entries
+                </p>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-secondary-muted hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-4 text-[10px] font-black uppercase tracking-widest text-secondary rounded-xl bg-gray-100 py-2">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button 
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-secondary-muted hover:bg-gray-50 disabled:opacity-50 transition-colors shadow-sm"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </GlassCard>
         </motion.div>
 

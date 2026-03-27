@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from database import engine, Base
+from database import engine, Base, SessionLocal
 import os
 
 # -------- Import Models --------
@@ -46,6 +46,7 @@ from routers.academic_structure_v1 import router as academic_structure_v1_router
 from routers.admin_v1 import router as admin_v1_router
 from routers.user import router as user_router
 from routers.public import router as public_router
+from routers.analytics import router as analytics_router
 # -------- Create App --------
 app = FastAPI(
     title="Academic Task Management System",
@@ -55,12 +56,7 @@ app = FastAPI(
 # -------- CORS --------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001"
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -92,6 +88,7 @@ try:
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[student_performance]') AND name = 'is_ranked') ALTER TABLE student_performance ADD is_ranked BIT NULL DEFAULT 0;"))
         # New users columns
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[users]') AND name = 'avatar') ALTER TABLE users ADD avatar NVARCHAR(MAX) NULL;"))
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[users]') AND name = 'roll_no') ALTER TABLE users ADD roll_no NVARCHAR(50) NULL;"))
         # New campus_news columns
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'category') ALTER TABLE campus_news ADD category NVARCHAR(60) NULL DEFAULT 'general';"))
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[campus_news]') AND name = 'cover_image_url') ALTER TABLE campus_news ADD cover_image_url NVARCHAR(500) NULL;"))
@@ -106,8 +103,31 @@ try:
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[todos]') AND name = 'task_id') ALTER TABLE todos ADD task_id INT NULL;"))
         # New academic_planner column
         conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[academic_planner]') AND name = 'is_active') ALTER TABLE academic_planner ADD is_active BIT NULL DEFAULT 1;"))
+        # New student_recognitions columns
+        conn.execute(text("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[student_recognitions]') AND name = 'performance_score') ALTER TABLE student_recognitions ADD performance_score INT NULL;"))
 except Exception as e:
     print(f"Auto-migration error: {e}")
+
+# -------- Backfill Missing IDs --------
+from utils.id_generator import generate_unique_id
+def backfill_missing_ids():
+    db = SessionLocal()
+    try:
+        from models.user import User
+        users_without_ids = db.query(User).filter(User.roll_no == None).all()
+        if users_without_ids:
+            print(f"Backfilling unique IDs for {len(users_without_ids)} users...")
+            for user in users_without_ids:
+                user.roll_no = generate_unique_id(user.role, db)
+            db.commit()
+            print("Backfill successful.")
+    except Exception as e:
+        db.rollback()
+        print(f"Backfill error: {e}")
+    finally:
+        db.close()
+
+# backfill_missing_ids()
 
 
 # -------- Include Routers (ONLY PREFIX HERE) --------
@@ -133,6 +153,7 @@ app.include_router(academic_structure_v1_router, prefix="/api/v1/academic_struct
 app.include_router(admin_v1_router, prefix="/api/v1/admin")
 app.include_router(user_router, prefix="/api/users")
 app.include_router(public_router, prefix="/api/public")
+app.include_router(analytics_router, prefix="/api")
 # -------- Static Files (uploads) --------
 uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(uploads_dir, exist_ok=True)

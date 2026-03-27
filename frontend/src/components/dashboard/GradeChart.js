@@ -12,16 +12,20 @@ const GradeChart = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await axios.get('/performance/grade-distribution');
-                // Ensure dict is an object
-                const dict = response.data && typeof response.data === 'object' ? response.data : {};
+                const response = await axios.get('/analytics/performance/students');
+                const students = Array.isArray(response.data) ? response.data : [];
+                
+                const buckets = { "90-100% (A+)": 0, "80-89% (A)": 0, "70-79% (B)": 0, "<70% (C/D)": 0 };
+                students.forEach(s => {
+                    if (s.atm_score >= 90) buckets["90-100% (A+)"]++;
+                    else if (s.atm_score >= 80) buckets["80-89% (A)"]++;
+                    else if (s.atm_score >= 70) buckets["70-79% (B)"]++;
+                    else buckets["<70% (C/D)"]++;
+                });
 
-                // Map to Recharts format and filter out 0 values if needed for better display
-                // or just keep them but ensure they are numbers
-                const processed = Object.entries(dict).map(([name, value]) => ({
-                    name: String(name),
-                    value: Number(value) || 0
-                }));
+                const processed = Object.entries(buckets)
+                    .filter(([name, value]) => value > 0)
+                    .map(([name, value]) => ({ name, value }));
 
                 setData(processed);
             } catch (error) {
@@ -41,17 +45,20 @@ const GradeChart = () => {
 
     return (
         <ChartContainer title="Grade Distribution">
-            <ResponsiveContainer width="100%" height="100%">
+            <div className="w-full h-[250px] relative">
+                <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                     <Pie
                         data={data}
                         cx="50%"
                         cy="50%"
-                        innerRadius={80}
-                        outerRadius={120}
+                        innerRadius={60}
+                        outerRadius={90}
                         paddingAngle={5}
                         dataKey="value"
-                        stroke="rgba(0,0,0,0)" // Remove stroke
+                        nameKey="name"
+                        stroke="rgba(0,0,0,0)"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                     >
                         {data.length === 0 ? null : data.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -75,6 +82,7 @@ const GradeChart = () => {
                     />
                 </PieChart>
             </ResponsiveContainer>
+            </div>
             {data.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center">
                     <p className="text-sm text-gray-500">No grade data available</p>

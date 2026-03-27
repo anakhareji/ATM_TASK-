@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import API from '../../api/axios';
 import {
     LayoutDashboard, Users, Trophy, Bell, FileText, Newspaper,
     Activity, Calendar, Award, Briefcase, ListTodo, Layers, CheckSquare, LogOut, Shield
@@ -8,6 +9,21 @@ import {
 const Sidebar = ({ role = 'student', isOpen, setIsOpen }) => {
     const location = useLocation();
     const navigate = useNavigate();
+    const [todoCount, setTodoCount] = useState(0);
+
+    useEffect(() => {
+        if (role === 'student') {
+            const fetchTodo = async () => {
+                try {
+                    const res = await API.get('/todo/student/progress');
+                    if (res.data) setTodoCount((res.data.total || 0) - (res.data.completed || 0));
+                } catch (e) { console.error('Error fetching todos', e); }
+            };
+            fetchTodo();
+            const interval = setInterval(fetchTodo, 60000);
+            return () => clearInterval(interval);
+        }
+    }, [role]);
 
     const handleLogout = () => {
         localStorage.clear();
@@ -71,18 +87,25 @@ const Sidebar = ({ role = 'student', isOpen, setIsOpen }) => {
                         <Link
                             key={item.name}
                             to={item.path}
-                            className={`flex items-center px-4 py-3.5 rounded-xl transition-all duration-200 group ${location.pathname === item.path
+                            className={`flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-200 group ${location.pathname === item.path
                                 ? 'bg-emerald-50 text-emerald-700 font-bold shadow-sm'
                                 : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                                 }`}
                         >
-                            <span
-                                className={`mr-3 transition-colors duration-200 ${location.pathname === item.path ? 'text-emerald-600' : 'text-gray-400 group-hover:text-gray-600'
-                                    }`}
-                            >
-                                {item.icon}
-                            </span>
-                            {item.name}
+                            <div className="flex items-center">
+                                <span
+                                    className={`mr-3 transition-colors duration-200 ${location.pathname === item.path ? 'text-emerald-600' : 'text-gray-400 group-hover:text-gray-600'
+                                        }`}
+                                >
+                                    {item.icon}
+                                </span>
+                                {item.name}
+                            </div>
+                            {item.name === 'My To-Do' && role === 'student' && todoCount > 0 && (
+                                <span className="bg-red-500 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-md shadow-red-500/20">
+                                    {todoCount}
+                                </span>
+                            )}
                         </Link>
                     ))}
                 </nav>
