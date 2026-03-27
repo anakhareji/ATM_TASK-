@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import API from '../api/axios';
 import GlassCard from '../components/ui/GlassCard';
+import PremiumProfileBadge from '../components/ui/PremiumProfileBadge';
 import { staggerContainer } from '../utils/motionVariants';
 import toast from 'react-hot-toast';
 
@@ -144,9 +145,15 @@ const Profile = () => {
                                 UID-{profile?.id || 'ALPHA'}
                             </span>
                         </div>
-                        <p className="text-emerald-600 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
-                            <Activity size={14} /> Global Rank: <span className="font-black italic">Elite Tier Operative</span>
-                        </p>
+                        {user.role?.toLowerCase() === 'student' ? (
+                            <p className="text-emerald-600 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
+                                <Activity size={14} /> Global Rank: <span className="font-black italic">{profile?.recognition_tier || 'Operative'}</span>
+                            </p>
+                        ) : (
+                            <p className="text-emerald-600 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
+                                <Activity size={14} /> Global Rank: <span className="font-black italic">Elite Tier Operative</span>
+                            </p>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-3 mb-2">
@@ -175,23 +182,56 @@ const Profile = () => {
                     </GlassCard>
 
                     <GlassCard className="p-8 bg-gradient-to-br from-indigo-600 to-blue-700 border-none text-white shadow-xl shadow-indigo-600/20">
-                        <div className="flex items-center justify-between mb-8">
-                            <h3 className="text-xl font-black uppercase italic tracking-tight">Merit Status</h3>
-                            <Award size={24} className="opacity-50" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-white/10 rounded-2xl border border-white/10">
-                                <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">XP Points</p>
-                                <p className="text-2xl font-black italic">{profile?.final_score || 85}</p>
-                            </div>
-                            <div className="p-4 bg-white/10 rounded-2xl border border-white/10">
-                                <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Badges</p>
-                                <p className="text-2xl font-black italic">14</p>
-                            </div>
-                        </div>
-                        <button className="w-full mt-6 py-3 bg-white/20 hover:bg-white/30 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all">
-                            Review Achievements
-                        </button>
+                        {user.role?.toLowerCase() === 'student' ? (
+                            <PremiumProfileBadge 
+                                tier={profile?.recognition_tier || 'Gold'} 
+                                xp={profile?.final_score || 0}
+                                followers="12.7k"
+                                name={user.name}
+                            />
+                        ) : (
+                            <>
+                                <div className="flex items-center justify-between mb-8">
+                                    <h3 className="text-xl font-black uppercase italic tracking-tight">Merit Status</h3>
+                                    <Award size={24} className="opacity-50" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-4 bg-white/10 rounded-2xl border border-white/10">
+                                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">XP Points</p>
+                                        <p className="text-2xl font-black italic">{profile?.final_score || 0}</p>
+                                    </div>
+                                    <div className="p-4 bg-white/10 rounded-2xl border border-white/10">
+                                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">Medals</p>
+                                        <p className="text-2xl font-black italic">{profile?.medals?.length || 0}</p>
+                                    </div>
+                                </div>
+
+                                {profile?.medals && profile.medals.length > 0 && (
+                                    <div className="mt-6 flex flex-wrap gap-3">
+                                        {profile.medals.map((medal, idx) => (
+                                            <motion.div 
+                                                key={idx}
+                                                initial={{ scale: 0, rotate: -45 }}
+                                                animate={{ scale: 1, rotate: 0 }}
+                                                transition={{ type: "spring", stiffness: 300, delay: idx * 0.1 }}
+                                                className={`flex-1 flex items-center justify-center p-3 rounded-2xl border shadow-xl ${
+                                                    medal.toLowerCase() === 'gold' ? 'bg-gradient-to-br from-yellow-300 to-amber-500 border-yellow-200 text-yellow-900 shadow-yellow-500/50' :
+                                                    medal.toLowerCase() === 'silver' ? 'bg-gradient-to-br from-gray-200 to-gray-400 border-gray-100 text-gray-800 shadow-gray-400/50' :
+                                                    'bg-gradient-to-br from-amber-600 to-orange-700 border-amber-500 text-orange-50 shadow-orange-700/50'
+                                                }`}
+                                            >
+                                                <Award size={20} />
+                                                <span className="ml-2 text-[10px] font-black uppercase tracking-widest">{medal}</span>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <button className="w-full mt-6 py-3 bg-white/20 hover:bg-white/30 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all">
+                                    Review Achievements
+                                </button>
+                            </>
+                        )}
                     </GlassCard>
                 </div>
 

@@ -13,7 +13,7 @@ const DeadlineCard = ({ task }) => {
     <GlassCard className={`flex items-center justify-between gap-4 border-l-4 ${p.border}`}>
       <div className="flex items-center gap-3">
         <div>
-          <h4 className="font-bold text-gray-800">{task.title}</h4>
+          <h4 className="font-bold text-gray-800 line-clamp-1" title={task.title}>{task.title}</h4>
           <p className="text-sm text-gray-500">Project #{task.project_id}</p>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{task.countdown}</p>
         </div>

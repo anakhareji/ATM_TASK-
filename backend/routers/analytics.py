@@ -96,17 +96,37 @@ def calculate_student_atm(db: Session, student_id: int):
     """
     now = get_utc_now().replace(tzinfo=None)
     
-    # All tasks assigned directly to the student or their group
-    # Note: Using individual tasks first for simplicity, then expanding to group if applicable.
-    # To keep it completely robust, we fetch all tasks where student is assigned OR student's group is assigned.
-    # Currently `student_id` is directly on `Task` for individual tasks.
+    # All tasks assigned directly to the student
     assigned_tasks = db.query(Task).filter(Task.student_id == student_id).all()
+    
+    # Gather Submissions early to discover tasks the student engaged in, e.g., global tasks
+    submissions = db.query(TaskSubmission).filter(TaskSubmission.student_id == student_id).all()
+    submitted_task_ids = [sub.task_id for sub in submissions]
+    
+    # Also fetch tasks assigned to any group the student is part of
+    from models.group import GroupMember
+    student_groups = db.query(GroupMember).filter(GroupMember.student_id == student_id).all()
+    group_ids = [g.group_id for g in student_groups]
+    
+    if group_ids:
+        group_tasks = db.query(Task).filter(Task.group_id.in_(group_ids)).all()
+        assigned_tasks.extend(group_tasks)
+        
+    # Add tasks they submitted (which might be global tasks without explicit student/group linkage)
+    existing_task_ids = {t.id for t in assigned_tasks}
+    missing_sub_task_ids = [tid for tid in submitted_task_ids if tid not in existing_task_ids]
+    if missing_sub_task_ids:
+        missing_tasks = db.query(Task).filter(Task.id.in_(missing_sub_task_ids)).all()
+        assigned_tasks.extend(missing_tasks)
+
+    # De-duplicate task list safely
+    assigned_tasks = list({t.id: t for t in assigned_tasks}.values())
     
     # Exclude tasks that are pending but whose deadlines are in the future
     # We only penalize them for completion/timeliness if the deadline has passed OR they already submitted it.
     past_or_submitted_tasks = []
     for t in assigned_tasks:
-        if t.deadline < now or t.status in ['submitted', 'graded']:
+        if t.deadline < now or t.id in submitted_task_ids:
             past_or_submitted_tasks.append(t)
             
     total_assigned_past = len(past_or_submitted_tasks)
@@ -124,8 +144,7 @@ def calculate_student_atm(db: Session, student_id: int):
             "average_percentage": 0
         }
         
-    # Gather Submissions
-    submissions = db.query(TaskSubmission).filter(TaskSubmission.student_id == student_id).all()
+    # (Submissions were already gathered during the task discovery phase up top)
     
     total_submitted = len(submissions)
     total_on_time = sum(1 for sub in submissions if not sub.is_late)
