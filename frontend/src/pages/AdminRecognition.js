@@ -31,11 +31,36 @@ const AdminRecognition = () => {
   });
   const [savingWeights, setSavingWeights] = useState(false);
   const [recent, setRecent] = useState([]);
+  const [editingCert, setEditingCert] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
-  const [editingCert, setEditingCert] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  const cardEntrance = {
+    initial: { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.5 }
+  };
+
+  const getRankIcon = (index) => {
+    if (index === 0) return <Crown className="text-amber-400 fill-amber-200/50" size={18} />;
+    if (index === 1) return <Crown className="text-gray-400 fill-gray-200/50" size={16} />;
+    if (index === 2) return <Crown className="text-amber-700 fill-amber-600/30" size={14} />;
+    return <span className="text-[10px] font-black text-gray-400">#{index + 1}</span>;
+  };
+
+  const filteredRecent = useMemo(() => {
+    if (!registrySearch.trim()) return recent;
+    const q = registrySearch.toLowerCase();
+    return recent.filter(r => 
+      (r.student_name && r.student_name.toLowerCase().includes(q)) ||
+      (r.student_id && r.student_id.toString().includes(q)) ||
+      (r.id && r.id.toString().includes(q)) ||
+      (r.roll_no && r.roll_no.toLowerCase().includes(q))
+    );
+  }, [recent, registrySearch]);
 
   const loadStats = async () => {
     try {
@@ -119,16 +144,7 @@ const AdminRecognition = () => {
     }
   };
 
-  const filteredRecent = useMemo(() => {
-    if (!registrySearch.trim()) return recent;
-    const q = registrySearch.toLowerCase();
-    return recent.filter(r => 
-      (r.student_name && r.student_name.toLowerCase().includes(q)) ||
-      (r.student_id && r.student_id.toString().includes(q)) ||
-      (r.id && r.id.toString().includes(q)) ||
-      (r.roll_no && r.roll_no.toLowerCase().includes(q))
-    );
-  }, [recent, registrySearch]);
+
 
   useEffect(() => { loadStats(); }, []);
 
@@ -174,13 +190,6 @@ const AdminRecognition = () => {
             toast.error("Failed to load dossier");
           });
     }, 100);
-  };
-
-  const getRankIcon = (index) => {
-    if (index === 0) return <Crown className="text-amber-400 fill-amber-200/50" size={18} />;
-    if (index === 1) return <Crown className="text-gray-400 fill-gray-200/50" size={16} />;
-    if (index === 2) return <Crown className="text-amber-700 fill-amber-600/30" size={14} />;
-    return <span className="text-[10px] font-black text-gray-400">#{index + 1}</span>;
   };
 
   return (
@@ -336,6 +345,154 @@ const AdminRecognition = () => {
           </div>
         )}
       </AnimatePresence>
+
+
+      {/* ── Registry Table ── */}
+      <div className="mt-16">
+        <div className="flex items-center justify-between px-2 mb-8">
+          <h3 className="text-2xl font-black text-gray-900 uppercase italic tracking-tight flex items-center gap-4">
+            <History className="text-indigo-500"/> Issuance Registry
+          </h3>
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-indigo-500 transition-colors" size={16}/>
+            <input 
+              type="text" placeholder="Filter registry..." 
+              value={registrySearch} onChange={e=>setRegistrySearch(e.target.value)} 
+              className="pl-12 pr-6 py-3 bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-indigo-500 transition-all w-64"
+            />
+          </div>
+        </div>
+        
+        <GlassCard className="overflow-hidden border-white/40 bg-white/40">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-gray-900/5 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
+                <th className="py-5 px-10">Candidate</th>
+                <th className="py-5 px-10">Badge Rank</th>
+                <th className="py-5 px-10">Algorithm Perf.</th>
+                <th className="py-5 px-10">Deployment Date</th>
+                <th className="py-5 px-10 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRecent.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="py-20 text-center">
+                    <p className="text-xs font-black text-gray-300 uppercase tracking-widest italic">Registry Void</p>
+                  </td>
+                </tr>
+              ) : (
+                filteredRecent.map((row, idx) => (
+                  <tr key={row.id} className="border-t border-gray-900/5 group hover:bg-white/40 transition-colors">
+                    <td className="py-6 px-10">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-lg font-black shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform overflow-hidden">
+                          {row?.student_avatar ? (
+                             <img src={`http://localhost:8000${row.student_avatar}`} alt="User" className="w-full h-full object-cover" />
+                          ) : (
+                             row?.student_name?.charAt(0) || 'U'
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-base font-black text-gray-800 italic">{row.student_name}</p>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                            {row?.roll_no || `Ref ID #${row?.id || '?'}`}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-6 px-10">
+                      <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
+                        row.badge_type === 'gold' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                        row.badge_type === 'silver' ? 'bg-gray-50 text-gray-500 border-gray-100' :
+                        'bg-amber-50 text-amber-800 border-amber-200'
+                      }`}>
+                        {row.badge_type}
+                      </span>
+                    </td>
+                    <td className="py-6 px-10">
+                      <p className="text-sm font-black text-gray-700">{row.performance_score}</p>
+                    </td>
+                    <td className="py-6 px-10">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        {row.issue_date?.split(' ')[0] || 'N/A'}
+                      </p>
+                    </td>
+                    <td className="py-6 px-10 text-right">
+                       <div className="flex items-center justify-end gap-2">
+                         <button 
+                           onClick={() => setEditingCert(row)}
+                           className="p-3 rounded-2xl bg-indigo-50 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-100 transition-all"
+                         >
+                           <Settings size={18}/>
+                         </button>
+                         <button className="p-3 rounded-2xl bg-gray-50 text-gray-400 hover:text-indigo-600 transition-all">
+                           <Download size={18}/>
+                         </button>
+                       </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+            </table>
+          </GlassCard>
+        </div>
+
+      {/* ── Modals ── */}
+      {settingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-gray-900/60 backdrop-blur-md" onClick={() => setSettingsOpen(false)} />
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative bg-white rounded-[40px] border border-white/40 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] w-full max-w-lg overflow-hidden">
+            <div className={`h-4 ${
+               badgeType === 'gold' ? 'bg-amber-500' : 
+               badgeType === 'silver' ? 'bg-gray-400' : 'bg-amber-700'
+            }`} />
+            <div className="p-10 text-center">
+              <div className="w-20 h-20 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-6 text-emerald-600 shadow-inner">
+                <ShieldCheck size={40} />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Avg Score</label>
+                <input type="number" step="0.01" min="0" max="1" value={weights.weight_avg_score} onChange={e=>setWeights(w=>({...w, weight_avg_score: parseFloat(e.target.value||0)}))} className="w-full px-3 py-2 rounded-xl border border-gray-200 mt-1" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Group Contribution</label>
+                <input type="number" step="0.01" min="0" max="1" value={weights.weight_group_contribution} onChange={e=>setWeights(w=>({...w, weight_group_contribution: parseFloat(e.target.value||0)}))} className="w-full px-3 py-2 rounded-xl border border-gray-200 mt-1" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Event Participation</label>
+                <input type="number" step="0.01" min="0" max="1" value={weights.weight_event_participation} onChange={e=>setWeights(w=>({...w, weight_event_participation: parseFloat(e.target.value||0)}))} className="w-full px-3 py-2 rounded-xl border border-gray-200 mt-1" />
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-xs font-bold text-gray-500">Sum: {(weights.weight_task_completion + weights.weight_avg_score + weights.weight_group_contribution + weights.weight_event_participation).toFixed(2)}</p>
+              <button
+                disabled={savingWeights}
+                onClick={async ()=>{
+                  setSavingWeights(true);
+                  try {
+                    await API.post('/admin/settings', {
+                      weight_task_completion: weights.weight_task_completion,
+                      weight_avg_score: weights.weight_avg_score,
+                      weight_group_contribution: weights.weight_group_contribution,
+                      weight_event_participation: weights.weight_event_participation
+                    });
+                    toast.success('Weights updated');
+                  } catch {
+                    toast.error('Failed to update weights');
+                  } finally {
+                    setSavingWeights(false);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-black"
+              >
+                {savingWeights ? 'Saving...' : 'Save Weights'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -498,93 +655,6 @@ const AdminRecognition = () => {
         </div>
       )}
 
-      {/* ── Registry Table ── */}
-      <div className="mt-16">
-        <div className="flex items-center justify-between px-2 mb-8">
-          <h3 className="text-2xl font-black text-gray-900 uppercase italic tracking-tight flex items-center gap-4">
-            <History className="text-indigo-500"/> Issuance Registry
-          </h3>
-          <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-indigo-500 transition-colors" size={16}/>
-            <input 
-              type="text" placeholder="Filter registry..." 
-              value={registrySearch} onChange={e=>setRegistrySearch(e.target.value)} 
-              className="pl-12 pr-6 py-3 bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-indigo-500 transition-all w-64"
-            />
-          </div>
-        </div>
-        
-        <GlassCard className="overflow-hidden border-white/40 bg-white/40">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-900/5 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
-                <th className="py-5 px-10">Candidate</th>
-                <th className="py-5 px-10">Badge Rank</th>
-                <th className="py-5 px-10">Algorithm Perf.</th>
-                <th className="py-5 px-10">Deployment Date</th>
-                <th className="py-5 px-10 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRecent.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="py-20 text-center">
-                    <p className="text-xs font-black text-gray-300 uppercase tracking-widest italic">Registry Void</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredRecent.map((row, idx) => (
-                  <tr key={row.id} className="border-t border-gray-900/5 group hover:bg-white/40 transition-colors">
-                    <td className="py-6 px-10">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-lg font-black shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
-                          {row?.student_name?.charAt(0) || 'U'}
-                        </div>
-                        <div>
-                          <p className="text-base font-black text-gray-800 italic">{row.student_name}</p>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                            {row?.roll_no || `Ref ID #${row?.id || '?'}`}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-6 px-10">
-                      <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
-                        row.badge_type === 'gold' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                        row.badge_type === 'silver' ? 'bg-gray-50 text-gray-500 border-gray-100' :
-                        'bg-amber-50 text-amber-800 border-amber-200'
-                      }`}>
-                        {row.badge_type}
-                      </span>
-                    </td>
-                    <td className="py-6 px-10">
-                      <p className="text-sm font-black text-gray-700">{row.performance_score}</p>
-                    </td>
-                    <td className="py-6 px-10">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                        {row.issue_date?.split(' ')[0] || 'N/A'}
-                      </p>
-                    </td>
-                    <td className="py-6 px-10 text-right">
-                       <div className="flex items-center justify-end gap-2">
-                         <button 
-                           onClick={() => setEditingCert(row)}
-                           className="p-3 rounded-2xl bg-indigo-50 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-100 transition-all"
-                         >
-                           <Settings size={18}/>
-                         </button>
-                         <button className="p-3 rounded-2xl bg-gray-50 text-gray-400 hover:text-indigo-600 transition-all">
-                           <Download size={18}/>
-                         </button>
-                       </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-            </table>
-          </GlassCard>
-        </div>
 
       {/* ── Modals ── */}
       {confirmOpen && (

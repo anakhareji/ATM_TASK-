@@ -15,6 +15,9 @@ from fastapi.responses import StreamingResponse
 import csv
 import io
 
+from models.task_submission import TaskSubmission
+from models.task import Task
+
 router = APIRouter(
     tags=["Performance"]
 )
@@ -261,6 +264,34 @@ def get_my_performance_history(
             "created_at": p.created_at
         }
         for p in performances
+    ]
+
+@router.get("/task-evaluations/me")
+def get_my_task_evaluations(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user["role"] != "student":
+        raise HTTPException(status_code=403, detail="Only students can view their evaluation history")
+
+    evals = db.query(TaskSubmission).join(Task).filter(
+        TaskSubmission.student_id == current_user["user_id"],
+        TaskSubmission.status == "graded"
+    ).order_by(TaskSubmission.submitted_at.desc()).all()
+
+    return [
+        {
+            "id": e.id,
+            "task_id": e.task_id,
+            "task_title": e.task.title,
+            "marks_obtained": e.marks_obtained,
+            "max_marks": e.task.max_marks,
+            "grade": e.grade,
+            "feedback": e.feedback,
+            "submitted_at": e.submitted_at,
+            "graded_at": e.submitted_at  # Assuming graded_at = submitted_at if not tracked separately
+        }
+        for e in evals
     ]
 
 

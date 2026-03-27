@@ -477,7 +477,10 @@ def get_my_tasks(
                     "file_url": t.file_url,
                     "created_at": t.created_at,
                     "is_report_shared": getattr(t, "is_report_shared", False),
-                    "dynamic_status": status
+                    "dynamic_status": status,
+                    "marks_obtained": sub.marks_obtained if sub else None,
+                    "grade": sub.grade if sub else None,
+                    "faculty_feedback": sub.feedback if sub else None
                 }
                 res.append(t_data)
             return res

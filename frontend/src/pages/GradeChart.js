@@ -21,13 +21,18 @@ const gradeMeta = (g) => GRADE_META[g] || { color: 'bg-gray-100 text-gray-500 bo
 
 const GradeChart = () => {
   const [performances, setPerformances] = useState([]);
+  const [taskEvals, setTaskEvals] = useState([]);
   const [loading, setLoading]           = useState(true);
   const [seeding, setSeeding]           = useState(false);
 
   const fetchGrades = async () => {
     try {
-      const r = await API.get('/performance/me');
-      setPerformances(r.data);
+      const [perfRes, taskRes] = await Promise.all([
+        API.get('/performance/me'),
+        API.get('/performance/task-evaluations/me')
+      ]);
+      setPerformances(perfRes.data);
+      setTaskEvals(taskRes.data);
     } catch {
       toast.error('Failed to load your service record.');
     } finally {
@@ -261,6 +266,78 @@ const GradeChart = () => {
               </div>
             </GlassCard>
           </motion.div>
+
+          {/* ── Task-level evaluations ── */}
+          {taskEvals.length > 0 && (
+            <motion.div variants={cardEntrance}>
+              <div className="flex items-center justify-between px-2 mb-5 mt-16">
+                <h3 className="text-2xl font-black text-gray-800 uppercase italic tracking-tight flex items-center gap-3">
+                  <Award className="text-emerald-500"/> Detailed Mission Evaluations
+                </h3>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{taskEvals.length} missions</p>
+              </div>
+
+              <GlassCard className="overflow-hidden p-0 border-white/50 bg-white/40 backdrop-blur-2xl w-full">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50/80 border-b border-gray-100">
+                        <th className="py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">Mission</th>
+                        <th className="py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">Outcome</th>
+                        <th className="py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-widest">Feedback</th>
+                        <th className="py-5 px-8 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {taskEvals.map((e) => {
+                        const gm3 = gradeMeta(e.grade);
+                        return (
+                          <tr key={e.id} className="group hover:bg-white/70 transition-all">
+                            <td className="py-5 px-8">
+                              <div className="flex items-center gap-3">
+                                <Activity size={14} className="text-indigo-400" />
+                                <div>
+                                  <p className="text-sm font-black text-gray-700 italic">{e.task_title}</p>
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Code #{e.task_id}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-5 px-8">
+                              <div className="flex items-center gap-3">
+                                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border uppercase tracking-widest ${gm3.color}`}>
+                                  {e.grade}
+                                </span>
+                                <span className="text-[10px] font-black text-gray-400">
+                                  {e.marks_obtained}/{e.max_marks} Pts
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-5 px-8">
+                               {e.feedback ? (
+                                 <div className="max-w-xs">
+                                   <p className="text-xs font-medium text-gray-600 line-clamp-2 italic">"{e.feedback}"</p>
+                                 </div>
+                               ) : (
+                                 <span className="text-[10px] font-bold text-gray-300 uppercase tracking-widest italic">No Intel Provided</span>
+                               )}
+                            </td>
+                            <td className="py-5 px-8 text-right">
+                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                {new Date(e.submitted_at || e.graded_at).toLocaleDateString()}
+                              </p>
+                              <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest mt-0.5">
+                                {new Date(e.submitted_at || e.graded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </GlassCard>
+            </motion.div>
+          )}
         </div>
       )}
     </motion.div>
