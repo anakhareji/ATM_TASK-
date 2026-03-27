@@ -6,6 +6,7 @@ from models.task import Task
 from models.task_submission import TaskSubmission
 from models.project import Project
 from models.academic_saas import DepartmentV1 as Department
+from models.student_recognition import StudentRecognition
 from datetime import datetime, timezone
 import json
 
@@ -69,6 +70,8 @@ async def get_student_performance(db: Session = Depends(get_db)):
                 dept = db.query(Department).filter(Department.id == student.department_id).first()
                 if dept: dept_name = dept.name
                 
+            cert = db.query(StudentRecognition).filter(StudentRecognition.student_id == student.id).order_by(StudentRecognition.id.desc()).first()
+                
             results.append({
                 "student_id": student.id,
                 "name": student.name,
@@ -76,6 +79,7 @@ async def get_student_performance(db: Session = Depends(get_db)):
                 "avatar": getattr(student, 'avatar', None),
                 "semester": getattr(student, 'current_semester', 'N/A'),
                 "department_name": dept_name,
+                "official_badge": cert.award_type.lower() if cert else None,
                 **metrics
             })
             

@@ -31,6 +31,7 @@ class UserCreateRequest(BaseModel):
     course_id: int | None = None
     batch: str | None = None
     current_semester: int | None = None
+    roll_no: str | None = None
 
 class UserUpdateRequest(BaseModel):
     name: str | None = None
@@ -42,6 +43,7 @@ class UserUpdateRequest(BaseModel):
     course_id: int | None = None
     batch: str | None = None
     current_semester: int | None = None
+    roll_no: str | None = None
 
 class BulkActivateUsersRequest(BaseModel):
     user_ids: List[int]

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Trophy, Medal, Filter } from 'lucide-react';
+import { Trophy, Medal, Filter, Crown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from '../../api/axios';
 import GlassCard from '../ui/GlassCard';
@@ -22,6 +22,14 @@ const Leaderboard = () => {
             let rawData = Array.isArray(response.data) ? response.data : [];
             if (params.min_score) rawData = rawData.filter(s => s.atm_score >= params.min_score);
             if (params.max_score) rawData = rawData.filter(s => s.atm_score <= params.max_score);
+
+            rawData.sort((a, b) => {
+                const badgeRank = { gold: 3, silver: 2, bronze: 1 };
+                const aRank = badgeRank[a.official_badge] || 0;
+                const bRank = badgeRank[b.official_badge] || 0;
+                if (aRank !== bRank) return bRank - aRank; // Higher badge first
+                return b.atm_score - a.atm_score; // Then top ATM
+            });
 
             const processed = rawData.map(s => ({
                 ...s,
@@ -123,6 +131,13 @@ const Leaderboard = () => {
                                             )}
                                         </div>
                                         {student.student_name || `Student #${student.student_id}`}
+                                        {student.official_badge && (
+                                            <Crown size={14} className={
+                                                student.official_badge === 'gold' ? 'text-amber-500 fill-amber-300' :
+                                                student.official_badge === 'silver' ? 'text-gray-400 fill-gray-200' :
+                                                student.official_badge === 'bronze' ? 'text-amber-700 fill-amber-600' : 'text-emerald-500'
+                                            } />
+                                        )}
                                     </div>
                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mt-1 ${
                                         student.atm_score >= 90 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :

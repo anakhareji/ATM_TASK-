@@ -147,6 +147,20 @@ def create_performance_report(
     db.refresh(performance)
 
     # =====================================================
+    # NOTIFICATION PUSH
+    # =====================================================
+    from models.notification import Notification
+    
+    notif = Notification(
+        user_id=data.student_id,
+        title="Evaluation Received",
+        message=f"You received a grade of {grade} for {data.semester or 'your activity'}. Final Score: {final_score}",
+        type="performance"
+    )
+    db.add(notif)
+    db.commit()
+
+    # =====================================================
     # AUDIT LOG
     # =====================================================
     audit = AuditLog(

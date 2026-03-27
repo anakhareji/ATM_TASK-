@@ -15,6 +15,7 @@ from models.task_submission import TaskSubmission
 from schemas.user_schemas import ChangeRoleRequest, UserCreateRequest, UserUpdateRequest
 from models.academic_saas import DepartmentV1 as Department, CourseV1 as Course, Program as Program
 from utils.security import admin_required, hash_password
+from utils.id_generator import generate_unique_id
 from sqlalchemy import func, desc
 
 router = APIRouter(
@@ -111,7 +112,7 @@ def list_users(
     if q:
         query = query.filter(User.name.ilike(f"%{q}%") | User.email.ilike(f"%{q}%"))
     if role:
-        query = query.filter(User.role == role)
+        query = query.filter(User.role.ilike(role))
     total = query.count()
     items = query.order_by(User.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
@@ -129,6 +130,7 @@ def list_users(
             "program_id": u.program_id,
             "batch": u.batch,
             "current_semester": u.current_semester,
+            "roll_no": u.roll_no,
             "department_name": db.query(Department.name).filter(Department.id == u.department_id).scalar() if u.department_id else None,
             "course_name": db.query(Course.name).filter(Course.id == u.course_id).scalar() if u.course_id else None,
             "program_name": db.query(Program.name).filter(Program.id == u.program_id).scalar() if u.program_id else None
@@ -528,7 +530,8 @@ def create_user(data: UserCreateRequest, db: Session = Depends(get_db)):
         program_id=data.program_id,
         course_id=data.course_id,
         batch=data.batch,
-        current_semester=data.current_semester
+        current_semester=data.current_semester,
+        roll_no=data.roll_no if data.roll_no else generate_unique_id(data.role, db)
     )
     db.add(new_user)
     db.commit()

@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckSquare, UploadCloud, MessageSquare, User, Users, 
-  AlertCircle, Clock, Search,
+  AlertCircle, Clock, Search, 
   Info, CheckCircle2, FileText, CheckCircle,
-  Layout, Bold, Italic, Link, Paperclip, AtSign, Smile, Code, History, List, Edit3, Trash2
+  Layout, Bold, Italic, Link, Paperclip, AtSign, Smile, Code, History, List, Edit3, Trash2, Download, FileSearch
 } from 'lucide-react';
 import API from '../api/axios';
 import { staggerContainer, cardEntrance } from '../utils/motionVariants';
@@ -12,6 +12,13 @@ import toast from 'react-hot-toast';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import DOMPurify from 'dompurify';
+
+const CloseIcon = ({ size }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
+);
 
 const RichContent = ({ content, className = '' }) => {
     return (
@@ -120,24 +127,15 @@ const CommentEditor = ({ value, onChange, onSave, onCancel, placeholder, autoFoc
     );
 };
 
-const TaskComments = ({ taskId }) => {
-    const [comments, setComments] = useState([]);
-    const [newComment, setNewComment] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState('comments');
-    const [isInputFocused, setIsInputFocused] = useState(false);
-    
-    // Editing state
-    const [editingId, setEditingId] = useState(null);
-    const [editContent, setEditContent] = useState('');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const currentUserId = user.id || user.user_id;
+const TaskTimeline = ({ taskId }) => {
+    const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    const fetchComments = useCallback(async () => {
+    const fetchTimeline = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await API.get(`/tasks/${taskId}/comments`);
-            setComments(res.data || []);
+            const res = await API.get(`/tasks/${taskId}/timeline`);
+            setEvents(res.data || []);
         } catch (e) {
             console.error(e);
         } finally {
@@ -146,8 +144,117 @@ const TaskComments = ({ taskId }) => {
     }, [taskId]);
 
     useEffect(() => {
-        if (taskId) fetchComments();
-    }, [taskId, fetchComments]);
+        if (taskId) fetchTimeline();
+    }, [taskId, fetchTimeline]);
+
+    if (loading && events.length === 0) {
+        return (
+            <div className="space-y-4 pt-2">
+                {[1, 2, 3].map(i => (
+                    <div key={i} className="flex gap-4 items-start">
+                        <div className="w-2 h-2 rounded-full bg-gray-200 mt-2 shrink-0 animate-pulse" />
+                        <div className="flex-1 space-y-2">
+                            <div className="h-4 bg-gray-50 rounded w-1/3 animate-pulse" />
+                            <div className="h-3 bg-gray-50 rounded w-full animate-pulse" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    if (events.length === 0) {
+        return (
+            <div className="text-center py-10 bg-gray-50/50 rounded-2xl border border-dashed border-gray-100">
+                <History size={24} className="mx-auto text-gray-200 mb-2" />
+                <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">No mission history logged</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative pt-2 pl-2">
+            {/* Timeline Line */}
+            <div className="absolute left-[7px] top-0 bottom-0 w-[2px] bg-indigo-50" />
+
+            <div className="space-y-8">
+                {events.map((event, idx) => (
+                    <div key={event.id || idx} className="relative flex gap-6 items-start group">
+                        {/* Event Dot */}
+                        <div className={`w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm z-10 mt-1.5 shrink-0 transition-transform group-hover:scale-125 ${
+                            event.type === 'creation' ? 'bg-amber-400' :
+                            event.type === 'publication' ? 'bg-indigo-400' :
+                            event.type === 'acceptance' ? 'bg-blue-400' :
+                            event.type === 'submission' ? 'bg-emerald-400' :
+                            event.type === 'grading' ? 'bg-purple-400' :
+                            event.type === 'closure' ? 'bg-gray-400' : 'bg-indigo-400'
+                        }`} />
+
+                        <div className="flex-1 space-y-1">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                                        event.type === 'submission' ? 'bg-emerald-50 text-emerald-600' : 
+                                        event.type === 'grading' ? 'bg-purple-50 text-purple-600' : 
+                                        'bg-gray-50 text-gray-400'
+                                    }`}>
+                                        {event.type}
+                                    </span>
+                                    <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">
+                                        • {event.user_name}
+                                    </span>
+                                </div>
+                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest opacity-60 group-hover:opacity-100 transition-opacity">
+                                    {new Date(event.timestamp).toLocaleDateString()} • {new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
+                            <div className="bg-white/60 p-3 rounded-xl border border-gray-50 shadow-sm group-hover:border-indigo-100 transition-colors">
+                                <p className="text-[11px] font-semibold text-gray-700 leading-relaxed">
+                                    {event.detail}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const TaskComments = ({ taskId, isReportShared }) => {
+    const [comments, setComments] = useState([]);
+    const [evaluation, setEvaluation] = useState(null);
+    const [newComment, setNewComment] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState('comments');
+    const [isInputFocused, setIsInputFocused] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
+    
+    // Editing state
+    const [editingId, setEditingId] = useState(null);
+    const [editContent, setEditContent] = useState('');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const currentUserId = user.id || user.user_id;
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [commRes, evalRes] = await Promise.all([
+                API.get(`/tasks/${taskId}/comments`),
+                API.get(`/tasks/${taskId}/my-evaluation`).catch(() => ({ data: null }))
+            ]);
+            setComments(commRes.data || []);
+            setEvaluation(evalRes.data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    }, [taskId]);
+
+    useEffect(() => {
+        if (taskId) fetchData();
+    }, [taskId, fetchData]);
 
     const handleSend = async () => {
         if (!newComment.trim()) return;
@@ -155,7 +262,7 @@ const TaskComments = ({ taskId }) => {
             await API.post(`/tasks/${taskId}/comments`, { comment_text: newComment });
             setNewComment('');
             setIsInputFocused(false);
-            fetchComments();
+            fetchData();
             toast.success('Comment logged');
         } catch (e) {
             toast.error('Failed to log activity');
@@ -167,7 +274,7 @@ const TaskComments = ({ taskId }) => {
         try {
             await API.put(`/tasks/comments/${id}`, { comment_text: editContent });
             setEditingId(null);
-            fetchComments();
+            fetchData();
             toast.success('Activity updated');
         } catch (e) {
             toast.error('Failed to update activity');
@@ -178,10 +285,31 @@ const TaskComments = ({ taskId }) => {
         if (!window.confirm('Erase this activity entry permanently?')) return;
         try {
             await API.delete(`/tasks/comments/${id}`);
-            fetchComments();
+            fetchData();
             toast.success('Activity erased');
         } catch (e) {
             toast.error('Failed to erase activity');
+        }
+    };
+
+    const downloadReport = async () => {
+        setIsDownloading(true);
+        try {
+            const res = await API.get(`/tasks/${taskId}/report`);
+            const data = res.data;
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Mission_Report_TASK_${taskId}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.success('Report downloaded');
+        } catch (e) {
+            toast.error('Report capture failed');
+        } finally {
+            setIsDownloading(false);
         }
     };
 
@@ -192,7 +320,7 @@ const TaskComments = ({ taskId }) => {
             </h3>
             
             <div className="flex gap-1 border-b border-gray-100 mb-6 overflow-x-auto pb-1 custom-scrollbar">
-                {['all', 'comments', 'history', 'approvals'].map(tab => (
+                {['comments', 'history'].map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
@@ -202,13 +330,47 @@ const TaskComments = ({ taskId }) => {
                             : 'border-transparent text-gray-400 hover:text-gray-600'
                         }`}
                     >
-                        {tab}
+                        {tab === 'comments' ? 'Comments & Reports' : 'Mission History'}
                     </button>
                 ))}
             </div>
 
             {activeTab === 'comments' ? (
                 <div className="space-y-6">
+                    {/* Faculty Evaluation Section */}
+                    {evaluation && evaluation.status === 'graded' && (
+                        <div className="bg-indigo-50/50 rounded-2xl border border-indigo-100 p-5 space-y-4 shadow-sm animate-fadeIn">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg">
+                                        <FileSearch size={20} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-indigo-900 uppercase tracking-wider">Faculty Evaluation Received</h4>
+                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                                            Outcome: {evaluation.grade} • {evaluation.marks} Pts
+                                        </p>
+                                    </div>
+                                </div>
+                                {isReportShared && (
+                                    <button 
+                                        onClick={downloadReport}
+                                        disabled={isDownloading}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                    >
+                                        {isDownloading ? 'Downloading...' : <><Download size={14} /> Mission Report</>}
+                                    </button>
+                                )}
+                            </div>
+                            
+                            {evaluation.feedback && (
+                                <div className="bg-white/80 p-4 rounded-xl border border-indigo-50 italic text-[11px] font-medium text-indigo-800 leading-relaxed shadow-inner">
+                                    "{evaluation.feedback}"
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Add Comment Section */}
                     <div className="flex gap-3 group">
                         <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-[10px] shadow-md shrink-0 uppercase overflow-hidden">
@@ -419,7 +581,7 @@ const StudentTasks = () => {
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-8 max-w-7xl mx-auto pb-12">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white/80 backdrop-blur-xl p-8 rounded-[2.5rem] border border-white shadow-sm mb-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 border-b border-gray-100 pb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
             <CheckSquare size={28} className="text-indigo-600" />
@@ -465,7 +627,7 @@ const StudentTasks = () => {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pt-4">
           {filteredTasks.map((task) => (
             <motion.div key={task.id} variants={cardEntrance} initial="hidden" animate="visible" exit="hidden" layout className="h-full">
-              <div className="group h-full flex flex-col p-6 bg-white/90 backdrop-blur-xl border border-white hover:border-indigo-100 rounded-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 relative overflow-hidden">
+              <div className="group h-full flex flex-col p-6 bg-white border border-gray-200 hover:border-indigo-100 rounded-2xl hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 relative overflow-hidden">
                 
                 {/* Status Indicator Bar */}
                 <div className={`absolute top-0 left-0 w-1 h-full ${
@@ -580,7 +742,7 @@ const StudentTasks = () => {
                         exit={{ height: 0, opacity: 0 }} 
                         className="overflow-hidden"
                       >
-                         <TaskComments taskId={task.id} />
+                         <TaskComments taskId={task.id} isReportShared={task.is_report_shared} />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -590,7 +752,7 @@ const StudentTasks = () => {
           ))}
           
           {filteredTasks.length === 0 && (
-            <div className="col-span-full py-20 rounded-[2.5rem] bg-white/80 backdrop-blur-xl border border-white flex flex-col items-center justify-center text-center shadow-sm w-full">
+            <div className="col-span-full py-20 rounded-2xl bg-white border border-gray-200 flex flex-col items-center justify-center text-center shadow-sm w-full">
                 <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 border border-gray-100">
                     <CheckSquare size={28} className="text-gray-400" />
                 </div>
@@ -629,7 +791,7 @@ const StudentTasks = () => {
                     onClick={() => setShowSubmitModal(null)}
                     className="p-2 bg-gray-50 hover:bg-gray-100 text-gray-500 hover:text-gray-700 rounded-lg transition-colors"
                   >
-                        <X size={20} />
+                        <CloseIcon size={20} />
                   </button>
               </div>
 
@@ -689,11 +851,6 @@ const StudentTasks = () => {
   );
 };
 
-const X = ({ size }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-    </svg>
-);
+// End of file
 
 export default StudentTasks;

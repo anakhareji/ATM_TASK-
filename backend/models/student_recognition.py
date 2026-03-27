@@ -10,4 +10,5 @@ class StudentRecognition(Base):
     award_type = Column(String(50), nullable=False) # certificate / medal / grade_points
     title = Column(String(200), nullable=False)
     awarded_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    performance_score = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
