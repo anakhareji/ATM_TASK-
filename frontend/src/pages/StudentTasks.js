@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  CheckSquare, UploadCloud, MessageSquare, User, Users, 
+  Award, CheckSquare, UploadCloud, MessageSquare, User, Users, 
   AlertCircle, Clock, Search, 
   Info, CheckCircle2, FileText, CheckCircle,
   Layout, Bold, Italic, Link, Paperclip, AtSign, Smile, Code, History, List, Edit3, Trash2, Download, FileSearch
@@ -699,13 +699,28 @@ const StudentTasks = () => {
                       </div>
                   </div>
 
-                  {task.faculty_feedback && (
-                    <div className="mb-6 p-4 bg-blue-50/50 rounded-xl border border-blue-100/50">
-                         <div className="flex items-center gap-2 mb-1.5">
-                            <Info size={14} className="text-blue-600" />
-                            <p className="text-xs font-semibold text-blue-800">Faculty Feedback</p>
+                  {task.dynamic_status === 'graded' && (
+                    <div className="mb-6 p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100 shadow-sm animate-fadeIn">
+                       <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+                                <Award size={18} />
+                             </div>
+                             <div>
+                                <p className="text-[10px] font-black text-indigo-900 uppercase tracking-widest leading-none">Evaluation Received</p>
+                                <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mt-0.5">Final Outcome Dispatched</p>
+                             </div>
+                          </div>
+                          <div className="text-right">
+                             <p className="text-sm font-black text-indigo-600 leading-none">{task.grade} Grade</p>
+                             <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">{task.marks_obtained}/{task.max_marks} Points</p>
+                          </div>
+                       </div>
+                       {task.faculty_feedback && (
+                         <div className="p-3 bg-white/80 rounded-xl border border-indigo-50 italic text-[11px] font-medium text-indigo-800 leading-relaxed">
+                            "{task.faculty_feedback}"
                          </div>
-                         <p className="text-sm text-gray-700 leading-relaxed">{task.faculty_feedback}</p>
+                       )}
                     </div>
                   )}
                 </div>

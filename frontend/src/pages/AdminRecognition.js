@@ -30,11 +30,12 @@ const AdminRecognition = () => {
   });
   const [savingWeights, setSavingWeights] = useState(false);
   const [recent, setRecent] = useState([]);
-  const [registrySearch, setRegistrySearch] = useState('');
   const [editingCert, setEditingCert] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  
-  const navigate = useNavigate();
+  const [suggestions, setSuggestions] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const cardEntrance = {
     initial: { opacity: 0, y: 20 },
@@ -43,7 +44,7 @@ const AdminRecognition = () => {
   };
 
   const getRankIcon = (idx) => {
-    if (idx === 0) return <Crown className="text-amber-500" size={18} />;
+    if (idx === 0) return <Crown className="text-amber-500 shadow-sm" size={18} />;
     if (idx === 1) return <Star className="text-gray-400 fill-gray-100" size={16} />;
     if (idx === 2) return <Star className="text-amber-600 fill-amber-100" size={14} />;
     return <span className="text-[10px] font-black text-gray-300">#{idx + 1}</span>;
@@ -51,10 +52,14 @@ const AdminRecognition = () => {
 
   const filteredRecent = useMemo(() => {
     if (!recent) return [];
+    if (!registrySearch.trim()) return recent;
+    const q = registrySearch.toLowerCase();
     return recent.filter(r => 
-      r.student_name?.toLowerCase().includes(registrySearch.toLowerCase()) ||
-      r.student_id?.toString().includes(registrySearch) ||
-      r.badge_type?.toLowerCase().includes(registrySearch.toLowerCase())
+      (r.student_name && r.student_name.toLowerCase().includes(q)) ||
+      (r.student_id && r.student_id.toString().includes(q)) ||
+      (r.id && r.id.toString().includes(q)) ||
+      (r.roll_no && r.roll_no.toLowerCase().includes(q)) ||
+      (r.badge_type && r.badge_type.toLowerCase().includes(q))
     );
   }, [recent, registrySearch]);
 
@@ -140,17 +145,6 @@ const AdminRecognition = () => {
     }
   };
 
-  const filteredRecent = useMemo(() => {
-    if (!registrySearch.trim()) return recent;
-    const q = registrySearch.toLowerCase();
-    return recent.filter(r => 
-      (r.student_name && r.student_name.toLowerCase().includes(q)) ||
-      (r.student_id && r.student_id.toString().includes(q)) ||
-      (r.id && r.id.toString().includes(q)) ||
-      (r.roll_no && r.roll_no.toLowerCase().includes(q))
-    );
-  }, [recent, registrySearch]);
-
   useEffect(() => { loadStats(); }, []);
 
   // Autocomplete Logic
@@ -195,13 +189,6 @@ const AdminRecognition = () => {
             toast.error("Failed to load dossier");
           });
     }, 100);
-  };
-
-  const getRankIcon = (index) => {
-    if (index === 0) return <Crown className="text-amber-400 fill-amber-200/50" size={18} />;
-    if (index === 1) return <Crown className="text-gray-400 fill-gray-200/50" size={16} />;
-    if (index === 2) return <Crown className="text-amber-700 fill-amber-600/30" size={14} />;
-    return <span className="text-[10px] font-black text-gray-400">#{index + 1}</span>;
   };
 
   return (
@@ -361,143 +348,6 @@ const AdminRecognition = () => {
           </div>
         )}
       </AnimatePresence>
-
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <div key={i} className="h-28 bg-white border border-gray-100 rounded-2xl animate-pulse" />)}
-        </div>
-      ) : stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          <div className="bg-white rounded-3xl border border-gray-100 p-6">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Total Certifications</p>
-            <p className="text-3xl font-black text-gray-800">{stats.total_certifications}</p>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
-            {/* ── Top Candidates ── */}
-            <motion.div variants={cardEntrance} className="xl:col-span-1">
-              <div className="flex items-center justify-between px-2 mb-5">
-                <h3 className="text-xl font-black text-gray-900 uppercase italic tracking-tight flex items-center gap-3">
-                  <TrendingUp className="text-emerald-500"/> Ranked Candidates
-                </h3>
-                <RefreshCcw size={16} className="text-gray-300 hover:text-emerald-500 cursor-pointer transition-colors" onClick={loadStats}/>
-              </div>
-              <GlassCard className="p-6 border-white/50 bg-white/40 space-y-4 shadow-xl">
-                {!stats?.top_students || stats.top_students.length === 0 ? (
-                  <div className="py-10 text-center">
-                    <Users size={32} className="text-gray-200 mx-auto mb-2"/>
-                    <p className="text-xs font-bold text-gray-300 uppercase italic tracking-widest">Awaiting ATM Sync</p>
-                  </div>
-                ) : (
-                  stats.top_students.map((student, idx) => (
-                    <motion.div 
-                      key={idx} 
-                      whileHover={{ x: 5 }} 
-                      className="p-4 bg-white/80 rounded-2xl border border-white/60 shadow-sm flex items-center justify-between group transition-all"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100 overflow-hidden relative">
-                          {student.avatar ? (
-                             <img src={`http://localhost:8000${student.avatar}`} alt="User" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-multiply" />
-                          ) : null}
-                          <span className="relative z-10">{getRankIcon(idx)}</span>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                             <p className="text-sm font-black text-gray-800 uppercase italic leading-none">{student?.name}</p>
-                             {student.official_badge && (
-                                <Crown size={12} className={
-                                  student.official_badge === 'gold' ? 'text-amber-500 fill-amber-300' :
-                                  student.official_badge === 'silver' ? 'text-gray-400 fill-gray-200' :
-                                  'text-amber-700 fill-amber-600'
-                                } />
-                             )}
-                          </div>
-                          <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-widest">ID: {student?.roll_no || student?.student_id || 'N/A'}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-base font-black text-emerald-600 leading-none">{student?.performance_score}</p>
-                        <p className="text-[8px] font-black text-gray-300 uppercase tracking-tighter">ATM Score</p>
-                      </div>
-                    </motion.div>
-                  ))
-                )}
-                <button 
-                  onClick={() => navigate('/dashboard/performance')} 
-                  className="w-full py-3 rounded-xl border border-dashed border-gray-200 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-white/60 hover:text-indigo-600 hover:border-indigo-200 transition-all"
-                >
-                  View Global Analytics
-                </button>
-              </GlassCard>
-            </motion.div>
-
-            {/* ── Scoring config ── */}
-            <motion.div variants={cardEntrance} className="xl:col-span-2 space-y-8">
-              <div>
-          <h3 className="text-xl font-black text-gray-900 uppercase italic tracking-tight px-2 mb-5 flex items-center justify-between gap-3">
-            <span className="flex items-center gap-3"><Settings className="text-gray-400"/> System Intelligence Weights</span>
-            <button onClick={() => setSettingsOpen(true)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-              <Settings size={16} className="text-indigo-600"/>
-            </button>
-          </h3>
-                <GlassCard className="p-8 border-white/50 bg-white/50">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {[
-                      { label: 'Task Quality', key: 'weight_avg_score', icon: <Star size={14}/> },
-                      { label: 'Completion Drive', key: 'weight_task_completion', icon: <CheckCircle size={14}/> },
-                      { label: 'Team Efficiency', key: 'weight_group_contribution', icon: <Users size={14}/> },
-                      { label: 'Participation', key: 'weight_event_participation', icon: <MousePointer2 size={14}/> },
-                    ].map(item => (
-                      <div key={item.key} className="space-y-3">
-                        <div className="flex justify-between items-center px-1">
-                          <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                            {item.icon} {item.label}
-                          </label>
-                          <span className="text-xs font-black text-indigo-600 italic bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">
-                             {weights[item.key]}
-                          </span>
-                        </div>
-                        <input 
-                          type="range" step="0.05" min="0" max="1" 
-                          value={weights[item.key]} 
-                          onChange={e=>setWeights(w=>({...w, [item.key]: parseFloat(e.target.value||0)}))} 
-                          className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" 
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="mt-10 flex items-center justify-between p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 border-dashed">
-                    <div>
-                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1">Cumulative Vector Sum</p>
-                      <p className={`text-2xl font-black italic ${(weights.weight_task_completion + weights.weight_avg_score + weights.weight_group_contribution + weights.weight_event_participation).toFixed(2) === '1.00' ? 'text-emerald-600' : 'text-amber-600 animate-pulse'}`}>
-                        {(weights.weight_task_completion + weights.weight_avg_score + weights.weight_group_contribution + weights.weight_event_participation).toFixed(2)}
-                      </p>
-                    </div>
-                    <button 
-                      onClick={async ()=>{
-                        setSavingWeights(true);
-                        try {
-                          await API.post('/admin/settings', weights);
-                          toast.success('Cognitive weights synchronized!');
-                        } catch {
-                          toast.error('Sync failed');
-                        } finally { setSavingWeights(false); }
-                      }}
-                      disabled={savingWeights}
-                      className="px-8 py-3.5 rounded-2xl bg-indigo-600 text-white text-[11px] font-black uppercase tracking-widest shadow-xl shadow-indigo-600/25 hover:opacity-90 disabled:opacity-50 transition-all flex items-center gap-3"
-                    >
-                      {savingWeights ? <RefreshCcw size={14} className="animate-spin"/> : <RefreshCcw size={14}/>}
-                      {savingWeights ? 'Updating Sync...' : 'Sync Global Weights'}
-                    </button>
-                  </div>
-                </GlassCard>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      )}
 
       {/* ── Registry Table ── */}
       <div className="mt-16">
@@ -807,93 +657,6 @@ const AdminRecognition = () => {
         </div>
       )}
 
-      {/* ── Registry Table ── */}
-      <div className="mt-16">
-        <div className="flex items-center justify-between px-2 mb-8">
-          <h3 className="text-2xl font-black text-gray-900 uppercase italic tracking-tight flex items-center gap-4">
-            <History className="text-indigo-500"/> Issuance Registry
-          </h3>
-          <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-indigo-500 transition-colors" size={16}/>
-            <input 
-              type="text" placeholder="Filter registry..." 
-              value={registrySearch} onChange={e=>setRegistrySearch(e.target.value)} 
-              className="pl-12 pr-6 py-3 bg-white/40 backdrop-blur-md border border-white/60 rounded-2xl text-[10px] font-black uppercase tracking-widest focus:outline-none focus:border-indigo-500 transition-all w-64"
-            />
-          </div>
-        </div>
-        
-        <GlassCard className="overflow-hidden border-white/40 bg-white/40">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-900/5 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
-                <th className="py-5 px-10">Candidate</th>
-                <th className="py-5 px-10">Badge Rank</th>
-                <th className="py-5 px-10">Algorithm Perf.</th>
-                <th className="py-5 px-10">Deployment Date</th>
-                <th className="py-5 px-10 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRecent.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="py-20 text-center">
-                    <p className="text-xs font-black text-gray-300 uppercase tracking-widest italic">Registry Void</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredRecent.map((row, idx) => (
-                  <tr key={row.id} className="border-t border-gray-900/5 group hover:bg-white/40 transition-colors">
-                    <td className="py-6 px-10">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-white text-lg font-black shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
-                          {row?.student_name?.charAt(0) || 'U'}
-                        </div>
-                        <div>
-                          <p className="text-base font-black text-gray-800 italic">{row.student_name}</p>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                            {row?.roll_no || `Ref ID #${row?.id || '?'}`}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-6 px-10">
-                      <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${
-                        row.badge_type === 'gold' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                        row.badge_type === 'silver' ? 'bg-gray-50 text-gray-500 border-gray-100' :
-                        'bg-amber-50 text-amber-800 border-amber-200'
-                      }`}>
-                        {row.badge_type}
-                      </span>
-                    </td>
-                    <td className="py-6 px-10">
-                      <p className="text-sm font-black text-gray-700">{row.performance_score}</p>
-                    </td>
-                    <td className="py-6 px-10">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                        {row.issue_date?.split(' ')[0] || 'N/A'}
-                      </p>
-                    </td>
-                    <td className="py-6 px-10 text-right">
-                       <div className="flex items-center justify-end gap-2">
-                         <button 
-                           onClick={() => setEditingCert(row)}
-                           className="p-3 rounded-2xl bg-indigo-50 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-100 transition-all"
-                         >
-                           <Settings size={18}/>
-                         </button>
-                         <button className="p-3 rounded-2xl bg-gray-50 text-gray-400 hover:text-indigo-600 transition-all">
-                           <Download size={18}/>
-                         </button>
-                       </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-            </table>
-          </GlassCard>
-        </div>
 
       {/* ── Modals ── */}
       {confirmOpen && (
