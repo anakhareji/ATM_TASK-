@@ -139,13 +139,52 @@ def get_faculty_plans(
         res.append({
             "id": p.id,
             "title": p.title,
+            "description": p.description,
             "project_id": p.project_id,
             "project_title": proj.title if proj else "Unknown Track",
             "start_date": p.start_date,
             "end_date": p.end_date,
+            "is_active": p.is_active,
             "total_todos": len(todos),
             "completed_todos": completed,
+            "todos": [{"id": t.id, "title": t.title, "status": t.status, "due_date": t.due_date} for t in todos],
             "student_id": std.id if std else None,
             "student_name": std.name if std else "Unknown Recipient"
         })
     return res
+
+@router.delete("/{planner_id}")
+def delete_planner(
+    planner_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    planner = db.query(AcademicPlanner).filter(AcademicPlanner.id == planner_id).first()
+    if not planner:
+        raise HTTPException(404, "Planner not found")
+        
+    if current_user["role"] != "admin" and planner.created_by != current_user["user_id"]:
+        raise HTTPException(403, "Not authorized to delete this planner")
+
+    from models.todo import Todo
+    db.query(Todo).filter(Todo.planner_id == planner_id).delete()
+    db.delete(planner)
+    db.commit()
+    return {"message": "Planner deleted successfully"}
+
+@router.patch("/{planner_id}/toggle")
+def toggle_planner_active(
+    planner_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    planner = db.query(AcademicPlanner).filter(AcademicPlanner.id == planner_id).first()
+    if not planner:
+        raise HTTPException(404, "Planner not found")
+        
+    if current_user["role"] != "admin" and planner.created_by != current_user["user_id"]:
+        raise HTTPException(403, "Not authorized to modify this planner")
+
+    planner.is_active = not planner.is_active
+    db.commit()
+    return {"message": "Planner status toggled", "is_active": planner.is_active}

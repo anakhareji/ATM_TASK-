@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
 from datetime import datetime
 
 from database import Base   # ✅ THIS WAS MISSING
@@ -17,5 +17,7 @@ class AcademicPlanner(Base):
 
     project_id = Column(Integer, ForeignKey("projects.id"))
     created_by = Column(Integer, ForeignKey("users.id"))  # faculty
+
+    is_active = Column(Boolean, default=True)  # Added
 
     created_at = Column(DateTime, default=datetime.utcnow)

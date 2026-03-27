@@ -24,6 +24,10 @@
   --bg-overlay: rgba(11, 14, 20, 0.92);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html, body, #root {
   height: 100%;
   font-family: 'Outfit', sans-serif;

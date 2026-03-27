@@ -26,7 +26,7 @@ const ADMIN_NAV = [
             { name: 'Global Tasks',           path: '/dashboard/tasks-global',       icon: CheckSquare   },
             { name: 'Global Submissions',     path: '/dashboard/submissions-global', icon: ClipboardList },
             { name: 'Performance Analytics',  path: '/dashboard/performance',        icon: Activity      },
-            { name: 'Evaluate Students',      path: '/dashboard/evaluate',           icon: GraduationCap },
+            // { name: 'Evaluate Students',      path: '/dashboard/evaluate',           icon: GraduationCap },
         ]
     },
     {
@@ -159,7 +159,7 @@ const GlassSidebar = ({ isOpen, setIsOpen }) => {
     };
 
     return (
-        <div className="w-72 h-full bg-[#000000] flex flex-col overflow-hidden text-white font-sans">
+        <div className="w-72 h-full bg-[#3c786c] flex flex-col overflow-hidden text-white font-sans">
             {/* Profile Section at TOP */}
             <div 
                 onClick={() => navigate('/dashboard/settings')}
