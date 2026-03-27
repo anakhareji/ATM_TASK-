@@ -138,6 +138,10 @@ const AcademicStructure = () => {
     // Faculty details modal
     const [facultyDetailsModal, setFacultyDetailsModal] = useState({ open: false, data: null });
 
+    // Semester modal
+    const semesterDefault = { open: false, program_id: '', number: '', academic_year_id: '' };
+    const [semesterModal, setSemesterModal] = useState(semesterDefault);
+
     // Delete confirmation
     const [deleteModal, setDeleteModal] = useState({ open: false, type: '', id: null, name: '' });
 
@@ -236,7 +240,7 @@ const AcademicStructure = () => {
     };
 
     const saveProgram = async () => {
-        if (!programModal.department_id || !programModal.name.trim()) return toast.error('Program name and department are required');
+        if (!programModal.department_id || !programModal.name.trim()) return toast.error('Course name and department are required');
         setSaveLoading(true);
         try {
             const payload = {
@@ -248,10 +252,10 @@ const AcademicStructure = () => {
             };
             if (programModal.id) {
                 await API.put(`/v1/academic-structure/programs/${programModal.id}`, payload);
-                toast.success('Program updated!');
+                toast.success('Course updated!');
             } else {
                 await API.post('/v1/academic-structure/programs', payload);
-                toast.success('Program created!');
+                toast.success('Course created!');
             }
             setProgramModal(programDefault);
             fetchAll();
@@ -262,8 +266,30 @@ const AcademicStructure = () => {
         }
     };
 
+    const saveSemester = async () => {
+        if (!semesterModal.program_id || !semesterModal.number) return toast.error('Semester number and course are required');
+        if (!selectedYear) return toast.error('Select an Academic Year first');
+        setSaveLoading(true);
+        try {
+            const payload = {
+                program_id: parseInt(semesterModal.program_id),
+                number: parseInt(semesterModal.number),
+                academic_year_id: selectedYear.id,
+                status: 'active'
+            };
+            await API.post('/v1/academic-structure/semesters', payload);
+            toast.success('Semester added!');
+            setSemesterModal(semesterDefault);
+            fetchAll();
+        } catch (err) {
+            toast.error(err.response?.data?.detail || 'Operation failed');
+        } finally {
+            setSaveLoading(false);
+        }
+    };
+
     const saveCourseV1 = async () => {
-        if (!courseV1Modal.program_id || !courseV1Modal.name.trim()) return toast.error('Course name and program are required');
+        if (!courseV1Modal.program_id || !courseV1Modal.name.trim()) return toast.error('Subject name and course are required');
         setSaveLoading(true);
         try {
             const payload = {
@@ -274,7 +300,7 @@ const AcademicStructure = () => {
                 code: courseV1Modal.code || undefined
             };
             await API.post('/v1/academic-structure/courses', payload);
-            toast.success('Course added!');
+            toast.success('Subject added!');
             setCourseV1Modal(courseV1Default);
             fetchAll();
         } catch (err) {
@@ -378,7 +404,7 @@ const AcademicStructure = () => {
     /* ── Tab config ── */
     const TABS = [
         { id: 'departments', label: 'Departments', icon: Building2, count: departmentsV1.filter(d => !d.is_archived).length },
-        { id: 'programs', label: 'Academic Streams', icon: BookMarked, count: programs.length },
+        { id: 'programs', label: 'Courses', icon: BookMarked, count: programs.length },
         { id: 'workload', label: 'Faculty Allocation', icon: Briefcase, count: workload.length },
     ];
 
@@ -471,7 +497,7 @@ const AcademicStructure = () => {
                                 className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black shadow-lg shadow-emerald-500/20 transition-all active:scale-95 disabled:opacity-50"
                             >
                                 <Plus size={18} />
-                                New {activeTab === 'departments' ? 'Department' : activeTab === 'programs' ? 'Stream' : 'Course'}
+                                New {activeTab === 'departments' ? 'Department' : activeTab === 'programs' ? 'Course' : 'Subject'}
                             </button>
                         )}
                     </div>
@@ -494,8 +520,8 @@ const AcademicStructure = () => {
                 {/* ── Stats Row ── */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatCard icon={Building2} label="Total Departments" value={stats.total_departments} color="text-indigo-600" bg="bg-indigo-50" />
-                    <StatCard icon={Layers} label="Academic Streams" value={stats.total_programs} color="text-amber-600" bg="bg-amber-50" />
-                    <StatCard icon={BookMarked} label="Active Batches" value={stats.active_courses} color="text-emerald-600" bg="bg-emerald-50" />
+                    <StatCard icon={Layers} label="Total Courses" value={stats.total_programs} color="text-amber-600" bg="bg-amber-50" />
+                    <StatCard icon={BookMarked} label="Active Subjects" value={stats.active_courses} color="text-emerald-600" bg="bg-emerald-50" />
                     <StatCard icon={Briefcase} label="Faculty Members" value={stats.faculty_count} color="text-purple-600" bg="bg-purple-50" />
                 </div>
 
@@ -637,7 +663,7 @@ const AcademicStructure = () => {
                                                             <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                                                                 <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
                                                                     <BookOpen size={13} className="text-indigo-400" />
-                                                                    {(ugCourseCount + pgCourseCount)} {(ugCourseCount + pgCourseCount) === 1 ? 'course' : 'courses'}
+                                                                    {(ugCourseCount + pgCourseCount)} {(ugCourseCount + pgCourseCount) === 1 ? 'subject' : 'subjects'}
                                                                 </div>
                                                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                     <button
@@ -679,7 +705,7 @@ const AcademicStructure = () => {
                                         <table className="w-full text-left">
                                             <thead className="bg-gray-50/80 border-b border-gray-100">
                                                 <tr>
-                                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Program Stream</th>
+                                                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Course Name</th>
                                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Department</th>
                                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Structure</th>
                                                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Intake</th>
@@ -873,12 +899,14 @@ const AcademicStructure = () => {
                             <div className="p-6 space-y-6 overflow-y-auto h-full">
                                 <div className="grid grid-cols-3 gap-3">
                                     <div className="bg-gray-50 rounded-2xl p-3 text-center">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Programs</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Courses</p>
                                         <p className="text-lg font-black text-gray-800">{programs.filter(pr => pr.department_id === selectedDept.id).length}</p>
                                     </div>
                                     <div className="bg-gray-50 rounded-2xl p-3 text-center">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Courses</p>
-                                        <p className="text-lg font-black text-gray-800">{courses.filter(c => c.department_id === selectedDept.id).length}</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Subjects</p>
+                                        <p className="text-lg font-black text-gray-800">
+                                            {coursesV1.filter(c => programs.some(p => p.id === c.program_id && p.department_id === selectedDept.id)).length}
+                                        </p>
                                     </div>
                                     <div className="bg-gray-50 rounded-2xl p-3 text-center">
                                         <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Active Semesters</p>
@@ -888,9 +916,9 @@ const AcademicStructure = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <h4 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-2">Programs</h4>
+                                    <h4 className="text-sm font-black uppercase tracking-widest text-gray-400 mb-2">Courses</h4>
                                     <div className="flex items-center justify-between mb-2">
-                                        <div className="text-xs font-bold text-gray-500">Manage Programs</div>
+                                        <div className="text-xs font-bold text-gray-500">Manage Courses</div>
                                         <button
                                             onClick={() => setProgramModal({
                                                 ...programDefault,
@@ -899,7 +927,7 @@ const AcademicStructure = () => {
                                             })}
                                             className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black"
                                         >
-                                            + Add Program
+                                            + Add Course
                                         </button>
                                     </div>
                                     <div className="space-y-3">
@@ -920,7 +948,7 @@ const AcademicStructure = () => {
                                                 {expandedPrograms[pr.id] && (
                                                     <div className="mt-3 space-y-3">
                                                         <div>
-                                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Courses</p>
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Subjects</p>
                                                             <div className="space-y-2">
                                                                 {coursesV1.filter(c => c.program_id === pr.id).map(c => (
                                                                     <div key={c.id} className="flex items-center justify-between bg-white rounded-xl border border-gray-100 p-2.5">
@@ -932,12 +960,20 @@ const AcademicStructure = () => {
                                                                     onClick={() => setCourseV1Modal({ ...courseV1Default, open: true, program_id: pr.id })}
                                                                     className="mt-2 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black"
                                                                 >
-                                                                    Add Course
+                                                                    Add Subject
                                                                 </button>
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Semesters</p>
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Semesters</p>
+                                                                <button
+                                                                    onClick={() => setSemesterModal({ ...semesterDefault, open: true, program_id: pr.id })}
+                                                                    className="px-2 py-0.5 rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 text-[10px] font-black"
+                                                                >
+                                                                    + Add Sem
+                                                                </button>
+                                                            </div>
                                                             <div className="flex flex-wrap gap-2">
                                                                 {semesters.filter(sm => sm.program_id === pr.id).map(sm => (
                                                                     <span key={sm.id} className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white border border-gray-100 text-gray-600">
@@ -956,12 +992,12 @@ const AcademicStructure = () => {
                                         {programs.filter(pr => pr.department_id === selectedDept.id).length === 0 && (
                                             <div className="py-16 text-center border-2 border-dashed border-gray-100 rounded-[2rem]">
                                                 <Layers size={32} className="mx-auto mb-2 text-gray-200" />
-                                                <p className="text-gray-400 font-bold text-sm">No programs found</p>
+                                                <p className="text-gray-400 font-bold text-sm">No courses found</p>
                                                 <button
                                                     onClick={() => setProgramModal({ ...programDefault, open: true, department_id: selectedDept.id })}
                                                     className="mt-3 px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-black shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
                                                 >
-                                                    Add Program
+                                                    Add Course
                                                 </button>
                                             </div>
                                         )}
@@ -1052,7 +1088,7 @@ const AcademicStructure = () => {
                 {programModal.open && (
                     <Modal
                         open
-                        title={programModal.id ? 'Edit Stream' : 'Create Stream'}
+                        title={programModal.id ? 'Edit Course' : 'Create Course'}
                         onClose={() => setProgramModal(programDefault)}
                         onSave={saveProgram}
                         saveLabel={programModal.id ? 'Update' : 'Create'}
@@ -1073,7 +1109,7 @@ const AcademicStructure = () => {
                                 </select>
                             </div>
                             <div>
-                                <label className={labelCls}>Stream Name *</label>
+                                <label className={labelCls}>Course Name *</label>
                                 <input
                                     type="text"
                                     className={fieldCls}
@@ -1282,13 +1318,13 @@ const AcademicStructure = () => {
                     >
                         <div className="space-y-4">
                             <div>
-                                <label className={labelCls}>Program *</label>
+                                <label className={labelCls}>Course *</label>
                                 <select
                                     className={fieldCls}
                                     value={courseV1Modal.program_id}
                                     onChange={e => setCourseV1Modal(m => ({ ...m, program_id: e.target.value }))}
                                 >
-                                    <option value="">— Select Program —</option>
+                                    <option value="">— Select Course —</option>
                                     {programs.filter(p => selectedDept ? p.department_id === selectedDept.id : true).map(p => (
                                         <option key={p.id} value={p.id}>{p.name} ({p.type})</option>
                                     ))}
@@ -1296,10 +1332,11 @@ const AcademicStructure = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className={labelCls}>Course Name *</label>
+                                    <label className={labelCls}>Subject Name *</label>
                                     <input
                                         type="text"
                                         className={fieldCls}
+                                        placeholder="e.g. Data Structures"
                                         value={courseV1Modal.name}
                                         onChange={e => setCourseV1Modal(m => ({ ...m, name: e.target.value }))}
                                     />
@@ -1485,6 +1522,38 @@ const AcademicStructure = () => {
                                         Assigning a faculty to a department allows them to manage projects and tasks within that department's scope.
                                     </p>
                                 </div>
+                            </div>
+                        </div>
+                    </Modal>
+                )}
+            </AnimatePresence>
+
+            {/* Semester Create Modal */}
+            <AnimatePresence>
+                {semesterModal.open && (
+                    <Modal
+                        open
+                        title="Add Semester"
+                        onClose={() => setSemesterModal(semesterDefault)}
+                        onSave={saveSemester}
+                        saveLabel="Add"
+                        loading={saveLoading}
+                    >
+                        <div className="space-y-4">
+                            <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex gap-3 italic text-xs font-bold text-indigo-700">
+                                <AlertTriangle size={16} className="shrink-0" />
+                                Add a new numeric semester (e.g., 1, 2, 3) for this course.
+                            </div>
+                            <div>
+                                <label className={labelCls}>Semester Number *</label>
+                                <input
+                                    type="number"
+                                    min="1" max="12"
+                                    className={fieldCls}
+                                    placeholder="e.g. 1"
+                                    value={semesterModal.number}
+                                    onChange={e => setSemesterModal(m => ({ ...m, number: e.target.value }))}
+                                />
                             </div>
                         </div>
                     </Modal>
